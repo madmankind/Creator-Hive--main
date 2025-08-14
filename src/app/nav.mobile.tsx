@@ -13,11 +13,12 @@ export default function MobileNav() {
         <Dialog.Overlay className="fixed inset-0 bg-black/50" />
         <Dialog.Content className="fixed inset-y-0 right-0 w-80 bg-[color:var(--bg)] border-l border-[color:var(--color-border)] p-6 flex flex-col gap-4">
           <Dialog.Close className="self-end border rounded-md px-2 py-1 text-sm">Close</Dialog.Close>
-          <Link href="/#how">Product</Link>
+          <Link href="/">Home</Link>
           <Link href="/pricing">Pricing</Link>
-          <Link href="/#creators">For Creators</Link>
-          <Link href="/#brands">For Brands</Link>
-          <Link href="/#docs">Docs</Link>
+          <Link href="/for-creators">For Creators</Link>
+          <Link href="/for-brands">For Brands</Link>
+          <Link href="/docs">Docs</Link>
+          <Link href="/talent">Talent</Link>
           <Link href="/app">Sign in</Link>
           <Link href="/signup" className={buttonVariants({ variant: "gradient" })}>Get Started</Link>
         </Dialog.Content>

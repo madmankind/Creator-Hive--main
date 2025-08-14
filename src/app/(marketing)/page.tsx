@@ -39,7 +39,7 @@ export default function MarketingHome() {
       {/* How it works */}
       <section id="how" className="container py-24">
         <motion.h2 className="text-3xl font-bold" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>How Creator Pay Works</motion.h2>
-        <p className="mt-4 text-[color:var(--color-muted-foreground)]">Brief → Contract → Milestones → Delivery → Instant Payout.</p>
+        <p className="mt-4 text-[color:var(--color-muted-foreground)]">Discover → Book → Execute → Track.</p>
         <div className="mt-10 grid md:grid-cols-5 gap-4">
           {[
             ["Brief", "Share scope and budget"],
