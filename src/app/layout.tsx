@@ -3,7 +3,7 @@ import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/react";
 import Link from "next/link";
-import Image from "next/image";
+import { Logo } from "@/components/Logo";
 import { Providers } from "@/components/Providers";
 import { buttonVariants } from "@/components/ui/button-variants";
 import MobileNav from "./nav.mobile";
@@ -65,8 +65,7 @@ export default function RootLayout({
           <header className="sticky top-0 z-50 backdrop-blur supports-[backdrop-filter]:bg-black/30 border-b border-[color:var(--color-border)]">
             <div className="container flex items-center justify-between h-16">
               <Link href="/" className="flex items-center gap-3 focus-ring">
-                <Image src="/brand/creator-hive-logo.png" alt="Creator Hive" width={28} height={28} />
-                <span className="font-semibold">Creator Hive</span>
+                <Logo className="h-7" />
               </Link>
               <nav className="hidden md:flex items-center gap-6 text-sm text-[color:var(--color-muted-foreground)]">
                 <Link href="/#how">Product</Link>
