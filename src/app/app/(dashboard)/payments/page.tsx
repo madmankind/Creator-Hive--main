@@ -35,7 +35,7 @@ function NewPaymentLink() {
       onClick={async () => {
         try {
           setLoading(true);
-          const res = await createPaymentLink({ amount: 100, email: "client@example.com" });
+          const res = await createPaymentLink();
           pushToast({ title: "Payment link created", description: res.url });
         } finally {
           setLoading(false);
