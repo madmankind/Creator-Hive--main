@@ -1,0 +1,128 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  CREATOR
+  BRAND
+  ADMIN
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String?  @unique
+  image     String?
+  role      Role     @default(CREATOR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  accounts  Account[]
+  sessions  Session[]
+  creator   CreatorProfile?
+  brand     BrandProfile?
+  threads   Thread[]        @relation("UserThreads")
+  messages  Message[]       @relation("UserMessages")
+  stripe    StripeAccount?
+}
+
+model CreatorProfile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id])
+  title        String?
+  skills       String[] @default([])
+  rate         Int?
+  availability String?
+}
+
+model BrandProfile {
+  id        String @id @default(cuid())
+  userId    String @unique
+  user      User   @relation(fields: [userId], references: [id])
+  company   String?
+  vatNumber String?
+}
+
+model Thread {
+  id           String   @id @default(cuid())
+  subject      String
+  createdAt    DateTime @default(now())
+  participants User[]   @relation("UserThreads")
+  messages     Message[]
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  threadId  String
+  thread    Thread   @relation(fields: [threadId], references: [id])
+  senderId  String
+  sender    User     @relation("UserMessages", fields: [senderId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+  readBy    String[] @default([])
+}
+
+model StripeAccount {
+  id             String  @id @default(cuid())
+  userId         String  @unique
+  user           User    @relation(fields: [userId], references: [id])
+  accountId      String
+  chargesEnabled Boolean @default(false)
+  payoutsEnabled Boolean @default(false)
+}
+
+model Project {
+  id        String   @id @default(cuid())
+  title     String
+  brandId   String
+  briefId   String?
+  createdAt DateTime @default(now())
+  brief     Brief?
+}
+
+model Brief {
+  id        String   @id @default(cuid())
+  projectId String   @unique
+  project   Project  @relation(fields: [projectId], references: [id])
+  summary   String
+  budget    Int
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  @@unique([identifier, token])
+}
+

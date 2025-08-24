@@ -1,32 +1,185 @@
 @import "tailwindcss";
 @import "../styles/brand.css";
 
+/*
+  Global Design Tokens
+  - Dark default with optional light theme
+  - Neon accents (purple/cyan) adjustable via [data-accent]
+*/
 :root {
+  /* Color scheme */
   color-scheme: dark;
-}
 
-@theme inline {
+  /* Base surfaces */
+  --bg: #0B0F1A; /* page */
+  --bg-elevated: rgba(17, 23, 41, 0.6);
+  --surface: #0F1526;
+  --muted: #121827;
+  --border: #1E293B;
+
+  /* Typography */
+  --text-primary: #E6EAF2;
+  --text-secondary: #A5B0C5;
+  --text-muted: #7B8799;
+
+  /* Accents */
+  --accent-purple: #7C3AED; /* 600 */
+  --accent-purple-soft: #A78BFA; /* 400 */
+  --accent-cyan: #22D3EE; /* 400 */
+  --accent-cyan-soft: #67E8F9; /* 300 */
+
+  /* State colors */
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #38bdf8;
+
+  /* Radii */
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 20px;
+  --space-7: 24px;
+  --space-8: 32px;
+  --space-9: 40px;
+  --space-10: 48px;
+  --space-11: 64px;
+
+  /* Shadows */
+  --shadow-base: 0 8px 30px rgba(0,0,0,0.35);
+  --shadow-hover: 0 12px 40px rgba(0,0,0,0.45);
+
+  /* Fonts (from next/font) */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-html, body {
-  min-height: 100%;
+/* Light theme overrides */
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f8fafc;
+  --bg-elevated: rgba(255,255,255,0.7);
+  --surface: #ffffff;
+  --muted: #f1f5f9;
+  --border: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
 }
+
+/* Accent selection */
+[data-accent="purple"] {
+  --accent: var(--accent-purple);
+  --accent-soft: var(--accent-purple-soft);
+}
+[data-accent="cyan"] {
+  --accent: var(--accent-cyan);
+  --accent-soft: var(--accent-cyan-soft);
+}
+
+/* Tailwind v4 inline theme bridge */
+@theme inline {
+  /* Fonts */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  /* Colors mapped to CSS variables */
+  --color-background: var(--bg);
+  --color-foreground: var(--text-primary);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--text-muted);
+  --color-card: var(--surface);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+
+  /* Radii */
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+}
+
+html, body { min-height: 100%; }
 
 body {
   background: var(--bg);
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 /* Smooth scroll */
 html { scroll-behavior: smooth; }
 
+/* Container system */
 .container {
   width: 100%;
   margin-left: auto;
   margin-right: auto;
-  padding-left: 1rem;
-  padding-right: 1rem;
-  max-width: 1200px;
+  padding-left: 24px;
+  padding-right: 24px;
+  max-width: 1280px;
+}
+@media (min-width: 1440px) {
+  .container { max-width: 1440px; }
+}
+
+/* Glass surfaces */
+.glass {
+  background: color-mix(in oklab, white 4%, transparent);
+  background-color: var(--bg-elevated);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+/* Gradient border utility using mask technique */
+.gradient-border {
+  position: relative;
+}
+.gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 90%, var(--accent-soft) 10%), transparent 60%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Focus ring with accent glow */
+.focus-ring:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent) 70%, white 30%);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 25%, transparent);
+}
+
+/* Optional grid/noise overlay */
+.grid-overlay {
+  background-image:
+    radial-gradient(800px 400px at 20% -10%, color-mix(in oklab, var(--accent) 18%, transparent) 0%, transparent 60%),
+    radial-gradient(900px 500px at 90% 0%, color-mix(in oklab, var(--accent-soft) 14%, transparent) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(0,0,0,0.4), rgba(0,0,0,0.6));
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
 }
