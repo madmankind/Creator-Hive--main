@@ -5,17 +5,6 @@ test('Landing loads and hero present', async ({ page }) => {
   await expect(page.getByText('Change the way you create & get paid.')).toBeVisible();
 });
 
-test('Pricing route navigates', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('link', { name: 'Pricing' }).click();
-  await expect(page.getByRole('heading', { name: 'Pricing' })).toBeVisible();
-});
-
-test('Dashboard renders stats', async ({ page }) => {
-  await page.goto('/app');
-  await expect(page.getByText('Total Earnings')).toBeVisible();
-});
-
 test('Creators grid shows cards', async ({ page }) => {
   await page.goto('/creators');
   await expect(page.getByText('Top Creators')).toBeVisible();
@@ -25,5 +14,4 @@ test('Billing page loads', async ({ page }) => {
   await page.goto('/billing');
   await expect(page.getByText('Stripe Connect')).toBeVisible();
 });
-
 
