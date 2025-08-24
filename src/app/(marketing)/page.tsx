@@ -3,6 +3,8 @@ import { AccountCard } from "./page.client";
 import { buttonVariants } from "@/components/ui/button-variants";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { Particles } from "@/components/primitives/Particles";
+import Balancer from "react-wrap-balancer";
 
 export default function MarketingHome() {
   return (
@@ -10,6 +12,7 @@ export default function MarketingHome() {
 
       {/* Hero */}
       <section className="relative min-h-[90vh] flex items-center noise-bg">
+        <Particles density={0.5} className="pointer-events-none absolute inset-0 w-full h-full" />
         <div className="container grid md:grid-cols-2 gap-12 items-center py-20">
           <div>
             <motion.h1
@@ -20,7 +23,7 @@ export default function MarketingHome() {
               className="text-gradient font-extrabold leading-tight"
               style={{ fontSize: "var(--h1-size)" }}
             >
-              Change the way you create & get paid.
+              <Balancer>Change the way you create & get paid.</Balancer>
             </motion.h1>
             <motion.p className="mt-6 text-lg text-[color:var(--color-muted-foreground)]" initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}>
               Smart contracts, milestone payouts, scope control, and compliance for the GCC creator economy.
