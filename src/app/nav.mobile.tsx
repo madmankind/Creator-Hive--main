@@ -1,7 +1,7 @@
 "use client";
 import * as Dialog from "@radix-ui/react-dialog";
 import Link from "next/link";
-import { buttonVariants } from "@/components/ui/button-variants";
+import { Button } from "@/components/ui/Button";
 
 export default function MobileNav() {
   return (
@@ -19,7 +19,9 @@ export default function MobileNav() {
           <Link href="/#brands">For Brands</Link>
           <Link href="/#docs">Docs</Link>
           <Link href="/app">Sign in</Link>
-          <Link href="/signup" className={buttonVariants({ variant: "gradient" })}>Get Started</Link>
+          <Button variant="primary" size="md" asChild>
+            <Link href="/signup">Get Started</Link>
+          </Button>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
