@@ -5,7 +5,7 @@ import { Analytics } from "@vercel/analytics/react";
 import Link from "next/link";
 import Image from "next/image";
 import { Providers } from "@/components/Providers";
-import { buttonVariants } from "@/components/ui/button-variants";
+import { Button } from "@/components/ui/Button";
 import MobileNav from "./nav.mobile";
 
 const geistSans = Geist({
@@ -75,9 +75,9 @@ export default function RootLayout({
                 <Link href="/#brands">For Brands</Link>
                 <Link href="/#docs">Docs</Link>
                 <Link href="/app">Sign in</Link>
-                <Link href="/signup" className={`${buttonVariants({ variant: "gradient" })} ml-2`}>
-                  Get Started
-                </Link>
+                <Button variant="primary" size="md" asChild>
+                  <Link href="/signup">Get Started</Link>
+                </Button>
               </nav>
               <div className="md:hidden">
                 <MobileNav />

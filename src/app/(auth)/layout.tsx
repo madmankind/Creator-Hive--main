@@ -1,5 +1,6 @@
 import { BackdropVariants } from '@/components/gradients/Backdrop';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -25,7 +26,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         </div>
         
         {/* Back to home link */}
-        <a
+        <Link
           href="/"
           className={cn(
             'text-muted hover:text-text transition-colors duration-150',
@@ -33,7 +34,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
           )}
         >
           ← Back to Home
-        </a>
+        </Link>
       </header>
       
       {/* Centered Content */}

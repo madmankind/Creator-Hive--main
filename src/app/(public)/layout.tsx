@@ -1,6 +1,5 @@
 import { Backdrop } from '@/components/gradients/Backdrop';
-import { TopNav, TopNavVariants } from '@/components/nav/TopNav';
-import { cn } from '@/lib/utils';
+import { TopNavVariants } from '@/components/nav/TopNav';
 
 interface PublicLayoutProps {
   children: React.ReactNode;
