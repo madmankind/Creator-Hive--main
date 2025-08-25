@@ -38,7 +38,8 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
     id,
     ...props 
   }, ref) => {
-    const checkboxId = id || `checkbox-${React.useId()}`;
+    const generatedId = React.useId();
+  const checkboxId = id || `checkbox-${generatedId}`;
     
     const checkboxRef = React.useRef<HTMLInputElement>(null);
     

@@ -54,7 +54,8 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     children,
     ...props 
   }, ref) => {
-    const selectId = id || `select-${React.useId()}`;
+    const generatedId = React.useId();
+  const selectId = id || `select-${generatedId}`;
 
     const getVariantStyles = () => {
       switch (variant) {
