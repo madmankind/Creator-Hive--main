@@ -1,26 +1,48 @@
 @import "tailwindcss";
-@import "../styles/brand.css";
+@import url('https://rsms.me/inter/inter.css');
 
 :root {
-  color-scheme: dark;
-}
-
-@theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --bg: #0B0F14;
+  --surface: #0D1117;
+  --text-primary: #E6E8EC;
+  --text-dim: #9AA3B2;
+  --ring: #222833;
+  --accent: #22D3EE;
 }
 
 html, body {
-  min-height: 100%;
-}
-
-body {
+  height: 100%;
   background: var(--bg);
-  color: var(--text);
+  color: var(--text-primary);
+  font-feature-settings: "tnum" 1, "cv03" 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 /* Smooth scroll */
 html { scroll-behavior: smooth; }
+
+@layer utilities {
+  .hero-glow {
+    position: relative;
+  }
+  .hero-glow::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    /* vertical column glow (very subtle) */
+    background:
+      radial-gradient(40% 60% at 50% 10%, rgba(255,255,255,0.06), transparent 60%),
+      radial-gradient(18% 60% at 50% -10%, rgba(255,255,255,0.06), transparent 70%);
+    mask: radial-gradient(120% 120% at 50% 0%, black 60%, transparent 100%);
+  }
+}
+
+/* Placeholder styling */
+input::placeholder {
+  color: rgba(154, 163, 178, 0.6);
+}
 
 .container {
   width: 100%;
