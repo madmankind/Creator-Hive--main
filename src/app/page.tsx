@@ -3,10 +3,14 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import SearchBar from "@/components/SearchBar";
-import AuthBar from "@/components/AuthBar";
+import { TalentCarousel } from "@/components/marketing/TalentCarousel";
+import { curatedTalent } from "@/lib/curatedTalent";
 
 export default function HomePage() {
-  const [mode, setMode] = useState<'brands' | 'creators'>('brands');
+  const [mode, setMode] = useState<'client' | 'talent'>('client');
+  const [showTalentGallery, setShowTalentGallery] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
 
   return (
     <main className="min-h-screen bg-[#0B0F14] text-slate-200">
@@ -27,36 +31,41 @@ export default function HomePage() {
             {/* Toggle */}
             <div className="inline-flex items-center gap-1 rounded-full bg-white/5 p-1 ring-1 ring-white/10">
               <button 
-                onClick={() => setMode('brands')}
+                onClick={() => setMode('client')}
                 className={`px-3.5 py-1.5 rounded-full text-[12px] font-medium transition ${
-                  mode === 'brands' 
+                  mode === 'client' 
                     ? 'bg-white/10 text-white ring-1 ring-white/15' 
                     : 'text-white/60 hover:text-white'
                 }`}
               >
-                Brands
+                Client
               </button>
               <button 
-                onClick={() => setMode('creators')}
+                onClick={() => setMode('talent')}
                 className={`px-3.5 py-1.5 rounded-full text-[12px] font-medium transition ${
-                  mode === 'creators' 
+                  mode === 'talent' 
                     ? 'bg-white/10 text-white ring-1 ring-white/15' 
                     : 'text-white/60 hover:text-white'
                 }`}
               >
-                Creators
+                Talent
               </button>
             </div>
 
             <p className="text-[14px] text-white/60">
-              {mode === 'brands' ? 'Book Top 1% talent seamlessly' : 'Join the Hive to showcase your work and get discovered.'}
+              {mode === 'client' ? 'Book Top 1% talent seamlessly' : 'Join the Hive to showcase your work and get discovered.'}
             </p>
+            {mode === 'client' && (
+              <p className="text-[13px] text-white/50 mt-2">
+                Describe your campaign and choose the roles you need – we&apos;ll surface curated talent that fits.
+              </p>
+            )}
           </div>
 
           {/* Search/Auth Bar - Centered */}
           <div className="flex justify-center">
             <AnimatePresence mode="wait">
-              {mode === 'brands' ? (
+              {mode === 'client' ? (
                 <motion.div
                   key="search"
                   initial={{ opacity: 0, y: 8 }}
@@ -69,6 +78,14 @@ export default function HomePage() {
                     onResults={(data) => {
                       // TEMP
                       console.log("AI Search Results:", data);
+                    }}
+                    onQueryChange={(q) => setSearchQuery(q)}
+                    onRolesChange={(roles) => setSelectedRoles(roles)}
+                    onDiscover={() => {
+                      setShowTalentGallery(true);
+                      setTimeout(() => {
+                        document.getElementById("talent-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }, 100);
                     }}
                   />
                 </motion.div>
@@ -124,6 +141,17 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Talent Gallery Section */}
+      {mode === 'client' && showTalentGallery && (
+        <section id="talent-gallery" className="mt-20 md:mt-28">
+          <TalentCarousel 
+            talents={curatedTalent} 
+            query={searchQuery} 
+            selectedRoles={selectedRoles} 
+          />
+        </section>
+      )}
     </main>
   );
 }

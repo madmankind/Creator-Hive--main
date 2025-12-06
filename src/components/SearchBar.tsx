@@ -9,11 +9,14 @@ import { DEFAULT_ROLES } from "@/lib/roles";
 type Props = {
   className?: string;
   onResults?: (payload: unknown) => void;
+  onQueryChange?: (query: string) => void;
+  onRolesChange?: (roles: string[]) => void;
+  onDiscover?: () => void;
 };
 
 const MAX_COLLAPSED = 14; // show this many chips before expand
 
-export default function SearchBar({ className, onResults }: Props) {
+export default function SearchBar({ className, onResults, onQueryChange, onRolesChange, onDiscover }: Props) {
   const router = useRouter();
   const [query, setQuery] = useState<string>("");
   const [open, setOpen] = useState<boolean>(false);
@@ -44,9 +47,11 @@ export default function SearchBar({ className, onResults }: Props) {
   }, []);
 
   const toggleSelect = (role: string) => {
-    setSelected((prev) =>
-      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]
-    );
+    setSelected((prev) => {
+      const newSelected = prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role];
+      onRolesChange?.(newSelected);
+      return newSelected;
+    });
   };
 
   const onSubmit = async () => {
@@ -61,7 +66,14 @@ export default function SearchBar({ className, onResults }: Props) {
     setLoading(true);
     setOpen(false);
     
-    // Navigate to results page with search params
+    // If onDiscover callback is provided, use it (for talent gallery)
+    if (onDiscover) {
+      onDiscover();
+      setLoading(false);
+      return;
+    }
+    
+    // Otherwise, navigate to results page with search params
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
     if (selected.length > 0) params.set("roles", selected.join(","));
@@ -119,7 +131,10 @@ export default function SearchBar({ className, onResults }: Props) {
             <input
               ref={inputRef}
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                onQueryChange?.(e.target.value);
+              }}
               onFocus={() => setOpen(true)}
               onKeyDown={onKey}
               placeholder="Short description of your campaign brief & talent"
@@ -198,7 +213,13 @@ export default function SearchBar({ className, onResults }: Props) {
 
         {/* Discover CTA */}
         <button
-          onClick={() => router.push('/discovery')}
+          onClick={() => {
+            if (onDiscover) {
+              onSubmit();
+            } else {
+              router.push('/discovery');
+            }
+          }}
           className="rounded-full bg-white/5 border border-white/10 px-4 h-11 text-[14px] text-slate-200 hover:bg-white/10 transition"
         >
           Discover
