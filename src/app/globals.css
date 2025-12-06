@@ -1,36 +1,49 @@
 @import "tailwindcss";
-@import "../styles/brand.css";
 
+/* Global design tokens */
 :root {
-  color-scheme: dark;
+  --bg: #0b0f14;
+  --surface: #0d1117;
+  --text-primary: #e6edf3;
+  --text-dim: #9aa4af;
+  --ring: #2b323b;
+  --accent: #60a5fa;
 }
 
-@theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-html, body {
-  min-height: 100%;
+html,
+body {
+  height: 100%;
 }
 
 body {
   background: var(--bg);
-  color: var(--text);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* Smooth scroll */
-html { scroll-behavior: smooth; }
-
-/* Marketing utilities */
-.glow { box-shadow: 0 0 24px rgba(102,123,255,0.25); }
-.grain { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100" height="100" filter="url(%23n)" opacity="0.04"/></svg>'); }
-
-.container {
-  width: 100%;
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: 1rem;
-  padding-right: 1rem;
-  max-width: 1200px;
+/* Subtle vertical glow used behind hero */
+.hero-glow {
+  position: absolute;
+  inset: 0 auto 0 auto;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(900px, 80vw);
+  pointer-events: none;
+  background: radial-gradient(
+    50% 60% at 50% 10%,
+    rgba(96, 165, 250, 0.18),
+    rgba(96, 165, 250, 0.06) 35%,
+    transparent 70%
+  );
+  filter: blur(40px);
+  opacity: 0.8;
 }
+
+/* Utility to dim secondary text when Tailwind classes are inconvenient */
+.text-dim {
+  color: var(--text-dim);
+}
+
+

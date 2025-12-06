@@ -1,0 +1,307 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      UserRole @default(CREATOR)
+  emailVerified DateTime?
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  agencyAccount AgencyAccount?
+  creatorProfile CreatorProfile?
+  accounts Account[]
+  sessions Session[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ============================================
+// AGENCY & TALENT MANAGEMENT
+// ============================================
+
+model AgencyAccount {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  name      String
+  website   String?
+  location  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creators  CreatorProfile[]
+  campaigns Campaign[]
+
+  @@index([userId])
+  @@map("agency_accounts")
+}
+
+model CreatorProfile {
+  id          String   @id @default(cuid())
+  userId      String?  @unique
+  agencyId    String?
+  name        String
+  instagram   String?
+  bio         String?  @db.Text
+  hourlyRate  Int?
+  dayRate     Int?
+  skills      String[] // Array of skill strings
+  niches      String[] // Array of niche strings
+  location    String?
+  avatarUrl   String?
+  portfolioUrl String?
+  isVerified  Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  agency      AgencyAccount? @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  user        User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaigns   CampaignTalent[]
+  messages    Message[]      @relation("CreatorMessages")
+  invoices    Invoice[]
+
+  @@index([userId])
+  @@index([agencyId])
+  @@index([instagram])
+  @@index([isActive])
+  @@map("creator_profiles")
+}
+
+// ============================================
+// CAMPAIGNS & PROJECTS
+// ============================================
+
+model Campaign {
+  id        String          @id @default(cuid())
+  agencyId  String
+  title     String
+  brief     String          @db.Text
+  status    CampaignStatus  @default(DRAFT)
+  startDate DateTime?
+  dueDate   DateTime?
+  budget    Int?            // In cents
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  // Relations
+  agency    AgencyAccount   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  talents   CampaignTalent[]
+  messages  Message[]
+  invoices  Invoice[]
+
+  @@index([agencyId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("campaigns")
+}
+
+model CampaignTalent {
+  id         String   @id @default(cuid())
+  campaignId String
+  talentId   String
+  status     CampaignTalentStatus @default(ASSIGNED)
+  rate       Int?     // Override rate for this campaign (in cents)
+  notes      String?  @db.Text
+  assignedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  campaign   Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  talent     CreatorProfile @relation(fields: [talentId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, talentId])
+  @@index([campaignId])
+  @@index([talentId])
+  @@index([status])
+  @@map("campaign_talents")
+}
+
+// ============================================
+// MESSAGING
+// ============================================
+
+model Message {
+  id         String   @id @default(cuid())
+  campaignId String?
+  senderId   String   // CreatorProfile ID
+  recipientId String? // AgencyAccount ID or CreatorProfile ID
+  content    String   @db.Text
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  // Relations
+  campaign   Campaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  sender     CreatorProfile @relation("CreatorMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([senderId])
+  @@index([recipientId])
+  @@index([createdAt])
+  @@map("messages")
+}
+
+// ============================================
+// FINANCIAL
+// ============================================
+
+model Invoice {
+  id          String        @id @default(cuid())
+  campaignId  String?
+  talentId    String
+  agencyId    String?
+  amount      Int           // In cents
+  currency    String        @default("USD")
+  status      InvoiceStatus @default(PENDING)
+  dueDate     DateTime?
+  paidAt      DateTime?
+  invoiceNumber String      @unique
+  notes       String?       @db.Text
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  campaign    Campaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  talent      CreatorProfile @relation(fields: [talentId], references: [id], onDelete: Cascade)
+  transaction Transaction?
+
+  @@index([campaignId])
+  @@index([talentId])
+  @@index([agencyId])
+  @@index([status])
+  @@index([invoiceNumber])
+  @@map("invoices")
+}
+
+model Transaction {
+  id          String            @id @default(cuid())
+  invoiceId   String?           @unique
+  amount      Int               // In cents
+  currency    String            @default("USD")
+  type        TransactionType
+  status      TransactionStatus @default(PENDING)
+  description String?           @db.Text
+  metadata    Json?             // Additional transaction data
+  processedAt DateTime?
+  createdAt   DateTime          @default(now())
+
+  // Relations
+  invoice     Invoice?          @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  AGENCY
+  CREATOR
+  ADMIN
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum CampaignTalentStatus {
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  PENDING
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum TransactionType {
+  PAYMENT
+  REFUND
+  FEE
+  WITHDRAWAL
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
