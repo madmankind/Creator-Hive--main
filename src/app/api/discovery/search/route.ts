@@ -1,53 +1,117 @@
-import { mfetch } from "@/lib/modash";
+import { curatedTalent } from "@/lib/curatedTalent";
 
 export const dynamic = "force-dynamic";
 
 type Sort = { field?: string; direction?: "asc" | "desc" };
-type Body = { page?: number; sort?: Sort; filter?: Record<string, any> };
+type FollowersRange = { min?: number; max?: number };
+type Range = { min?: number };
+type FilterBody = {
+  locations?: string[];
+  languages?: string[];
+  interests?: string[];
+  brands?: string[];
+  followers?: FollowersRange;
+  engagementRate?: Range;
+};
+type Body = { page?: number; sort?: Sort; filter?: FilterBody };
 
-function buildMock(page = 0) {
-  const base = [
-    { id: "1", username: "trendsmuggler", fullName: "Trend Smuggler | The Revenue Machine", followers: 1600, engagementRate: 0.218 },
-    { id: "2", username: "hannahstuart", fullName: "hannah★", followers: 1400, engagementRate: 0.163 },
-    { id: "3", username: "christoskapitanis", fullName: "Christos Kapitanis", followers: 1200, engagementRate: 0.149 },
-    { id: "4", username: "bluecardiganguy", fullName: "Blue Cardigan Guy", followers: 4200, engagementRate: 0.108 },
-    { id: "5", username: "mohammadfiroz_23", fullName: "✨فروز✨", followers: 2100, engagementRate: 0.105 },
-    { id: "6", username: "mana.keil", fullName: "m a n a m e a < 3", followers: 1900, engagementRate: 0.101 },
-    { id: "7", username: "moshdhooo__", fullName: "poerdjo_gank", followers: 1300, engagementRate: 0.096 },
-    { id: "8", username: "_aj_al_", fullName: "ajal", followers: 1500, engagementRate: 0.094 },
-    { id: "9", username: "yosegu23", fullName: "Yopi Septian Gumelar", followers: 2000, engagementRate: 0.092 },
-    { id: "10", username: "sabeeley_", fullName: "sabeel mohammed", followers: 1800, engagementRate: 0.090 },
-    { id: "11", username: "cristiano", fullName: "Cristiano Ronaldo", followers: 663200000, engagementRate: 0.007 },
-    { id: "12", username: "selenagomez", fullName: "Selena Gomez", followers: 417700000, engagementRate: 0.010 },
-    { id: "13", username: "therock", fullName: "Dwayne Johnson", followers: 392600000, engagementRate: 0.005 },
-    { id: "14", username: "arianagrande", fullName: "Ariana Grande", followers: 380000000, engagementRate: 0.012 },
-    { id: "15", username: "kyliejenner", fullName: "Kylie Jenner", followers: 400000000, engagementRate: 0.008 }
-  ];
+const PAGE_SIZE = 15;
+
+function normalize(value?: string) {
+  return (value || "").toLowerCase();
+}
+
+function applyFilters(filter: FilterBody | undefined) {
+  return curatedTalent.filter((talent) => {
+    if (filter?.locations?.length) {
+      if (!talent.location || !filter.locations.some((loc) => normalize(talent.location) === normalize(loc))) {
+        return false;
+      }
+    }
+
+    if (filter?.languages?.length) {
+      const langMatch = talent.languages?.some((lng) => filter.languages?.some((selected) => normalize(selected) === normalize(lng)));
+      if (!langMatch) return false;
+    }
+
+    if (filter?.interests?.length) {
+      const interestMatch = talent.interests?.some((interest) =>
+        filter.interests?.some((selected) => normalize(selected) === normalize(interest)),
+      );
+      if (!interestMatch) return false;
+    }
+
+    if (filter?.brands?.length) {
+      const brandMatch = talent.brandPartners?.some((brand) =>
+        filter.brands?.some((selected) => normalize(selected) === normalize(brand)),
+      );
+      if (!brandMatch) return false;
+    }
+
+    const followers = talent.followers ?? 0;
+    if (filter?.followers?.min != null && followers < filter.followers.min) return false;
+    if (filter?.followers?.max != null && followers > filter.followers.max) return false;
+
+    const er = talent.engagementRate ?? 0;
+    if (filter?.engagementRate?.min != null && er < filter.engagementRate.min) return false;
+
+    return true;
+  });
+}
+
+function applySort(list: typeof curatedTalent, sort?: Sort) {
+  if (!sort?.field) return list;
+  const dir = sort.direction === "asc" ? 1 : -1;
+  return [...list].sort((a, b) => {
+    const valueFor = (talent: typeof curatedTalent[number]) => {
+      if (sort.field === "followers") return talent.followers ?? 0;
+      if (sort.field === "engagementRate") return talent.engagementRate ?? 0;
+      return 0;
+    };
+    return (valueFor(a) - valueFor(b)) * dir;
+  });
+}
+
+function mapResult(talent: typeof curatedTalent[number]) {
+  const followers = talent.followers ?? 0;
+  const engagementRate = talent.engagementRate ?? 0;
+  const engagement = talent.avgEngagement ?? Math.round(followers * engagementRate);
+
   return {
-    data: base,
-    meta: { page, hasMore: true, total: 84530433, source: "mock" }
+    id: talent.id,
+    username: talent.instagramHandle,
+    fullName: talent.name,
+    followers,
+    engagementRate,
+    engagement,
+    location: talent.location,
+    languages: talent.languages ?? [],
+    interests: talent.interests ?? [],
+    brands: talent.brandPartners ?? [],
+    roles: talent.roleTags,
   };
 }
 
 export async function POST(req: Request) {
-  let payload: Body;
+  let payload: Body = {};
   try {
     payload = (await req.json()) as Body;
   } catch {
-    payload = {};
+    // ignore invalid payloads and use defaults
   }
 
-  if (payload.page == null) payload.page = 0; // 15 results per page (server default)
+  const page = payload.page ?? 0;
+  const filtered = applySort(applyFilters(payload.filter), payload.sort);
+  const start = page * PAGE_SIZE;
+  const slice = filtered.slice(start, start + PAGE_SIZE);
 
-  try {
-    const data = await mfetch("/instagram/search", { method: "POST", body: JSON.stringify(payload) });
-    return Response.json(data);
-  } catch (e: any) {
-    const msg = String(e?.message || e);
-    if (e?.status === 429 || msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
-      // Provide a mock so UI never renders empty during development / rate limits
-      return Response.json(buildMock(payload.page));
-    }
-    return Response.json({ error: true, message: msg }, { status: 500 });
-  }
+  return Response.json({
+    data: slice.map(mapResult),
+    meta: {
+      page,
+      hasMore: start + PAGE_SIZE < filtered.length,
+      total: filtered.length,
+      source: "curated",
+    },
+  });
 }

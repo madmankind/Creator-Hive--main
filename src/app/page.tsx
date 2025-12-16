@@ -2,15 +2,29 @@
 "use client";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import SearchBar from "@/components/SearchBar";
+import { HeroBar } from "@/components/HeroBar";
 import { TalentCarousel } from "@/components/marketing/TalentCarousel";
+import { CampaignPodPanel } from "@/components/talent/CampaignPodPanel";
+import { BookingModal } from "@/components/booking/BookingModal";
+import { ClientAuthDialog } from "@/components/auth/ClientAuthDialog";
+import { TalentOnboardingDialog } from "@/components/auth/TalentOnboardingDialog";
 import { curatedTalent } from "@/lib/curatedTalent";
+import { useCampaignPodStore, type Talent as PodTalent } from "@/store/useCampaignPodStore";
+import { useAuthStore } from "@/store/useAuthStore";
+import type { CuratedTalent } from "@/lib/curatedTalent";
 
 export default function HomePage() {
   const [mode, setMode] = useState<'client' | 'talent'>('client');
   const [showTalentGallery, setShowTalentGallery] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [bookingTalents, setBookingTalents] = useState<PodTalent[]>([]);
+  const [clientAuthOpen, setClientAuthOpen] = useState(false);
+  const [talentAuthOpen, setTalentAuthOpen] = useState(false);
+  const [pendingDiscover, setPendingDiscover] = useState(false);
+  const { selectedTalents } = useCampaignPodStore();
+  const { isAuthenticated, userType, setAuthenticated } = useAuthStore();
 
   return (
     <main className="min-h-screen bg-[#0B0F14] text-slate-200">
@@ -62,82 +76,44 @@ export default function HomePage() {
             )}
           </div>
 
-          {/* Search/Auth Bar - Centered */}
+          {/* Hero Bar - Centered */}
           <div className="flex justify-center">
-            <AnimatePresence mode="wait">
-              {mode === 'client' ? (
-                <motion.div
-                  key="search"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.18 }}
-                  className="w-full max-w-[860px]"
-                >
-                  <SearchBar
-                    onResults={(data) => {
-                      // TEMP
-                      console.log("AI Search Results:", data);
-                    }}
-                    onQueryChange={(q) => setSearchQuery(q)}
-                    onRolesChange={(roles) => setSelectedRoles(roles)}
-                    onDiscover={() => {
-                      setShowTalentGallery(true);
-                      setTimeout(() => {
-                        document.getElementById("talent-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                      }, 100);
-                    }}
-                  />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="auth"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.18 }}
-                  className="w-full max-w-[860px]"
-                >
-                  <div className="mx-auto max-w-[860px]">
-                    <div className="rounded-full bg-white/5 ring-1 ring-white/10 p-2 pl-5 pr-3 flex items-center gap-3">
-                      <input
-                        type="email"
-                        placeholder="Work email"
-                        className="flex-1 bg-transparent outline-none text-slate-200 placeholder:text-slate-400/40 text-[15px] leading-8"
-                      />
-                      <div className="hidden md:flex items-center gap-2 rounded-full bg-white/5 ring-1 ring-white/10 px-2">
-                        <span className="text-xs text-white/50">WhatsApp</span>
-                        <input
-                          type="tel"
-                          placeholder="+971 xx xxx xxxx"
-                          className="w-[160px] bg-transparent outline-none text-slate-200 placeholder:text-slate-400/40 text-[13px]"
-                        />
-                        <button className="rounded-full bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15">
-                          Send OTP
-                        </button>
-                      </div>
-                      <button aria-label="Sign up with Google" className="rounded-full bg-white/7 ring-1 ring-white/10 px-3 py-1.5">
-                        <img src="/google.svg" alt="Google" className="h-5 w-5" />
-                      </button>
-                      <button aria-label="Sign up with Apple" className="rounded-full bg-white/7 ring-1 ring-white/10 px-3 py-1.5">
-                        <img src="/apple.svg" alt="Apple" className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={()=>window.location.href='/discovery'}
-                        className="rounded-full bg-white/10 border border-white/10 px-4 h-10 text-[14px] text-slate-200 hover:bg-white/15"
-                      >
-                        Explore Discovery
-                      </button>
-                    </div>
-                  </div>
-                  <div className="text-center mt-4">
-                    <p className="text-[12px] text-white/50">
-                      Independent creators sign up to showcase their work. Talent managers sign up to manage multiple creators under one dashboard.
-                    </p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <div className="w-full max-w-[860px]">
+              <HeroBar
+                mode={mode}
+                onQueryChange={(q) => setSearchQuery(q)}
+                onRolesChange={(roles) => setSelectedRoles(roles)}
+                onDiscover={() => {
+                  // Check auth for client mode
+                  if (mode === 'client' && (!isAuthenticated || userType !== 'client')) {
+                    setPendingDiscover(true);
+                    setClientAuthOpen(true);
+                    return;
+                  }
+                  // Proceed to gallery
+                  setShowTalentGallery(true);
+                  setTimeout(() => {
+                    document.getElementById("talent-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 100);
+                }}
+                onOpenBriefBuilder={() => {
+                  // Check auth for brief builder
+                  if (mode === 'client' && (!isAuthenticated || userType !== 'client')) {
+                    setClientAuthOpen(true);
+                    return;
+                  }
+                  // Open booking modal with empty talents for brief builder
+                  setBookingTalents([]);
+                  setBookingOpen(true);
+                }}
+                onTalentApply={async (data) => {
+                  // Handle talent application
+                  console.log("Talent apply:", data);
+                  // Open talent onboarding dialog for Instagram step
+                  setTalentAuthOpen(true);
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -148,10 +124,96 @@ export default function HomePage() {
           <TalentCarousel 
             talents={curatedTalent} 
             query={searchQuery} 
-            selectedRoles={selectedRoles} 
+            selectedRoles={selectedRoles}
+            onTalentClick={(talentId) => {
+              // Find the talent and open booking modal
+              const talent = curatedTalent.find(t => t.id === talentId);
+              if (talent) {
+                const podTalent: PodTalent = {
+                  id: talent.id,
+                  name: talent.name,
+                  headline: talent.displayTitle,
+                  avatarUrl: talent.avatarUrl,
+                  roles: talent.roleTags,
+                  platforms: talent.platformTags,
+                  availabilityTags: talent.availability,
+                  bio: talent.shortBio,
+                };
+                setBookingTalents([podTalent]);
+                setBookingOpen(true);
+              }
+            }}
           />
         </section>
       )}
+
+      {/* Campaign Pod Panel */}
+      {mode === 'client' && (
+        <CampaignPodPanel
+          onOpenBrief={() => {
+            if (selectedTalents.length > 0) {
+              setBookingTalents(selectedTalents);
+              setBookingOpen(true);
+            }
+          }}
+          onOpenProfile={(talentId) => {
+            // Scroll to talent or expand detail view
+            const talent = curatedTalent.find(t => t.id === talentId);
+            if (talent) {
+              document.getElementById(`talent-${talentId}`)?.scrollIntoView({ behavior: 'smooth' });
+            }
+          }}
+        />
+      )}
+
+      {/* Booking Modal */}
+      <BookingModal
+        open={bookingOpen}
+        onClose={() => {
+          setBookingOpen(false);
+          setBookingTalents([]);
+        }}
+        talents={bookingTalents}
+        onViewPod={() => {
+          // Scroll to pod panel if it exists
+          document.getElementById("talent-gallery")?.scrollIntoView({ behavior: "smooth" });
+        }}
+      />
+
+      {/* Client Auth Dialog */}
+      <ClientAuthDialog
+        open={clientAuthOpen}
+        onClose={() => {
+          setClientAuthOpen(false);
+          setPendingDiscover(false);
+        }}
+        onSuccess={() => {
+          // After successful auth, proceed with pending discover if any
+          if (pendingDiscover) {
+            setShowTalentGallery(true);
+            setTimeout(() => {
+              document.getElementById("talent-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 100);
+            setPendingDiscover(false);
+          }
+        }}
+      />
+
+      {/* Talent Onboarding Dialog */}
+      <TalentOnboardingDialog
+        open={talentAuthOpen}
+        onClose={() => setTalentAuthOpen(false)}
+        onSuccess={() => {
+          // Talent onboarding complete
+        }}
+      />
+
+      {/* Footer Disclaimer */}
+      <footer className="mt-16 border-t border-white/10 pt-4 pb-6 text-center">
+        <p className="text-[11px] text-white/45">
+          Creator Hive is human-first. Please clearly label any AI-generated media.
+        </p>
+      </footer>
     </main>
   );
 }

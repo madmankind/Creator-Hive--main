@@ -88,9 +88,9 @@ NEXTAUTH_SECRET="generate-a-random-secret-here"  # Use: openssl rand -base64 32
 
 # External APIs (if you have them)
 OPENAI_API_KEY="your-openai-key"
-MODASH_API_BASE="https://api.modash.io/v1"
-MODASH_API_KEY="your-modash-key"
 ```
+
+> ℹ️ The discovery directory now runs entirely on curated, in-house talent data, so there are no Modash or other third-party discovery keys to configure.
 
 ### Generate NextAuth Secret
 
@@ -252,4 +252,3 @@ pnpm test:watch       # Run tests in watch mode
 ---
 
 **Need Help?** Check the troubleshooting section or open an issue in the repository.
-

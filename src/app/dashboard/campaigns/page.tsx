@@ -1,7 +1,9 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAgencyFilter } from '@/store/agencyFilter'
 import useSWR from 'swr'
+import { usePathname, useSearchParams, useRouter } from 'next/navigation'
+import { cn } from '@/lib/utils'
 
 // Mock data
 const mockCampaigns = [
@@ -27,6 +29,18 @@ const mockCampaigns = [
     talents: [
       { talentId: '3', talent: { name: 'Emma Rodriguez' }, status: 'ASSIGNED' }
     ]
+  },
+  {
+    id: '3',
+    title: 'Holiday Video Series',
+    brief: 'Creating a series of holiday-themed videos',
+    status: 'COMPLETED',
+    startDate: '2024-02-01',
+    dueDate: '2024-02-28',
+    talents: [
+      { talentId: '1', talent: { name: 'Sarah Chen' }, status: 'APPROVED' },
+      { talentId: '3', talent: { name: 'Emma Rodriguez' }, status: 'APPROVED' }
+    ]
   }
 ]
 
@@ -36,6 +50,9 @@ export default function Campaigns() {
   const { activeTalentId } = useAgencyFilter()
   const { data, mutate } = useSWR("/api/agency/campaigns", fetcher)
   const [showModal, setShowModal] = useState(false)
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const router = useRouter()
   
   // Use API data if available, otherwise fallback to mock data
   const campaigns = data?.data || mockCampaigns
@@ -45,72 +62,182 @@ export default function Campaigns() {
     return c.talents?.some((x: any)=>x.talentId===activeTalentId)
   })
 
+  // Get selected campaign from URL or default to first
+  const selectedId = searchParams.get('id') || filteredCampaigns[0]?.id
+  const selectedCampaign = filteredCampaigns.find((c: any) => c.id === selectedId)
+
+  // Highlight new campaign on mount
+  const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const newCampaign = params.get('new')
+    if (newCampaign) {
+      setHighlightedId(newCampaign)
+      setTimeout(() => setHighlightedId(null), 3000)
+      router.replace(`${pathname}?id=${newCampaign}`)
+    }
+  }, [pathname, router])
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-[24px] font-semibold">Campaigns</h1>
+    <div className="mx-auto flex h-full max-w-6xl flex-col px-6 pt-6 pb-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h1 className="text-[22px] font-semibold text-slate-100">Campaigns</h1>
+          <p className="text-sm text-slate-400 mt-0.5">Manage your campaigns and track progress</p>
+        </div>
         <button 
           onClick={() => setShowModal(true)}
-          className="rounded-full bg-white/10 border border-white/10 px-4 py-2 hover:bg-white/15 transition text-sm"
+          className="rounded-full bg-white text-black px-5 py-2 text-sm font-medium hover:bg-white/90 transition"
         >
-          + New Campaign
+          + New campaign
         </button>
       </div>
 
-      <div className="space-y-4">
-        {filteredCampaigns.length === 0 ? (
-          <div className="text-center py-12 text-white/50">
-            No campaigns {activeTalentId ? 'for this talent' : 'found'}
-          </div>
-        ) : (
-          filteredCampaigns.map((campaign) => (
-            <div key={campaign.id} className="rounded-xl bg-white/5 ring-1 ring-white/10 p-6 hover:bg-white/7 transition cursor-pointer">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-medium">{campaign.title}</h3>
-                  <p className="text-white/60 mt-1">{campaign.brief}</p>
-                </div>
-                <div className={`text-xs px-3 py-1 rounded-full ${
-                  campaign.status === 'ACTIVE' ? 'bg-green-500/20 text-green-300' :
-                  campaign.status === 'DRAFT' ? 'bg-yellow-500/20 text-yellow-300' :
-                  'bg-gray-500/20 text-gray-300'
-                }`}>
-                  {campaign.status.toLowerCase()}
-                </div>
+      {/* Two-column layout */}
+      <div className="flex flex-1 gap-5 min-h-0">
+        {/* Left: Campaign list */}
+        <section className="w-[40%] max-w-sm space-y-[2px] overflow-y-auto pr-1">
+          <div className="rounded-2xl bg-white/2 border border-white/5 p-1">
+            {filteredCampaigns.length === 0 ? (
+              <div className="text-center py-8 text-slate-400 text-sm">
+                No campaigns {activeTalentId ? 'for this talent' : 'found'}
               </div>
-              
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-white/50">Start date:</span>
-                  <span className="ml-2">{campaign.startDate}</span>
+            ) : (
+              filteredCampaigns.map((campaign: any) => {
+                const isSelected = campaign.id === selectedId
+                return (
+                  <button
+                    key={campaign.id}
+                    onClick={() => {
+                      router.push(`${pathname}?id=${campaign.id}`)
+                    }}
+                    className={cn(
+                      "flex items-start justify-between rounded-xl px-3 py-3 w-full text-left hover:bg-white/5 transition cursor-pointer group",
+                      isSelected && 'bg-white/8 border-l-2 border-purple-500'
+                    )}
+                  >
+                    <div className="flex-1 min-w-0 pr-2">
+                      <div className="text-sm font-medium text-slate-100 group-hover:text-white mb-0.5">
+                        {campaign.title}
+                      </div>
+                      <div className="text-[11px] text-slate-400 line-clamp-1 mb-1">
+                        {campaign.brief}
+                      </div>
+                      <div className="text-[10px] text-slate-500">
+                        {new Date(campaign.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {campaign.talents?.length || 0} talent{campaign.talents?.length !== 1 ? 's' : ''}
+                      </div>
+                    </div>
+                    <div className={cn(
+                      "text-[10px] px-2 py-1 rounded-full font-semibold flex-shrink-0",
+                      campaign.status === 'ACTIVE' 
+                        ? 'bg-emerald-500/20 text-emerald-300' 
+                        : campaign.status === 'DRAFT'
+                        ? 'bg-amber-500/20 text-amber-300'
+                        : 'bg-neutral-500/20 text-neutral-300'
+                    )}>
+                      {campaign.status.toLowerCase()}
+                    </div>
+                  </button>
+                )
+              })
+            )}
+          </div>
+        </section>
+
+        {/* Right: Campaign detail */}
+        <section className="flex-1 rounded-2xl bg-white/3 border border-white/5 px-5 py-4 overflow-y-auto">
+          {selectedCampaign ? (
+            <div>
+              {/* Top bar */}
+              <div className="flex items-start justify-between mb-6 pb-4 border-b border-white/5">
+                <div className="flex-1">
+                  <h2 className="text-lg font-semibold text-slate-100 mb-2">{selectedCampaign.title}</h2>
+                  <div className={cn(
+                    "inline-block text-[11px] px-2.5 py-1 rounded-full font-semibold",
+                    selectedCampaign.status === 'ACTIVE' 
+                      ? 'bg-emerald-500/20 text-emerald-300' 
+                      : selectedCampaign.status === 'DRAFT'
+                      ? 'bg-amber-500/20 text-amber-300'
+                      : 'bg-neutral-500/20 text-neutral-300'
+                  )}>
+                    {selectedCampaign.status.toLowerCase()}
+                  </div>
                 </div>
-                <div>
-                  <span className="text-white/50">Due date:</span>
-                  <span className="ml-2">{campaign.dueDate}</span>
+                <div className="flex gap-2">
+                  <button className="rounded-full bg-white/5 border border-white/10 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/10 transition">
+                    View brief
+                  </button>
+                  <button className="rounded-full bg-white/5 border border-white/10 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/10 transition">
+                    Message
+                  </button>
                 </div>
               </div>
 
-              <div className="mt-4">
-                <div className="text-xs text-white/50 mb-2">Assigned talents:</div>
-                <div className="flex flex-wrap gap-2">
-                  {campaign.talents.map((assignment) => (
-                    <div key={assignment.talentId} className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10">
-                      <span className="text-sm">{assignment.talent.name}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        assignment.status === 'IN_PROGRESS' ? 'bg-blue-500/20 text-blue-300' :
-                        assignment.status === 'SUBMITTED' ? 'bg-purple-500/20 text-purple-300' :
-                        assignment.status === 'APPROVED' ? 'bg-green-500/20 text-green-300' :
-                        'bg-gray-500/20 text-gray-300'
-                      }`}>
+              {/* Summary */}
+              <div className="mb-6 pb-4 border-b border-white/5">
+                <h3 className="text-sm font-semibold text-slate-100 mb-3">Summary</h3>
+                <p className="text-[13px] text-slate-300 leading-relaxed mb-4">{selectedCampaign.brief}</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-1">Start date</div>
+                    <div className="text-sm text-slate-100">
+                      {new Date(selectedCampaign.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-1">Due date</div>
+                    <div className="text-sm text-slate-100">
+                      {new Date(selectedCampaign.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Assigned talents */}
+              <div className="mb-6 pb-4 border-b border-white/5">
+                <h3 className="text-sm font-semibold text-slate-100 mb-3">Assigned talents</h3>
+                <div className="space-y-2">
+                  {selectedCampaign.talents?.map((assignment: any) => (
+                    <div 
+                      key={assignment.talentId} 
+                      className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-medium text-slate-300">
+                          {assignment.talent.name.charAt(0)}
+                        </div>
+                        <span className="text-[13px] font-medium text-slate-100">{assignment.talent.name}</span>
+                      </div>
+                      <span className={cn(
+                        "text-[10px] px-2 py-0.5 rounded-full font-semibold",
+                        assignment.status === 'IN_PROGRESS' 
+                          ? 'bg-blue-500/20 text-blue-300' 
+                          : assignment.status === 'SUBMITTED' 
+                          ? 'bg-purple-500/20 text-purple-300' 
+                          : assignment.status === 'APPROVED' 
+                          ? 'bg-emerald-500/20 text-emerald-300' 
+                          : 'bg-neutral-500/20 text-neutral-300'
+                      )}>
                         {assignment.status.toLowerCase().replace('_', ' ')}
                       </span>
                     </div>
                   ))}
                 </div>
               </div>
+
+              {/* Timeline placeholder */}
+              <div>
+                <h3 className="text-sm font-semibold text-slate-100 mb-3">Timeline</h3>
+                <div className="text-sm text-slate-400">No timeline items yet</div>
+              </div>
             </div>
-          ))
-        )}
+          ) : (
+            <div className="flex items-center justify-center h-full text-slate-400 text-sm">
+              Select a campaign to view details
+            </div>
+          )}
+        </section>
       </div>
 
       {showModal && (
@@ -152,28 +279,33 @@ function NewCampaignModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
   }
 
   return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-black/50">
-      <div className="w-[560px] max-w-[95vw] rounded-2xl bg-[#0D1117] ring-1 ring-white/10 p-5">
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-lg font-medium">New Campaign</div>
-          <button onClick={onClose} className="text-white/60 hover:text-white/90">✕</button>
+    <div className="fixed inset-0 z-40 grid place-items-center bg-black/50 backdrop-blur-sm">
+      <div className="w-[560px] max-w-[95vw] rounded-3xl bg-[#111318] border border-white/5 shadow-[0_18px_45px_rgba(0,0,0,0.65)] p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-lg font-semibold text-neutral-50">New Campaign</div>
+          <button 
+            onClick={onClose} 
+            className="text-neutral-400 hover:text-neutral-100 transition w-8 h-8 rounded-full hover:bg-white/5 flex items-center justify-center"
+          >
+            ✕
+          </button>
         </div>
-        <div className="grid gap-3">
+        <div className="space-y-4">
           <input 
-            className="rounded-full bg-white/5 ring-1 ring-white/10 px-4 py-2.5 outline-none focus:ring-white/20 text-white placeholder:text-white/40" 
+            className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:ring-2 focus:ring-[#7C3AED]/50 text-neutral-100 placeholder:text-neutral-400" 
             placeholder="Campaign title" 
             value={title} 
             onChange={e => setTitle(e.target.value)} 
           />
           <textarea 
-            className="rounded-xl bg-white/5 ring-1 ring-white/10 px-4 py-2.5 min-h-[100px] outline-none focus:ring-white/20 text-white placeholder:text-white/40 resize-none" 
+            className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-3 min-h-[100px] outline-none focus:ring-2 focus:ring-[#7C3AED]/50 text-neutral-100 placeholder:text-neutral-400 resize-none" 
             placeholder="Campaign brief and requirements" 
             value={brief} 
             onChange={e => setBrief(e.target.value)} 
           />
         </div>
-        <div className="mt-4">
-          <div className="text-sm text-white/70 mb-2">Assign talents</div>
+        <div className="mt-5">
+          <div className="text-sm text-neutral-300 mb-3">Assign talents</div>
           <div className="flex flex-wrap gap-2">
             {talents.map((t: any) => {
               const active = selected.includes(t.id);
@@ -181,11 +313,13 @@ function NewCampaignModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
                 <button
                   key={t.id}
                   onClick={() => setSelected(s => active ? s.filter(x => x !== t.id) : [...s, t.id])}
-                  className={`px-3 py-1 rounded-full text-sm border transition ${
-                    active 
-                      ? 'bg-white/10 border-white/20 text-white' 
-                      : 'bg-white/5 border-white/10 hover:bg-white/10 text-white/70'
-                  }`}
+                  className={`
+                    px-3 py-1.5 rounded-full text-sm border transition
+                    ${active 
+                      ? 'bg-[#7C3AED]/20 border-[#7C3AED]/40 text-[#A855F7]' 
+                      : 'bg-white/5 border-white/10 hover:bg-white/10 text-neutral-300'
+                    }
+                  `}
                 >
                   {t.name} {t.role ? `· ${t.role}` : ''}
                 </button>
@@ -193,20 +327,20 @@ function NewCampaignModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
             })}
           </div>
           {talents.length === 0 && (
-            <div className="text-sm text-white/50 py-4">No talents found. Add talents in your agency settings.</div>
+            <div className="text-sm text-neutral-400 py-4">No talents found. Add talents in your agency settings.</div>
           )}
         </div>
-        <div className="mt-5 flex justify-end gap-3">
+        <div className="mt-6 flex justify-end gap-3">
           <button 
             onClick={onClose} 
-            className="rounded-full bg-white/5 border border-white/10 px-4 h-10 hover:bg-white/10 transition"
+            className="rounded-full bg-white/5 border border-white/10 px-4 h-10 hover:bg-white/10 transition text-sm text-neutral-300"
           >
             Cancel
           </button>
           <button 
             onClick={save}
             disabled={!title.trim() || !brief.trim()}
-            className="rounded-full bg-white/10 border border-white/10 px-4 h-10 hover:bg-white/15 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-full bg-[#7C3AED] text-white px-4 h-10 hover:bg-[#8B5CF6] transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
           >
             Create Campaign
           </button>

@@ -4,7 +4,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Fuse from "fuse.js";
 import { DEFAULT_ROLES } from "@/lib/roles";
+import { cn } from "@/lib/utils";
 
 type Props = {
   className?: string;
@@ -12,11 +14,25 @@ type Props = {
   onQueryChange?: (query: string) => void;
   onRolesChange?: (roles: string[]) => void;
   onDiscover?: () => void;
+  onOpenBriefBuilder?: () => void;
 };
 
 const MAX_COLLAPSED = 14; // show this many chips before expand
 
-export default function SearchBar({ className, onResults, onQueryChange, onRolesChange, onDiscover }: Props) {
+// Configure Fuse.js for fuzzy search
+const fuse = new Fuse(DEFAULT_ROLES, {
+  threshold: 0.3, // Lower = more strict matching
+  includeScore: true,
+});
+
+export default function SearchBar({ 
+  className, 
+  onResults, 
+  onQueryChange, 
+  onRolesChange, 
+  onDiscover,
+  onOpenBriefBuilder,
+}: Props) {
   const router = useRouter();
   const [query, setQuery] = useState<string>("");
   const [open, setOpen] = useState<boolean>(false);
@@ -28,6 +44,13 @@ export default function SearchBar({ className, onResults, onQueryChange, onRoles
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const roles = DEFAULT_ROLES;
+
+  // Fuzzy search suggestions based on query
+  const suggestions = useMemo(() => {
+    if (!query.trim()) return [];
+    const results = fuse.search(query.trim());
+    return results.slice(0, 5).map((result) => result.item);
+  }, [query]);
 
   const visibleRoles = useMemo(() => {
     if (expanded) return roles;
@@ -46,12 +69,20 @@ export default function SearchBar({ className, onResults, onQueryChange, onRoles
     return () => document.removeEventListener("mousedown", handle);
   }, []);
 
-  const toggleSelect = (role: string) => {
+  const handleRoleClick = (role: string) => {
     setSelected((prev) => {
-      const newSelected = prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role];
-      onRolesChange?.(newSelected);
-      return newSelected;
+      const exists = prev.includes(role);
+      const next = exists ? prev.filter((r) => r !== role) : [...prev, role];
+      onRolesChange?.(next);
+      return next;
     });
+  };
+
+  const handleClearAll = () => {
+    setSelected([]);
+    setQuery("");
+    onRolesChange?.([]);
+    onQueryChange?.("");
   };
 
   const onSubmit = async () => {
@@ -80,15 +111,15 @@ export default function SearchBar({ className, onResults, onQueryChange, onRoles
     
     // Navigate - loading state will persist until component unmounts on navigation
     router.push(`/results?${params.toString()}`);
-    
-    // Note: We don't clear loading state here because:
-    // 1. router.push() is asynchronous and navigation happens after this function returns
-    // 2. The component will unmount when navigation completes, so the state naturally resets
-    // 3. Keeping loading=true ensures the indicator stays visible during navigation
   };
 
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") onSubmit();
+  };
+
+  const handlePlusClick = () => {
+    // Open brief builder instead of adding role
+    onOpenBriefBuilder?.();
   };
 
   return (
@@ -102,28 +133,26 @@ export default function SearchBar({ className, onResults, onQueryChange, onRoles
           <div
             className="rounded-full bg-[#0F141A] ring-1 ring-white/10 hover:ring-white/20 transition p-2 pl-5 pr-14"
           >
-            {/* Selected chips with removable "×" */}
+            {/* Selected chips - click to toggle off */}
             {selected.length > 0 && (
               <div className="mb-1 -mt-1 flex flex-wrap gap-1">
                 {selected.map((r) => (
-                  <span
+                  <button
                     key={r}
-                    className="inline-flex items-center gap-2 text-xs rounded-full bg-white/10 border border-white/10 px-2 py-0.5 text-slate-200"
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRoleClick(r);
+                    }}
+                    className={cn(
+                      "flex items-center gap-1 rounded-full px-3 py-1 text-[11px]",
+                      selected.includes(r)
+                        ? "bg-white text-black"
+                        : "bg-white/5 text-white/70"
+                    )}
                   >
                     {r}
-                    <button
-                      type="button"
-                      aria-label={`Remove ${r}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelected(prev => prev.filter(x => x !== r));
-                      }}
-                      className="grid place-items-center size-4 rounded-full bg-white/10 hover:bg-white/15 text-slate-200/90 leading-none"
-                      title="Remove"
-                    >
-                      ×
-                    </button>
-                  </span>
+                  </button>
                 ))}
               </div>
             )}
@@ -137,30 +166,62 @@ export default function SearchBar({ className, onResults, onQueryChange, onRoles
               }}
               onFocus={() => setOpen(true)}
               onKeyDown={onKey}
-              placeholder="Short description of your campaign brief & talent"
+              placeholder="Search for talent type (e.g., UGC creator, growth strategist)"
               className="w-full bg-transparent outline-none text-slate-200 placeholder:text-slate-400/40 text-[15px] leading-8"
             />
           </div>
 
-          {/* Horizontal dropdown; width equals input wrapper */}
-          {open && (
+          {/* Suggestions dropdown */}
+          {open && (suggestions.length > 0 || visibleRoles.length > 0) && (
             <div
               className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-2xl border border-white/10 bg-[rgba(9,12,16,0.96)] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)] backdrop-blur-md"
             >
               <div className="p-3">
+                {/* Fuzzy search suggestions */}
+                {suggestions.length > 0 && (
+                  <div className="mb-3">
+                    <div className="text-xs text-white/50 mb-2 px-1">Suggestions</div>
+                    <div className="flex flex-wrap gap-2">
+                      {suggestions.map((role) => {
+                        const active = selected.includes(role);
+                        return (
+                          <button
+                            key={role}
+                            type="button"
+                            onClick={() => {
+                              handleRoleClick(role);
+                              setQuery("");
+                            }}
+                            className={cn(
+                              "flex items-center gap-1 rounded-full px-3 py-1 text-[11px]",
+                              active
+                                ? "bg-white text-black"
+                                : "bg-white/5 text-white/70"
+                            )}
+                          >
+                            {role}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* All roles */}
                 <div className="flex flex-wrap gap-2">
                   {visibleRoles.map((role) => {
                     const active = selected.includes(role);
                     return (
                       <button
                         key={role}
-                        onClick={() => toggleSelect(role)}
-                        className={[
-                          "px-3 py-1 rounded-full text-sm transition",
+                        type="button"
+                        onClick={() => handleRoleClick(role)}
+                        className={cn(
+                          "flex items-center gap-1 rounded-full px-3 py-1 text-[11px]",
                           active
-                            ? "bg-white/10 text-slate-100 border border-white/20"
-                            : "bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10",
-                        ].join(" ")}
+                            ? "bg-white text-black"
+                            : "bg-white/5 text-white/70"
+                        )}
                       >
                         {role}
                       </button>
@@ -172,6 +233,7 @@ export default function SearchBar({ className, onResults, onQueryChange, onRoles
               {/* Footer row with expand/collapse chevron */}
               <div className="flex items-center justify-end px-3 pb-3">
                 <button
+                  type="button"
                   onClick={() => setExpanded((v) => !v)}
                   className="group flex items-center gap-2 text-xs text-slate-300/80 hover:text-slate-100 transition"
                   aria-label={expanded ? "Collapse" : "Expand"}
@@ -191,39 +253,43 @@ export default function SearchBar({ className, onResults, onQueryChange, onRoles
           )}
         </div>
 
-        {/* Circle logo 'Go' button */}
-        <button
-          onClick={onSubmit}
-          className="relative inline-grid place-items-center h-11 w-11 rounded-full bg-[#0F141A] ring-1 ring-white/10 hover:ring-white/20 transition"
-          aria-label="Search"
-        >
-          {/* Loading ring */}
-          {loading && (
-            <span className="absolute inset-0 animate-spin rounded-full border-2 border-white/15 border-t-white/50"></span>
+        {/* Right side controls */}
+        <div className="flex items-center gap-2">
+          {selected.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="text-[11px] text-white/45 hover:text-white/70 transition"
+            >
+              Clear all
+            </button>
           )}
-          <Image
-            src="/logo.svg"
-            alt="Go"
-            width={22}
-            height={22}
-            className={`transition ${loading ? "opacity-60" : "opacity-90"}`}
-            priority
-          />
-        </button>
 
-        {/* Discover CTA */}
-        <button
-          onClick={() => {
-            if (onDiscover) {
-              onSubmit();
-            } else {
-              router.push('/discovery');
-            }
-          }}
-          className="rounded-full bg-white/5 border border-white/10 px-4 h-11 text-[14px] text-slate-200 hover:bg-white/10 transition"
-        >
-          Discover
-        </button>
+          {/* Plus opens brief builder */}
+          <button
+            type="button"
+            onClick={handlePlusClick}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 ring-1 ring-white/15 hover:bg-white/10 transition"
+            aria-label="Help me pick talent"
+          >
+            <span className="text-white/80 text-lg leading-none">+</span>
+          </button>
+
+          {/* Discover CTA */}
+          <button
+            type="button"
+            onClick={() => {
+              if (onDiscover) {
+                onSubmit();
+              } else {
+                router.push('/discovery');
+              }
+            }}
+            className="rounded-full bg-white px-5 py-2 text-xs font-semibold text-black hover:bg-white/90 transition"
+          >
+            Discover
+          </button>
+        </div>
       </div>
     </div>
   );

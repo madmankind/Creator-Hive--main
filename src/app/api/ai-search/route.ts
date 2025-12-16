@@ -3,6 +3,97 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
+// Generate mock talent results based on AI interpretation
+function generateMockResults(aiData: any, roles: string[] = []): any[] {
+  // Mock talent pool - in production, this would query your database
+  const mockTalents = [
+    {
+      creator: {
+        id: "talent-1",
+        name: "Sarah Al-Mansoori",
+        roles: ["UGC Creator", "Content Creator", "Influencer"],
+        niches: ["Luxury Fashion", "Beauty", "Lifestyle"],
+      },
+      score: 0.92,
+    },
+    {
+      creator: {
+        id: "talent-2",
+        name: "Ahmed Hassan",
+        roles: ["Videographer", "Editor", "Producer"],
+        niches: ["Tech", "SaaS", "Brand Films"],
+      },
+      score: 0.88,
+    },
+    {
+      creator: {
+        id: "talent-3",
+        name: "Layla Khoury",
+        roles: ["Photographer", "Content Creator", "Designer"],
+        niches: ["Hospitality", "Real Estate", "Fashion"],
+      },
+      score: 0.85,
+    },
+    {
+      creator: {
+        id: "talent-4",
+        name: "Omar Al-Rashid",
+        roles: ["Copywriter", "Strategist", "Content Creator"],
+        niches: ["B2B", "Fintech", "SaaS"],
+      },
+      score: 0.82,
+    },
+    {
+      creator: {
+        id: "talent-5",
+        name: "Maya Patel",
+        roles: ["Social Media Manager", "Strategist", "Content Creator"],
+        niches: ["E-commerce", "D2C", "Growth"],
+      },
+      score: 0.79,
+    },
+    {
+      creator: {
+        id: "talent-6",
+        name: "Zain Malik",
+        roles: ["Videographer", "UGC Creator", "Editor"],
+        niches: ["Food & Beverage", "Consumer Electronics", "Mobile Apps"],
+      },
+      score: 0.76,
+    },
+  ];
+
+  // Filter and score based on roles if provided
+  let filtered = mockTalents;
+  if (roles && roles.length > 0) {
+    filtered = mockTalents.filter((t) =>
+      roles.some((role) =>
+        t.creator.roles.some((r: string) =>
+          r.toLowerCase().includes(role.toLowerCase())
+        )
+      )
+    );
+  }
+
+  // If AI data has primaryRoles, boost those matches
+  if (aiData?.primaryRoles && Array.isArray(aiData.primaryRoles)) {
+    filtered = filtered.map((t) => {
+      const roleMatch = aiData.primaryRoles.some((pr: string) =>
+        t.creator.roles.some((r: string) =>
+          r.toLowerCase().includes(pr.toLowerCase())
+        )
+      );
+      return {
+        ...t,
+        score: roleMatch ? Math.min(t.score + 0.05, 1.0) : t.score,
+      };
+    });
+  }
+
+  // Sort by score descending
+  return filtered.sort((a, b) => b.score - a.score);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { query, roles } = await req.json();
@@ -67,11 +158,15 @@ Selected Roles: ${Array.isArray(roles) ? roles.join(", ") : "None selected"}
 
       if (!response.ok) {
         console.log("OpenAI API unavailable, using mock response");
+        // Generate mock results based on mock AI interpretation
+        const mockResults = generateMockResults(mockResponse, roles);
+
         return NextResponse.json({
           ok: true,
           query,
           roles,
           ai: mockResponse,
+          results: mockResults,
           source: "mock"
         });
       }
@@ -86,20 +181,28 @@ Selected Roles: ${Array.isArray(roles) ? roles.join(", ") : "None selected"}
         parsed = { raw: content };
       }
 
+      // Generate mock results based on AI interpretation
+      const mockResults = generateMockResults(parsed, roles);
+
       return NextResponse.json({
         ok: true,
         query,
         roles,
         ai: parsed,
+        results: mockResults,
         source: "openai"
       });
     } catch (error) {
       console.log("OpenAI error, using mock response:", error);
+      // Generate mock results based on mock AI interpretation
+      const mockResults = generateMockResults(mockResponse, roles);
+
       return NextResponse.json({
         ok: true,
         query,
         roles,
         ai: mockResponse,
+        results: mockResults,
         source: "mock"
       });
     }

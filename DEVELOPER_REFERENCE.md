@@ -27,7 +27,7 @@
 **Creator Hive** is a creator marketplace platform that connects brands/agencies with top-tier creators. The platform features:
 
 - **AI-powered search** for matching brands with creators
-- **Modash Discovery integration** for Instagram creator discovery
+- **Members-only discovery directory** backed by a curated internal dataset
 - **Agency management** with talent management capabilities
 - **Onboarding flows** for both creators and agencies
 - **Fey-inspired monochrome UI** with smooth animations
@@ -65,7 +65,7 @@ creator-hive-next/
 │   │   ├── (dashboard)/        # Dashboard pages
 │   │   ├── api/                # API routes
 │   │   ├── dashboard/          # Agency/Talent dashboard
-│   │   ├── discovery/          # Modash Discovery UI
+│   │   ├── discovery/          # Curated discovery UI (members only)
 │   │   ├── get-started/        # Agency onboarding (disabled)
 │   │   ├── onboarding/         # Creator onboarding
 │   │   └── results/            # AI search results
@@ -174,11 +174,11 @@ creator-hive-next/
 
 **API:** Consumes `/api/ai-search` endpoint
 
-### 4. Modash Discovery Integration (`/discovery`)
+### 4. Discovery Directory (`/discovery`)
 
 **Location:** `src/app/discovery/page.tsx`
 
-**Features:**
+**Features (members-only):**
 - **Left filter rail:**
   - Platform toggle (Instagram, YouTube, TikTok — Instagram active)
   - Keywords search
@@ -198,15 +198,15 @@ creator-hive-next/
   - Pagination (Previous/Next)
 
 **API Routes:**
-- `POST /api/discovery/search` — Search creators
-- `GET /api/discovery/dictionaries/[kind]` — Get filter options
-- `GET /api/discovery/report/[userId]` — Get creator report
-- `GET /api/discovery/health` — Health check
+- `POST /api/discovery/search` — Search the curated talent set
+- `GET /api/discovery/dictionaries/[kind]` — Get filter options derived from curated data
+- `GET /api/discovery/report/[userId]` — Get curated profile details
+- `GET /api/discovery/health` — Health check for the local dataset
 
-**Error Handling:**
-- Rate limit (429) handling with exponential backoff
-- Mock data fallback for development
-- Graceful error messages
+**Data Model:**
+- All results are sourced from `src/lib/curatedTalent.ts`
+- Followers, engagement rate, interests, and brand partners are maintained manually
+- Access is gated via `useAuthStore` — unauthenticated visitors see a "members only" message
 
 ### 5. Creator Onboarding
 
@@ -306,23 +306,22 @@ creator-hive-next/
   - Falls back to mock data if API unavailable
   - Validates input (requires query OR roles)
 
-### Modash Discovery
+### Discovery Directory (Curated)
 
 **`POST /api/discovery/search`**
-- **Purpose:** Search Instagram creators via Modash
+- **Purpose:** Search the curated, invite-only creator directory
 - **Request Body:**
   ```json
   {
     "page": 0,
     "sort": { "field": "followers", "direction": "desc" },
     "filter": {
-      "keywords": ["string[]"],
-      "locations": ["id[]"],
-      "languages": ["id[]"],
-      "interests": ["id[]"],
-      "brands": ["id[]"],
-      "minFollowers": number,
-      "minEngagementRate": number
+      "locations": ["Dubai, UAE"],
+      "languages": ["English"],
+      "interests": ["Luxury Fashion"],
+      "brands": ["Chalhoub Group"],
+      "followers": { "min": 50000 },
+      "engagementRate": { "min": 0.03 }
     }
   }
   ```
@@ -330,45 +329,48 @@ creator-hive-next/
   ```json
   {
     "data": [{
-      "id": "string",
-      "username": "string",
-      "fullName": "string",
-      "followers": number,
-      "engagementRate": number,
-      "avgLikes": number,
-      "avgComments": number,
-      "profile": { "bio": "string", "isVerified": boolean }
+      "id": "talent-1",
+      "username": "sarahalmansoori",
+      "fullName": "Sarah Al-Mansoori",
+      "followers": 185000,
+      "engagementRate": 0.038,
+      "engagement": 7030,
+      "location": "Dubai, UAE",
+      "languages": ["English", "Arabic"],
+      "interests": ["Luxury Fashion", "Beauty"],
+      "brands": ["Chalhoub Group", "Faces"]
     }],
     "meta": {
       "page": 0,
-      "hasMore": boolean,
-      "total": number,
-      "source": "modash" | "mock"
+      "hasMore": false,
+      "total": 8,
+      "source": "curated"
     }
   }
   ```
-- **Error Handling:**
-  - 429 (rate limit) → Returns mock data
-  - Exponential backoff retry (0ms, 1s, 2s, 4s)
+- **Notes:**
+  - Results are derived from `src/lib/curatedTalent.ts`
+  - Pagination is handled in-memory (`PAGE_SIZE = 15`)
 
 **`GET /api/discovery/dictionaries/[kind]`**
-- **Purpose:** Get filter dictionary options
+- **Purpose:** Get filter dictionary options derived from curated data
 - **Kinds:** `locations`, `languages`, `interests`, `brands`
-- **Query Params:** `query` (search term), `limit` (default: 8)
+- **Query Params:** `query` (search term), `limit` (default: 50)
 - **Response:**
   ```json
   {
-    "data": [{ "id": "string", "name": "string" }]
+    "data": [{ "id": "Dubai, UAE", "name": "Dubai, UAE" }],
+    "meta": { "total": 8, "source": "curated" }
   }
   ```
 
 **`GET /api/discovery/report/[userId]`**
-- **Purpose:** Get detailed creator report
-- **Response:** Full Modash report JSON (profile, stats, audience, etc.)
+- **Purpose:** Return the curated profile card for a given talent ID or Instagram handle
+- **Response:** `{ "profile": { "name": "...", "followers": 185000, ... }, "meta": { "source": "curated" } }`
 
 **`GET /api/discovery/health`**
-- **Purpose:** Health check for Modash API
-- **Response:** `{ "ok": boolean, "message": "string" }`
+- **Purpose:** Health check for the curated dataset service
+- **Response:** `{ "ok": true, "message": "Discovery data served from curated talent set" }`
 
 ### Social Media
 
@@ -386,22 +388,6 @@ creator-hive-next/
   - Fetches Instagram HTML
   - Extracts `og:title` and `og:image` meta tags
   - No follower counts (requires Instagram Graph API)
-
-### Modash Client Library
-
-**Location:** `src/lib/modash.ts`
-
-**Features:**
-- Bearer token authentication
-- Exponential backoff for 429 errors
-- Type-safe fetch wrapper
-- Environment variable validation
-
-**Environment Variables:**
-- `MODASH_API_BASE` — Modash API base URL
-- `MODASH_API_KEY` — Bearer token
-
----
 
 ## 🎨 UI Components
 
@@ -445,7 +431,7 @@ creator-hive-next/
 ### Public Routes
 
 - `/` — Landing page (Brands/Creators toggle)
-- `/discovery` — Modash Discovery (Instagram creator search)
+- `/discovery` — Curated discovery directory (members only)
 - `/results` — AI search results
 - `/onboarding/step-1` — Account type selection
 - `/onboarding/step-2` — Build profile
@@ -553,22 +539,14 @@ creator-hive-next/
 
 **Fallback:** Mock response if API unavailable
 
-### Modash Discovery API
+### Discovery Dataset (Internal)
 
-**Purpose:** Instagram creator search and analytics
+**Purpose:** Serve members-only discovery data without third-party APIs
 
-**Endpoints Used:**
-- `/instagram/search` — Search creators
-- `/instagram/report/{userId}` — Get creator report
-- `/dictionaries/{kind}` — Get filter options
-
-**Environment Variables:**
-- `MODASH_API_BASE` — API base URL
-- `MODASH_API_KEY` — Bearer token
-
-**Rate Limiting:**
-- Exponential backoff (0ms, 1s, 2s, 4s)
-- Mock data fallback on 429 errors
+**Implementation:**
+- Data lives in `src/lib/curatedTalent.ts`
+- API routes (`/api/discovery/*`) filter and paginate that dataset
+- Access is restricted on the client (requires authentication via `useAuthStore`)
 
 ### Supabase
 
@@ -666,10 +644,9 @@ creator-hive-next/
    - OpenGraph scraping doesn't provide follower counts
    - Requires Instagram Graph API (Meta app setup needed)
 
-4. **Modash Rate Limits**
-   - Free tier has rate limits
-   - Mock data fallback in place for development
-   - Production needs proper rate limit handling
+4. **Discovery Dataset Maintenance**
+   - Curated data is static JSON and must be updated manually
+   - Add tooling/CRUD to keep followers and engagement stats fresh
 
 5. **Database Connection Issues**
    - TLS certificate validation issues reported
@@ -744,10 +721,6 @@ NEXTAUTH_URL="http://localhost:3000"
 # OpenAI
 OPENAI_API_KEY="sk-..."
 
-# Modash
-MODASH_API_BASE="https://..."
-MODASH_API_KEY="..."
-
 # OAuth (for seed/development)
 GOOGLE_CLIENT_ID="..."
 GOOGLE_CLIENT_SECRET="..."
@@ -776,4 +749,3 @@ STRIPE_WEBHOOK_SECRET="..."
 ---
 
 **End of Developer Reference**
-

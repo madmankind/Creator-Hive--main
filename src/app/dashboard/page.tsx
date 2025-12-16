@@ -1,6 +1,9 @@
 'use client'
 import { useState } from 'react'
 import { useAgencyFilter } from '@/store/agencyFilter'
+import { motion } from 'framer-motion'
+import { cn } from '@/lib/utils'
+import Link from 'next/link'
 
 // Mock data for demo
 const mockCampaigns = [
@@ -44,78 +47,107 @@ export default function Overview() {
     return c.talents?.some((x)=>x.talentId===activeTalentId)
   })
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-[24px] font-semibold">Overview</h1>
-        <button className="rounded-full bg-white/10 border border-white/10 px-4 py-2 hover:bg-white/15 transition text-sm">
-          + New Campaign
-        </button>
-      </div>
-      
-      <div className="grid md:grid-cols-3 gap-4">
-        <div className="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
-          <div className="text-sm text-white/70">Total revenue</div>
-          <div className="text-2xl font-semibold mt-1">$24,500</div>
-          <div className="text-xs text-white/50 mt-1">+12% from last month</div>
-        </div>
-        <div className="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
-          <div className="text-sm text-white/70">Pending payments</div>
-          <div className="text-2xl font-semibold mt-1">$3,200</div>
-          <div className="text-xs text-white/50 mt-1">2 invoices pending</div>
-        </div>
-        <div className="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
-          <div className="text-sm text-white/70">Active campaigns</div>
-          <div className="text-2xl font-semibold mt-1">{filteredCampaigns.filter(c => c.status === 'ACTIVE').length}</div>
-          <div className="text-xs text-white/50 mt-1">{filteredCampaigns.length} total campaigns</div>
-        </div>
-      </div>
+  const activeCount = filteredCampaigns.filter(c => c.status === 'ACTIVE').length
 
-      <div className="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-sm text-white/70">Recent campaigns</div>
-          {activeTalentId && (
-            <div className="text-xs text-white/50">
-              Filtered by {mockCampaigns.find(c => c.talents.some(t => t.talentId === activeTalentId))?.talents.find(t => t.talentId === activeTalentId)?.talent.name}
-            </div>
-          )}
+  return (
+    <div className="mx-auto flex max-w-6xl gap-6 px-6 pt-6 pb-10">
+      {/* Left column */}
+      <section className="flex-1 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-[22px] font-semibold text-slate-100">Overview</h1>
+            <p className="text-sm text-slate-400 mt-0.5">Your dashboard at a glance</p>
+          </div>
+          <Link 
+            href="/dashboard/campaigns"
+            className="rounded-full bg-white text-black px-5 py-2 text-sm font-medium hover:bg-white/90 transition"
+          >
+            + New Campaign
+          </Link>
         </div>
-        <div className="space-y-3">
-          {filteredCampaigns.length === 0 ? (
-            <div className="text-center py-8 text-white/50">
-              No campaigns {activeTalentId ? 'for this talent' : 'found'}
-            </div>
-          ) : (
-            filteredCampaigns.map((c)=>(
-              <div key={c.id} className="rounded-lg bg-white/3 ring-1 ring-white/10 p-4 hover:bg-white/5 transition cursor-pointer">
-                <div className="flex items-start justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium">{c.title}</div>
-                    <div className="text-sm text-white/60 truncate mt-1">{c.brief}</div>
-                    <div className="text-xs text-white/50 mt-2">
+
+        {/* Metric cards */}
+        <div className="grid md:grid-cols-3 gap-4">
+          <div className="rounded-2xl bg-white/3 border border-white/5 px-4 py-3">
+            <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-1">Total revenue</div>
+            <div className="text-lg font-semibold text-slate-100">$24,500</div>
+            <div className="text-[11px] text-slate-400 mt-1">+12% from last month</div>
+          </div>
+          <div className="rounded-2xl bg-white/3 border border-white/5 px-4 py-3">
+            <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-1">Pending payments</div>
+            <div className="text-lg font-semibold text-slate-100">$3,200</div>
+            <div className="text-[11px] text-slate-400 mt-1">2 invoices pending</div>
+          </div>
+          <div className="rounded-2xl bg-white/3 border border-white/5 px-4 py-3">
+            <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-1">Active campaigns</div>
+            <div className="text-lg font-semibold text-slate-100">{activeCount}</div>
+            <div className="text-[11px] text-slate-400 mt-1">{filteredCampaigns.length} total campaigns</div>
+          </div>
+        </div>
+
+        {/* Recent campaigns */}
+        <div>
+          <h2 className="text-sm font-semibold text-slate-100 mb-3">Recent campaigns</h2>
+          <div className="space-y-[2px] rounded-2xl bg-white/2 border border-white/5 p-1">
+            {filteredCampaigns.length === 0 ? (
+              <div className="text-center py-8 text-slate-400 text-sm">
+                No campaigns {activeTalentId ? 'for this talent' : 'found'}
+              </div>
+            ) : (
+              filteredCampaigns.map((c) => (
+                <Link
+                  key={c.id}
+                  href={`/dashboard/campaigns?id=${c.id}`}
+                  className="flex items-center justify-between rounded-xl px-3 py-2.5 hover:bg-white/5 transition cursor-pointer group"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-medium text-slate-100 group-hover:text-white">{c.title}</div>
+                    <div className="text-[11px] text-slate-400 truncate mt-0.5">{c.brief}</div>
+                    <div className="text-[10px] text-slate-500 mt-1">
                       {c.talents?.map((t)=>t.talent?.name).join(', ')}
                     </div>
                   </div>
-                  <div className={`text-xs px-2 py-1 rounded-full ${
-                    c.status === 'ACTIVE' ? 'bg-green-500/20 text-green-300' :
-                    c.status === 'DRAFT' ? 'bg-yellow-500/20 text-yellow-300' :
-                    'bg-gray-500/20 text-gray-300'
-                  }`}>
+                  <div className={cn(
+                    "text-[10px] px-2 py-1 rounded-full font-semibold flex-shrink-0 ml-3",
+                    c.status === 'ACTIVE' 
+                      ? 'bg-emerald-500/20 text-emerald-300' 
+                      : c.status === 'DRAFT'
+                      ? 'bg-amber-500/20 text-amber-300'
+                      : 'bg-neutral-500/20 text-neutral-300'
+                  )}>
                     {c.status.toLowerCase()}
                   </div>
-                </div>
-              </div>
-            ))
-          )}
+                </Link>
+              ))
+            )}
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* Right column */}
+      <aside className="w-[320px] space-y-4 hidden lg:block">
+        {/* Inbox preview */}
+        <div className="rounded-2xl bg-white/3 border border-white/5 px-4 py-3">
+          <h3 className="text-sm font-semibold text-slate-100 mb-3">Inbox</h3>
+          <div className="text-sm text-slate-400">No new messages</div>
+        </div>
+
+        {/* Upcoming payments */}
+        <div className="rounded-2xl bg-white/3 border border-white/5 px-4 py-3">
+          <h3 className="text-sm font-semibold text-slate-100 mb-3">Upcoming payments</h3>
+          <div className="space-y-2">
+            <div className="text-sm text-slate-400">No upcoming payments</div>
+          </div>
+        </div>
+
+        {/* Wallet summary */}
+        <div className="rounded-2xl bg-white/3 border border-white/5 px-4 py-3">
+          <h3 className="text-sm font-semibold text-slate-100 mb-3">Wallet</h3>
+          <div className="text-lg font-semibold text-slate-100">$0.00</div>
+          <div className="text-[11px] text-slate-400 mt-1">Available balance</div>
+        </div>
+      </aside>
     </div>
   )
 }
-
-
-
-
-
-
-

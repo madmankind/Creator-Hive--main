@@ -56,4 +56,41 @@ body {
   display: none;
 }
 
+/* Purple gradient backgrounds */
+@layer utilities {
+  .bg-hive-radial {
+    background: radial-gradient(
+      70% 70% at 50% 0%,
+      rgba(139, 92, 246, 0.35),
+      transparent 70%
+    );
+  }
+}
+
+/* Fade edges for horizontal scroll */
+.fade-edges {
+  position: relative;
+}
+
+.fade-edges::before,
+.fade-edges::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.fade-edges::before {
+  left: 0;
+  background: linear-gradient(to right, var(--bg), transparent);
+}
+
+.fade-edges::after {
+  right: 0;
+  background: linear-gradient(to left, var(--bg), transparent);
+}
+
 

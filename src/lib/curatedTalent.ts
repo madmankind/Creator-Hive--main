@@ -22,6 +22,8 @@ export interface CuratedTalent {
   displayTitle: string;         // e.g. "UGC Creator · Photographer"
   instagramHandle: string;      // "lachygroom"
   instagramUrl: string;         // "https://instagram.com/..."
+  tiktokUrl?: string;           // "https://tiktok.com/@..."
+  tiktokHandle?: string;        // "@username"
   avatarUrl: string;            // for now, static placeholder or /avatars/...
   roleTags: TalentCategoryTag[];   // max 4
   platformTags: PlatformTag[];     // e.g. ["Instagram", "TikTok", "Snapchat"]
@@ -33,6 +35,11 @@ export interface CuratedTalent {
   languages?: string[];         // optional
   featuredVideoUrl?: string;    // e.g. a portfolio reel (YouTube/Vimeo/MP4)
   portfolioImages?: string[];   // optional, for future gallery
+  followers?: number;           // Numeric follower count for discovery view
+  engagementRate?: number;      // Decimal (0.045 = 4.5%)
+  avgEngagement?: number;       // Average engagements per post
+  interests?: string[];         // Audience interests/topics
+  brandPartners?: string[];     // Notable brand work
 }
 
 export const curatedTalent: CuratedTalent[] = [
@@ -42,6 +49,8 @@ export const curatedTalent: CuratedTalent[] = [
     displayTitle: "UGC Creator · Content Creator",
     instagramHandle: "sarahalmansoori",
     instagramUrl: "https://instagram.com/sarahalmansoori",
+    tiktokUrl: "https://tiktok.com/@sarahalmansoori",
+    tiktokHandle: "@sarahalmansoori",
     avatarUrl: "/avatars/sarah.jpg",
     roleTags: ["UGC Creator", "Content Creator", "Influencer"],
     platformTags: ["Instagram", "TikTok", "Snapchat"],
@@ -52,6 +61,11 @@ export const curatedTalent: CuratedTalent[] = [
     timezone: "GST (UTC+4)",
     languages: ["English", "Arabic"],
     featuredVideoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    followers: 185000,
+    engagementRate: 0.038,
+    avgEngagement: 7030,
+    interests: ["Luxury Fashion", "Beauty", "Lifestyle"],
+    brandPartners: ["Chalhoub Group", "Faces", "Ounass"],
   },
   {
     id: "talent-2",
@@ -69,6 +83,11 @@ export const curatedTalent: CuratedTalent[] = [
     timezone: "AST (UTC+3)",
     languages: ["Arabic", "English"],
     featuredVideoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    followers: 92000,
+    engagementRate: 0.028,
+    avgEngagement: 2575,
+    interests: ["Tech", "SaaS", "Product Launches"],
+    brandPartners: ["STC", "Jahez", "Sary"],
   },
   {
     id: "talent-3",
@@ -86,6 +105,11 @@ export const curatedTalent: CuratedTalent[] = [
     timezone: "GST (UTC+4)",
     languages: ["English", "Arabic", "French"],
     featuredVideoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    followers: 74000,
+    engagementRate: 0.052,
+    avgEngagement: 3848,
+    interests: ["Hospitality", "Real Estate", "Fashion"],
+    brandPartners: ["Mandarin Oriental", "Emaar", "Aldar"],
   },
   {
     id: "talent-4",
@@ -102,6 +126,11 @@ export const curatedTalent: CuratedTalent[] = [
     location: "Doha, Qatar",
     timezone: "AST (UTC+3)",
     languages: ["English", "Arabic"],
+    followers: 41000,
+    engagementRate: 0.047,
+    avgEngagement: 1927,
+    interests: ["Fintech", "Enterprise SaaS", "B2B"],
+    brandPartners: ["QNB", "Bein Sports", "Careem"],
   },
   {
     id: "talent-5",
@@ -119,6 +148,11 @@ export const curatedTalent: CuratedTalent[] = [
     timezone: "GST (UTC+4)",
     languages: ["English", "Hindi"],
     featuredVideoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    followers: 130000,
+    engagementRate: 0.041,
+    avgEngagement: 5330,
+    interests: ["E-commerce", "Beauty", "Wellness"],
+    brandPartners: ["Namshi", "Faces", "Noon"],
   },
   {
     id: "talent-6",
@@ -126,6 +160,8 @@ export const curatedTalent: CuratedTalent[] = [
     displayTitle: "Videographer · UGC Creator",
     instagramHandle: "zainmalik",
     instagramUrl: "https://instagram.com/zainmalik",
+    tiktokUrl: "https://tiktok.com/@zainmalik",
+    tiktokHandle: "@zainmalik",
     avatarUrl: "/avatars/zain.jpg",
     roleTags: ["Videographer", "UGC Creator", "Editor"],
     platformTags: ["TikTok", "Instagram", "YouTube"],
@@ -136,6 +172,11 @@ export const curatedTalent: CuratedTalent[] = [
     timezone: "GST (UTC+4)",
     languages: ["English", "Urdu", "Arabic"],
     featuredVideoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    followers: 98000,
+    engagementRate: 0.056,
+    avgEngagement: 5488,
+    interests: ["Food & Beverage", "Consumer Electronics", "Apps"],
+    brandPartners: ["Talabat", "Samsung", "Anghami"],
   },
   {
     id: "talent-7",
@@ -152,6 +193,11 @@ export const curatedTalent: CuratedTalent[] = [
     location: "Kuwait City, Kuwait",
     timezone: "AST (UTC+3)",
     languages: ["English", "Arabic"],
+    followers: 36000,
+    engagementRate: 0.049,
+    avgEngagement: 1764,
+    interests: ["Design Systems", "Brand Identity", "Templates"],
+    brandPartners: ["Boutique 1", "Kuwait Finance House", "Sadu House"],
   },
   {
     id: "talent-8",
@@ -169,6 +215,10 @@ export const curatedTalent: CuratedTalent[] = [
     timezone: "EET (UTC+2)",
     languages: ["English", "Arabic", "French"],
     featuredVideoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    followers: 57000,
+    engagementRate: 0.031,
+    avgEngagement: 1767,
+    interests: ["Corporate", "Events", "Commercial"],
+    brandPartners: ["Audi", "PepsiCo", "Majid Al Futtaim"],
   },
 ];
-

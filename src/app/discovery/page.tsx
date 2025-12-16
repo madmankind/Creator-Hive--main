@@ -1,10 +1,13 @@
 "use client";
 import useSWR from "swr";
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useAuthStore } from "@/store/useAuthStore";
 
-const fetcher = (u: string, init?: RequestInit) => fetch(u, init).then(r => r.json());
+const fetcher = (u: string, init?: RequestInit) => fetch(u, init).then((r) => r.json());
 
 export default function DiscoveryPage() {
+  const { isAuthenticated } = useAuthStore();
   const [page, setPage] = useState(0);
   const [filter, setFilter] = useState<any>({}); // server filter body
 
@@ -24,20 +27,43 @@ export default function DiscoveryPage() {
       brands: selectedBrands.map(x => x.id),
     }));
   }, [selectedLocations, selectedLanguages, selectedInterests, selectedBrands]);
-  const body = useMemo(() => ({ 
-    page, 
-    sort: { field: "followers", direction: "desc" }, 
-    filter 
-  }), [page, filter]);
+  const body = useMemo(
+    () => ({
+      page,
+      sort: { field: "followers", direction: "desc" },
+      filter,
+    }),
+    [page, filter],
+  );
 
   const { data, isLoading, error } = useSWR(
-    ["/api/discovery/search", JSON.stringify(body)],
+    isAuthenticated ? ["/api/discovery/search", JSON.stringify(body)] : null,
     ([u, b]) => fetcher(u, { method: "POST", body: b }),
-    { keepPreviousData: true }
+    { keepPreviousData: true },
   );
 
   const items = data?.data || data?.results || [];
-  const hasNext = items?.length === 15;
+  const hasNext = Boolean(data?.meta?.hasMore);
+
+  if (!isAuthenticated) {
+    return (
+      <main className="min-h-screen bg-[#0B0F14] text-slate-200 flex items-center justify-center px-6">
+        <div className="max-w-md text-center space-y-4">
+          <h1 className="text-2xl font-semibold text-white/90">Members-only Discovery</h1>
+          <p className="text-white/60 text-sm">
+            The Creator Hive discovery directory is available to approved members. Please sign in from the home page
+            to access vetted talent insights.
+          </p>
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center rounded-full bg-white text-black px-5 py-2 text-sm font-medium hover:bg-white/90 transition"
+          >
+            Go to homepage
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#0B0F14] text-slate-200">
@@ -117,7 +143,7 @@ export default function DiscoveryPage() {
               Prev
             </button>
             <button 
-              disabled={items?.length !== 15} 
+              disabled={!hasNext} 
               onClick={() => setPage(p => p + 1)} 
               className="rounded-full px-4 py-2 bg-white/10 disabled:opacity-50 hover:bg-white/15 transition"
             >
@@ -203,7 +229,7 @@ function NumberField({ placeholder, onCommit }:{ placeholder:string; onCommit:(v
 
 function DictionaryInput({ kind, placeholder, onSelect }:{ kind:'interests'|'locations'|'brands'|'languages'; placeholder:string; onSelect:(opt:{id:string; name:string})=>void }){
   const [query, setQuery] = useState('');
-  const { data } = useSWR(query ? `/api/discovery/dictionaries/${kind}?query=${encodeURIComponent(query)}&limit=8` : null, (u)=> fetch(u).then(r=>r.json()), { revalidateOnFocus:false });
+  const { data } = useSWR(query ? `/api/discovery/dictionaries/${kind}?query=${encodeURIComponent(query)}&limit=8` : null, (u: string)=> fetch(u).then(r=>r.json()), { revalidateOnFocus:false });
   const results = data?.data || data?.results || [];
 
   return (

@@ -3,6 +3,9 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Analytics } from "@vercel/analytics/react";
 import { Providers } from "@/components/Providers";
+import { AppShell } from "@/components/AppShell";
+import { AppLogo } from "@/components/AppLogo";
+import Link from "next/link";
 import clsx from 'clsx'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
@@ -24,7 +27,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                      opacity-80"
         />
         <Providers>
-          {children}
+          {/* Global shell with logo */}
+          <header className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
+            <div className="container mx-auto px-4 py-4">
+              <Link href="/" className="pointer-events-auto inline-block">
+                <AppLogo />
+              </Link>
+            </div>
+          </header>
+
+          {/* App shell with route transition tracking */}
+          <AppShell>
+            {children}
+          </AppShell>
         </Providers>
         <Analytics />
       </body>

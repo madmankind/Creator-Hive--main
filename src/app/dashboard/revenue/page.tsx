@@ -1,6 +1,8 @@
 'use client'
 import { useState } from 'react'
 import { useAgencyFilter } from '@/store/agencyFilter'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import { cn } from '@/lib/utils'
 
 // Mock data for revenue analytics
 const mockRevenueData = [
@@ -54,6 +56,9 @@ export default function Revenue() {
   const { activeTalentId } = useAgencyFilter()
   const [revenueData] = useState(mockRevenueData)
   const [timeRange, setTimeRange] = useState<'all' | 'month' | 'quarter' | 'year'>('all')
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
 
   const filteredData = revenueData.filter((item) => {
     if (activeTalentId && item.talentId !== activeTalentId) return false
@@ -70,91 +75,149 @@ export default function Revenue() {
     .filter(item => item.status === 'PENDING')
     .reduce((sum, item) => sum + item.revenue, 0)
 
+  const selectedId = searchParams.get('id') || filteredData[0]?.id
+  const selectedItem = filteredData.find((item) => item.id === selectedId)
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-[24px] font-semibold">Revenue</h1>
-        <div className="flex items-center gap-2">
-          <select
-            value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value as typeof timeRange)}
-            className="rounded-full bg-white/10 border border-white/10 px-4 py-2 hover:bg-white/15 transition text-sm text-white/90 focus:outline-none focus:ring-2 focus:ring-white/20"
-          >
-            <option value="all">All time</option>
-            <option value="month">This month</option>
-            <option value="quarter">This quarter</option>
-            <option value="year">This year</option>
-          </select>
+    <div className="mx-auto flex h-full max-w-6xl flex-col px-6 pt-6 pb-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h1 className="text-[22px] font-semibold text-slate-100">Revenue</h1>
+          <p className="text-sm text-slate-400 mt-0.5">Track your earnings and commissions</p>
+        </div>
+        <select
+          value={timeRange}
+          onChange={(e) => setTimeRange(e.target.value as typeof timeRange)}
+          className="rounded-full bg-white/5 border border-white/10 px-4 py-2 text-sm text-slate-300 hover:bg-white/10 transition"
+        >
+          <option value="all">All time</option>
+          <option value="month">This month</option>
+          <option value="quarter">This quarter</option>
+          <option value="year">This year</option>
+        </select>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid md:grid-cols-4 gap-4 mb-6">
+        <div className="rounded-2xl bg-white/3 border border-white/5 px-4 py-3">
+          <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-1">Total Revenue</div>
+          <div className="text-lg font-semibold text-slate-100">${totalRevenue.toLocaleString()}</div>
+        </div>
+        <div className="rounded-2xl bg-white/3 border border-white/5 px-4 py-3">
+          <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-1">Net Revenue</div>
+          <div className="text-lg font-semibold text-slate-100">${totalNetRevenue.toLocaleString()}</div>
+        </div>
+        <div className="rounded-2xl bg-white/3 border border-white/5 px-4 py-3">
+          <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-1">Commissions</div>
+          <div className="text-lg font-semibold text-slate-100">${totalCommission.toLocaleString()}</div>
+        </div>
+        <div className="rounded-2xl bg-white/3 border border-white/5 px-4 py-3">
+          <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-1">Completed</div>
+          <div className="text-lg font-semibold text-slate-100">${completedRevenue.toLocaleString()}</div>
+          <div className="text-[11px] text-slate-400 mt-1">${pendingRevenue.toLocaleString()} pending</div>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-4 gap-4">
-        <div className="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
-          <div className="text-sm text-white/70">Total Revenue</div>
-          <div className="text-2xl font-semibold mt-1">${totalRevenue.toLocaleString()}</div>
-          <div className="text-xs text-white/50 mt-1">All campaigns</div>
-        </div>
-        <div className="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
-          <div className="text-sm text-white/70">Net Revenue</div>
-          <div className="text-2xl font-semibold mt-1">${totalNetRevenue.toLocaleString()}</div>
-          <div className="text-xs text-white/50 mt-1">After commissions</div>
-        </div>
-        <div className="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
-          <div className="text-sm text-white/70">Commissions</div>
-          <div className="text-2xl font-semibold mt-1">${totalCommission.toLocaleString()}</div>
-          <div className="text-xs text-white/50 mt-1">20% agency fee</div>
-        </div>
-        <div className="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
-          <div className="text-sm text-white/70">Completed</div>
-          <div className="text-2xl font-semibold mt-1">${completedRevenue.toLocaleString()}</div>
-          <div className="text-xs text-white/50 mt-1">${pendingRevenue.toLocaleString()} pending</div>
-        </div>
-      </div>
-
-      <div className="rounded-xl bg-white/5 ring-1 ring-white/10 overflow-hidden">
-        <div className="p-4 border-b border-white/10">
-          <div className="text-sm text-white/70">Revenue by Campaign</div>
-        </div>
-        <div className="divide-y divide-white/10">
-          {filteredData.length === 0 ? (
-            <div className="text-center py-12 text-white/50">
-              No revenue data {activeTalentId ? 'for this talent' : 'found'}
-            </div>
-          ) : (
-            filteredData.map((item) => (
-              <div key={item.id} className="p-4 hover:bg-white/3 transition">
-                <div className="flex items-center justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-3">
-                      <div className="font-medium">{item.campaignName}</div>
-                      <div className={`text-xs px-2 py-1 rounded-full ${
-                        item.status === 'COMPLETED' ? 'bg-green-500/20 text-green-300' :
-                        'bg-yellow-500/20 text-yellow-300'
-                      }`}>
+      {/* Two-column layout */}
+      <div className="flex flex-1 gap-5 min-h-0">
+        {/* Left: Revenue list */}
+        <section className="w-[40%] max-w-sm space-y-[2px] overflow-y-auto pr-1">
+          <div className="rounded-2xl bg-white/2 border border-white/5 p-1">
+            {filteredData.length === 0 ? (
+              <div className="text-center py-8 text-slate-400 text-sm">No revenue data found</div>
+            ) : (
+              filteredData.map((item) => {
+                const isSelected = item.id === selectedId
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => router.push(`${pathname}?id=${item.id}`)}
+                    className={cn(
+                      "flex items-start justify-between rounded-xl px-3 py-3 w-full text-left hover:bg-white/5 transition cursor-pointer group",
+                      isSelected && 'bg-white/8 border-l-2 border-purple-500'
+                    )}
+                  >
+                    <div className="flex-1 min-w-0 pr-2">
+                      <div className="text-sm font-medium text-slate-100 group-hover:text-white mb-0.5">
+                        {item.campaignName}
+                      </div>
+                      <div className="text-[11px] text-slate-400 mb-1">{item.talentName}</div>
+                      <div className="text-[10px] text-slate-500">
+                        {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0 ml-2">
+                      <div className="text-sm font-semibold text-slate-100">${item.revenue.toLocaleString()}</div>
+                      <div className={cn(
+                        "text-[10px] px-2 py-0.5 rounded-full font-semibold mt-1",
+                        item.status === 'COMPLETED' 
+                          ? 'bg-emerald-500/20 text-emerald-300' 
+                          : 'bg-amber-500/20 text-amber-300'
+                      )}>
                         {item.status.toLowerCase()}
                       </div>
                     </div>
-                    <div className="text-sm text-white/60 mt-1">{item.talentName}</div>
-                    <div className="text-xs text-white/50 mt-1">{item.date}</div>
-                  </div>
-                  <div className="text-right space-y-1">
-                    <div className="text-lg font-semibold text-green-400">
-                      ${item.revenue.toLocaleString()}
+                  </button>
+                )
+              })
+            )}
+          </div>
+        </section>
+
+        {/* Right: Revenue detail */}
+        <section className="flex-1 rounded-2xl bg-white/3 border border-white/5 px-5 py-4 overflow-y-auto">
+          {selectedItem ? (
+            <div>
+              <div className="flex items-start justify-between mb-6 pb-4 border-b border-white/5">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-100 mb-1">{selectedItem.campaignName}</h2>
+                  <div className="text-sm text-slate-400">{selectedItem.talentName}</div>
+                </div>
+                <div className={cn(
+                  "text-[11px] px-2.5 py-1 rounded-full font-semibold",
+                  selectedItem.status === 'COMPLETED' 
+                    ? 'bg-emerald-500/20 text-emerald-300' 
+                    : 'bg-amber-500/20 text-amber-300'
+                )}>
+                  {selectedItem.status.toLowerCase()}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-2">Revenue breakdown</div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">Total revenue</span>
+                      <span className="text-slate-100 font-medium">${selectedItem.revenue.toLocaleString()}</span>
                     </div>
-                    <div className="text-xs text-white/50">
-                      Net: ${item.netRevenue.toLocaleString()}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">Commission (20%)</span>
+                      <span className="text-slate-400">-${selectedItem.commission.toLocaleString()}</span>
                     </div>
-                    <div className="text-xs text-white/50">
-                      Commission: ${item.commission.toLocaleString()}
+                    <div className="pt-2 border-t border-white/5 flex justify-between">
+                      <span className="text-sm font-semibold text-slate-100">Net revenue</span>
+                      <span className="text-sm font-semibold text-slate-100">${selectedItem.netRevenue.toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
+
+                <div>
+                  <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-2">Date</div>
+                  <div className="text-sm text-slate-100">
+                    {new Date(selectedItem.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  </div>
+                </div>
               </div>
-            ))
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full text-slate-400 text-sm">
+              Select a revenue item to view details
+            </div>
           )}
-        </div>
+        </section>
       </div>
     </div>
   )
 }
-
