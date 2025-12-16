@@ -1,16 +1,77 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useCampaignPodStore } from "@/store/useCampaignPodStore";
+import { useCampaignPodStore, type Talent as PodTalent } from "@/store/useCampaignPodStore";
 import { X } from "lucide-react";
+import { curatedTalent } from "@/lib/curatedTalent";
 
 type Props = {
   onOpenBrief: () => void;
   onOpenProfile?: (id: string) => void;
 };
 
+const curatedLookup = new Map(curatedTalent.map((talent) => [talent.id, talent]));
+
+function toPodTalent(id: string): PodTalent | null {
+  const talent = curatedLookup.get(id);
+  if (!talent) return null;
+  return {
+    id: talent.id,
+    name: talent.name,
+    headline: talent.displayTitle,
+    avatarUrl: talent.avatarUrl,
+    roles: talent.roleTags,
+    platforms: talent.platformTags,
+    availabilityTags: talent.availability,
+    bio: talent.shortBio,
+  };
+}
+
 export function CampaignPodPanel({ onOpenBrief, onOpenProfile }: Props) {
-  const { selectedTalents, removeFromPod, clearPod } = useCampaignPodStore();
+  const { selectedTalents, removeFromPod, clearPod, setTalents } = useCampaignPodStore();
+  const [syncing, setSyncing] = useState(false);
+  const hydrated = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const res = await fetch("/api/pods", { cache: "no-store" });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (cancelled || !json?.data?.talentIds) return;
+        const talents = json.data.talentIds
+          .map((id: string) => toPodTalent(id))
+          .filter(Boolean) as PodTalent[];
+        setTalents(talents);
+      } catch {
+        // ignore
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [setTalents]);
+
+  useEffect(() => {
+    if (!hydrated.current) {
+      hydrated.current = true;
+      return;
+    }
+    setSyncing(true);
+    const controller = new AbortController();
+    fetch("/api/pods", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ talentIds: selectedTalents.map((talent) => talent.id) }),
+      signal: controller.signal,
+    })
+      .catch(() => null)
+      .finally(() => setSyncing(false));
+    return () => controller.abort();
+  }, [selectedTalents]);
 
   return (
     <AnimatePresence>
@@ -32,6 +93,9 @@ export function CampaignPodPanel({ onOpenBrief, onOpenProfile }: Props) {
                 {selectedTalents.length === 1 ? "talent" : "talents"}. Refine
                 your team, then share your brief.
               </p>
+              {syncing && (
+                <p className="text-[10px] text-white/40 mt-1">Syncing pod…</p>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -91,7 +155,6 @@ export function CampaignPodPanel({ onOpenBrief, onOpenProfile }: Props) {
     </AnimatePresence>
   );
 }
-
 
 
 

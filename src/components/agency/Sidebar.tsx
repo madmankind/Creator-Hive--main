@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import useSWR from 'swr'
 import { useAgencyFilter } from '@/store/agencyFilter'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -14,12 +14,13 @@ import {
   Wallet
 } from 'lucide-react'
 
-// Mock data for demo - in production this would come from API
-const mockTalents = [
-  { id: '1', name: 'Sarah Chen', role: 'Content Creator' },
-  { id: '2', name: 'Marcus Johnson', role: 'Videographer' },
-  { id: '3', name: 'Emma Rodriguez', role: 'UGC Creator' },
-]
+type AgencyResponse = {
+  user?: { email: string };
+  agency?: { name: string };
+  talents?: Array<{ id: string; name: string; role?: string | null }>;
+};
+
+const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 const navItems = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
@@ -33,8 +34,11 @@ const navItems = [
 
 export default function Sidebar() {
   const { activeTalentId, setTalentId } = useAgencyFilter()
-  const [talents] = useState(mockTalents) // In production: useSWR('/api/agency/me', fetcher)
+  const { data } = useSWR<AgencyResponse>('/api/agency/me', fetcher)
   const pathname = usePathname()
+  const talents = data?.talents ?? []
+  const agencyName = data?.agency?.name ?? 'My Agency'
+  const userEmail = data?.user?.email ?? 'member@creator.hive'
 
   return (
     <aside className="flex w-64 flex-col border-r border-white/5 bg-black/40 backdrop-blur-md">
@@ -51,7 +55,7 @@ export default function Sidebar() {
         <div>
           <div className="mb-1 text-[11px] uppercase tracking-[0.18em] text-slate-500">Agency</div>
           <div className="rounded-xl bg-white/5 px-3 py-2 text-slate-100 text-sm">
-            Demo Agency
+            {agencyName}
           </div>
         </div>
         <div>
@@ -70,6 +74,9 @@ export default function Sidebar() {
 
         {/* Talent list */}
         <div className="space-y-1 pt-1">
+          {talents.length === 0 && (
+            <div className="text-[11px] text-slate-500">No assigned talent yet</div>
+          )}
           {talents.map((t) => (
             <button
               key={t.id}
@@ -125,8 +132,8 @@ export default function Sidebar() {
           U
         </div>
         <div className="text-xs leading-tight flex-1 min-w-0">
-          <div className="font-medium text-slate-100 truncate">User</div>
-          <div className="text-[11px] text-slate-500 truncate">user@example.com</div>
+          <div className="font-medium text-slate-100 truncate">{agencyName}</div>
+          <div className="text-[11px] text-slate-500 truncate">{userEmail}</div>
         </div>
       </div>
     </aside>

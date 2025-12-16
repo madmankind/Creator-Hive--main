@@ -1,7 +1,6 @@
 // src/app/page.tsx
 "use client";
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
 import { HeroBar } from "@/components/HeroBar";
 import { TalentCarousel } from "@/components/marketing/TalentCarousel";
 import { CampaignPodPanel } from "@/components/talent/CampaignPodPanel";
@@ -10,8 +9,7 @@ import { ClientAuthDialog } from "@/components/auth/ClientAuthDialog";
 import { TalentOnboardingDialog } from "@/components/auth/TalentOnboardingDialog";
 import { curatedTalent } from "@/lib/curatedTalent";
 import { useCampaignPodStore, type Talent as PodTalent } from "@/store/useCampaignPodStore";
-import { useAuthStore } from "@/store/useAuthStore";
-import type { CuratedTalent } from "@/lib/curatedTalent";
+import { useSession } from "next-auth/react";
 
 export default function HomePage() {
   const [mode, setMode] = useState<'client' | 'talent'>('client');
@@ -24,7 +22,18 @@ export default function HomePage() {
   const [talentAuthOpen, setTalentAuthOpen] = useState(false);
   const [pendingDiscover, setPendingDiscover] = useState(false);
   const { selectedTalents } = useCampaignPodStore();
-  const { isAuthenticated, userType, setAuthenticated } = useAuthStore();
+  const { data: session } = useSession();
+  const role = session?.user?.role;
+  const isClient = role === "AGENCY";
+  useEffect(() => {
+    if (isClient && pendingDiscover) {
+      setShowTalentGallery(true);
+      setTimeout(() => {
+        document.getElementById("talent-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 150);
+      setPendingDiscover(false);
+    }
+  }, [isClient, pendingDiscover]);
 
   return (
     <main className="min-h-screen bg-[#0B0F14] text-slate-200">
@@ -84,8 +93,7 @@ export default function HomePage() {
                 onQueryChange={(q) => setSearchQuery(q)}
                 onRolesChange={(roles) => setSelectedRoles(roles)}
                 onDiscover={() => {
-                  // Check auth for client mode
-                  if (mode === 'client' && (!isAuthenticated || userType !== 'client')) {
+                  if (mode === 'client' && !isClient) {
                     setPendingDiscover(true);
                     setClientAuthOpen(true);
                     return;
@@ -97,8 +105,7 @@ export default function HomePage() {
                   }, 100);
                 }}
                 onOpenBriefBuilder={() => {
-                  // Check auth for brief builder
-                  if (mode === 'client' && (!isAuthenticated || userType !== 'client')) {
+                  if (mode === 'client' && !isClient) {
                     setClientAuthOpen(true);
                     return;
                   }
@@ -106,10 +113,7 @@ export default function HomePage() {
                   setBookingTalents([]);
                   setBookingOpen(true);
                 }}
-                onTalentApply={async (data) => {
-                  // Handle talent application
-                  console.log("Talent apply:", data);
-                  // Open talent onboarding dialog for Instagram step
+                onTalentApply={() => {
                   setTalentAuthOpen(true);
                 }}
               />
@@ -188,12 +192,11 @@ export default function HomePage() {
           setPendingDiscover(false);
         }}
         onSuccess={() => {
-          // After successful auth, proceed with pending discover if any
           if (pendingDiscover) {
-            setShowTalentGallery(true);
             setTimeout(() => {
+              setShowTalentGallery(true);
               document.getElementById("talent-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }, 100);
+            }, 200);
             setPendingDiscover(false);
           }
         }}

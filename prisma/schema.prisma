@@ -30,6 +30,8 @@ model User {
   creatorProfile CreatorProfile?
   accounts Account[]
   sessions Session[]
+  bookingRequests BookingRequest[]
+  pods PodSelection[]
 
   @@index([email])
   @@map("users")
@@ -93,6 +95,7 @@ model AgencyAccount {
   user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   creators  CreatorProfile[]
   campaigns Campaign[]
+  bookingRequests BookingRequest[]
 
   @@index([userId])
   @@map("agency_accounts")
@@ -178,6 +181,42 @@ model CampaignTalent {
   @@index([talentId])
   @@index([status])
   @@map("campaign_talents")
+}
+
+model BookingRequest {
+  id             String        @id @default(cuid())
+  userId         String
+  agencyId       String?
+  bookingType    BookingType   @default(SHORT)
+  startDate      String?
+  budgetRange    String?
+  description    String        @db.Text
+  contactEmail   String
+  talentIds      String[]
+  status         BookingStatus @default(PENDING)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agency AgencyAccount? @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([agencyId])
+  @@map("booking_requests")
+}
+
+model PodSelection {
+  id        String   @id @default(cuid())
+  userId    String
+  talentIds String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@unique([userId])
+  @@map("pod_selections")
 }
 
 // ============================================
@@ -304,4 +343,15 @@ enum TransactionStatus {
   COMPLETED
   FAILED
   CANCELLED
+}
+
+enum BookingType {
+  SHORT
+  LONG
+}
+
+enum BookingStatus {
+  PENDING
+  REVIEWING
+  CONFIRMED
 }

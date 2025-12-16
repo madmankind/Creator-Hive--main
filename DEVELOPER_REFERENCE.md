@@ -206,7 +206,7 @@ creator-hive-next/
 **Data Model:**
 - All results are sourced from `src/lib/curatedTalent.ts`
 - Followers, engagement rate, interests, and brand partners are maintained manually
-- Access is gated via `useAuthStore` — unauthenticated visitors see a "members only" message
+- Access is gated via NextAuth session — unauthenticated visitors see a "members only" message
 
 ### 5. Creator Onboarding
 
@@ -546,7 +546,7 @@ creator-hive-next/
 **Implementation:**
 - Data lives in `src/lib/curatedTalent.ts`
 - API routes (`/api/discovery/*`) filter and paginate that dataset
-- Access is restricted on the client (requires authentication via `useAuthStore`)
+- Access is restricted on the client (requires a valid NextAuth session)
 
 ### Supabase
 

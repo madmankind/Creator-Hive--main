@@ -3,14 +3,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import Fuse from "fuse.js";
 import { DEFAULT_ROLES } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
 type Props = {
   className?: string;
-  onResults?: (payload: unknown) => void;
   onQueryChange?: (query: string) => void;
   onRolesChange?: (roles: string[]) => void;
   onDiscover?: () => void;
@@ -27,7 +25,6 @@ const fuse = new Fuse(DEFAULT_ROLES, {
 
 export default function SearchBar({ 
   className, 
-  onResults, 
   onQueryChange, 
   onRolesChange, 
   onDiscover,

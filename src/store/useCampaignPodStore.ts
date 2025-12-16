@@ -19,6 +19,7 @@ type CampaignPodState = {
   addToPod: (talent: Talent) => void;
   removeFromPod: (id: string) => void;
   clearPod: () => void;
+  setTalents: (talents: Talent[]) => void;
 };
 
 export const useCampaignPodStore = create<CampaignPodState>()(
@@ -36,10 +37,10 @@ export const useCampaignPodStore = create<CampaignPodState>()(
         });
       },
       clearPod: () => set({ selectedTalents: [] }),
+      setTalents: (talents) => set({ selectedTalents: talents }),
     }),
     {
       name: "creator-hive-campaign-pod",
     },
   ),
 );
-

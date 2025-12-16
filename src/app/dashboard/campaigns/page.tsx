@@ -1,82 +1,44 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAgencyFilter } from '@/store/agencyFilter'
 import useSWR from 'swr'
 import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
-// Mock data
-const mockCampaigns = [
-  {
-    id: '1',
-    title: 'Summer Product Launch',
-    brief: 'Need content creators for our new summer collection launch',
-    status: 'ACTIVE',
-    startDate: '2024-03-01',
-    dueDate: '2024-03-15',
-    talents: [
-      { talentId: '1', talent: { name: 'Sarah Chen' }, status: 'IN_PROGRESS' },
-      { talentId: '2', talent: { name: 'Marcus Johnson' }, status: 'ASSIGNED' }
-    ]
-  },
-  {
-    id: '2',
-    title: 'Brand Awareness Campaign',
-    brief: 'Looking for UGC creators to showcase our products',
-    status: 'DRAFT',
-    startDate: '2024-03-10',
-    dueDate: '2024-03-25',
-    talents: [
-      { talentId: '3', talent: { name: 'Emma Rodriguez' }, status: 'ASSIGNED' }
-    ]
-  },
-  {
-    id: '3',
-    title: 'Holiday Video Series',
-    brief: 'Creating a series of holiday-themed videos',
-    status: 'COMPLETED',
-    startDate: '2024-02-01',
-    dueDate: '2024-02-28',
-    talents: [
-      { talentId: '1', talent: { name: 'Sarah Chen' }, status: 'APPROVED' },
-      { talentId: '3', talent: { name: 'Emma Rodriguez' }, status: 'APPROVED' }
-    ]
-  }
-]
+type CampaignWithTalents = {
+  id: string;
+  title: string;
+  brief: string;
+  status: string;
+  startDate: string | null;
+  dueDate: string | null;
+  talents: Array<{ talentId: string; status: string; talent?: { name: string | null } }>;
+};
+
+type CampaignResponse = {
+  data: CampaignWithTalents[];
+};
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
 export default function Campaigns() {
   const { activeTalentId } = useAgencyFilter()
-  const { data, mutate } = useSWR("/api/agency/campaigns", fetcher)
+  const { data, mutate } = useSWR<CampaignResponse>("/api/agency/campaigns", fetcher)
   const [showModal, setShowModal] = useState(false)
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const router = useRouter()
   
-  // Use API data if available, otherwise fallback to mock data
-  const campaigns = data?.data || mockCampaigns
+  const campaigns = data?.data || []
 
-  const filteredCampaigns = campaigns.filter((c: any)=>{
+  const filteredCampaigns = campaigns.filter((c)=>{
     if (!activeTalentId) return true
-    return c.talents?.some((x: any)=>x.talentId===activeTalentId)
+    return c.talents?.some((x)=>x.talentId===activeTalentId)
   })
 
   // Get selected campaign from URL or default to first
   const selectedId = searchParams.get('id') || filteredCampaigns[0]?.id
-  const selectedCampaign = filteredCampaigns.find((c: any) => c.id === selectedId)
-
-  // Highlight new campaign on mount
-  const [highlightedId, setHighlightedId] = useState<string | null>(null)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const newCampaign = params.get('new')
-    if (newCampaign) {
-      setHighlightedId(newCampaign)
-      setTimeout(() => setHighlightedId(null), 3000)
-      router.replace(`${pathname}?id=${newCampaign}`)
-    }
-  }, [pathname, router])
+  const selectedCampaign = filteredCampaigns.find((c) => c.id === selectedId)
 
   return (
     <div className="mx-auto flex h-full max-w-6xl flex-col px-6 pt-6 pb-8">
@@ -99,12 +61,14 @@ export default function Campaigns() {
         {/* Left: Campaign list */}
         <section className="w-[40%] max-w-sm space-y-[2px] overflow-y-auto pr-1">
           <div className="rounded-2xl bg-white/2 border border-white/5 p-1">
-            {filteredCampaigns.length === 0 ? (
+            {data == null ? (
+              <div className="text-center py-8 text-slate-400 text-sm">Loading campaigns…</div>
+            ) : filteredCampaigns.length === 0 ? (
               <div className="text-center py-8 text-slate-400 text-sm">
                 No campaigns {activeTalentId ? 'for this talent' : 'found'}
               </div>
             ) : (
-              filteredCampaigns.map((campaign: any) => {
+              filteredCampaigns.map((campaign) => {
                 const isSelected = campaign.id === selectedId
                 return (
                   <button
@@ -197,8 +161,8 @@ export default function Campaigns() {
               {/* Assigned talents */}
               <div className="mb-6 pb-4 border-b border-white/5">
                 <h3 className="text-sm font-semibold text-slate-100 mb-3">Assigned talents</h3>
-                <div className="space-y-2">
-                  {selectedCampaign.talents?.map((assignment: any) => (
+                    <div className="space-y-2">
+                  {selectedCampaign.talents?.map((assignment) => (
                     <div 
                       key={assignment.talentId} 
                       className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2"
@@ -253,8 +217,12 @@ export default function Campaigns() {
   )
 }
 
+type AgencyResponse = {
+  talents?: Array<{ id: string; name: string; role?: string | null }>;
+};
+
 function NewCampaignModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const { data: me } = useSWR("/api/agency/me", fetcher);
+  const { data: me } = useSWR<AgencyResponse>("/api/agency/me", fetcher);
   const [title, setTitle] = useState("");
   const [brief, setBrief] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
@@ -273,7 +241,8 @@ function NewCampaignModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
       } else {
         alert("Failed to create campaign");
       }
-    } catch (e) {
+    } catch (error) {
+      console.error(error);
       alert("Network error");
     }
   }
@@ -307,7 +276,7 @@ function NewCampaignModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
         <div className="mt-5">
           <div className="text-sm text-neutral-300 mb-3">Assign talents</div>
           <div className="flex flex-wrap gap-2">
-            {talents.map((t: any) => {
+            {talents.map((t) => {
               const active = selected.includes(t.id);
               return (
                 <button

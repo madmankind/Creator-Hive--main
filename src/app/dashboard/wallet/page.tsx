@@ -1,52 +1,31 @@
 'use client'
-import { useState } from 'react'
+import useSWR from 'swr'
 import { useAgencyFilter } from '@/store/agencyFilter'
 
-// Mock data
-const mockTransactions = [
-  {
-    id: 'TXN-001',
-    talentId: '1',
-    talentName: 'Sarah Chen',
-    type: 'PAYOUT',
-    amount: 2500,
-    description: 'Summer Product Launch - Final payment',
-    date: '2024-03-10',
-    status: 'COMPLETED'
-  },
-  {
-    id: 'TXN-002',
-    talentId: '2',
-    talentName: 'Marcus Johnson',
-    type: 'PENDING',
-    amount: 1800,
-    description: 'Brand Awareness Campaign - Milestone 1',
-    date: '2024-03-12',
-    status: 'PENDING'
-  },
-  {
-    id: 'TXN-003',
-    talentId: '1',
-    talentName: 'Sarah Chen',
-    type: 'PAYOUT',
-    amount: 1200,
-    description: 'Holiday Video Series - Partial payment',
-    date: '2024-02-28',
-    status: 'COMPLETED'
-  }
-]
+type WalletResponse = {
+  data: Array<{
+    id: string;
+    amount: number;
+    status: string;
+    type: 'PAYOUT' | 'PENDING' | 'PAYMENT';
+    createdAt: string;
+    description?: string | null;
+    invoice?: { invoiceNumber?: string | null; talent?: { name: string | null }; talentId?: string };
+  }>;
+};
+
+const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 export default function Wallet() {
   const { activeTalentId } = useAgencyFilter()
-  const [transactions] = useState(mockTransactions)
-
-  const filteredTransactions = transactions.filter((txn)=>{
+  const { data } = useSWR<WalletResponse>('/api/wallet/transactions', fetcher)
+  const transactions = (data?.data || []).filter((txn)=>{
     if (!activeTalentId) return true
-    return txn.talentId === activeTalentId
+    return txn.invoice?.talentId === activeTalentId
   })
 
-  const totalPaid = filteredTransactions.filter(t => t.status === 'COMPLETED').reduce((sum, t) => sum + t.amount, 0)
-  const totalPending = filteredTransactions.filter(t => t.status === 'PENDING').reduce((sum, t) => sum + t.amount, 0)
+  const totalPaid = transactions.filter((txn) => txn.status === 'COMPLETED').reduce((sum, txn) => sum + txn.amount, 0)
+  const totalPending = transactions.filter((txn) => txn.status === 'PENDING').reduce((sum, txn) => sum + txn.amount, 0)
 
   return (
     <div className="space-y-6">
@@ -80,17 +59,17 @@ export default function Wallet() {
           <div className="text-sm text-white/70">Recent transactions</div>
         </div>
         <div className="divide-y divide-white/10">
-          {filteredTransactions.length === 0 ? (
+          {transactions.length === 0 ? (
             <div className="text-center py-12 text-white/50">
               No transactions {activeTalentId ? 'for this talent' : 'found'}
             </div>
           ) : (
-            filteredTransactions.map((transaction) => (
+            transactions.map((transaction) => (
               <div key={transaction.id} className="p-4 hover:bg-white/3 transition">
                 <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-3">
-                      <div className="font-medium">{transaction.description}</div>
+                      <div className="font-medium">{transaction.description || transaction.invoice?.invoiceNumber || transaction.id}</div>
                       <div className={`text-xs px-2 py-1 rounded-full ${
                         transaction.status === 'COMPLETED' ? 'bg-green-500/20 text-green-300' :
                         'bg-yellow-500/20 text-yellow-300'
@@ -98,8 +77,8 @@ export default function Wallet() {
                         {transaction.status.toLowerCase()}
                       </div>
                     </div>
-                    <div className="text-sm text-white/60 mt-1">{transaction.talentName}</div>
-                    <div className="text-xs text-white/50 mt-1">{transaction.date}</div>
+                    <div className="text-sm text-white/60 mt-1">{transaction.invoice?.talent?.name || 'Talent'}</div>
+                    <div className="text-xs text-white/50 mt-1">{transaction.createdAt ? new Date(transaction.createdAt).toLocaleDateString() : ''}</div>
                   </div>
                   <div className="text-right">
                     <div className={`text-lg font-semibold ${
@@ -117,9 +96,6 @@ export default function Wallet() {
     </div>
   )
 }
-
-
-
 
 
 

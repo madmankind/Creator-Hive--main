@@ -2,13 +2,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
-const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36";
-
-function extractMeta(html: string, property: string) {
-  const re = new RegExp(`<meta[^>]+property=["']${property}["'][^>]+content=["']([^"']+)["']`, "i");
-  const m = html.match(re);
-  return m?.[1] || "";
-}
 
 export async function GET(req: NextRequest) {
   try {

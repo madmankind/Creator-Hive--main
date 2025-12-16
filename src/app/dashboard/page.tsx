@@ -1,53 +1,35 @@
 'use client'
-import { useState } from 'react'
+import useSWR from 'swr'
 import { useAgencyFilter } from '@/store/agencyFilter'
-import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
-// Mock data for demo
-const mockCampaigns = [
-  {
-    id: '1',
-    title: 'Summer Product Launch',
-    brief: 'Need content creators for our new summer collection launch',
-    status: 'ACTIVE',
-    talents: [
-      { talentId: '1', talent: { name: 'Sarah Chen' } },
-      { talentId: '2', talent: { name: 'Marcus Johnson' } }
-    ]
-  },
-  {
-    id: '2',
-    title: 'Brand Awareness Campaign',
-    brief: 'Looking for UGC creators to showcase our products',
-    status: 'DRAFT',
-    talents: [
-      { talentId: '3', talent: { name: 'Emma Rodriguez' } }
-    ]
-  },
-  {
-    id: '3',
-    title: 'Holiday Video Series',
-    brief: 'Creating a series of holiday-themed videos',
-    status: 'COMPLETED',
-    talents: [
-      { talentId: '1', talent: { name: 'Sarah Chen' } },
-      { talentId: '3', talent: { name: 'Emma Rodriguez' } }
-    ]
-  }
-]
+type CampaignResponse = {
+  data: Array<{
+    id: string;
+    title: string;
+    brief: string;
+    status: string;
+    startDate: string | null;
+    dueDate: string | null;
+    talents: Array<{ talentId: string; talent?: { name: string | null } }>;
+  }>;
+};
+
+const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 export default function Overview() {
   const { activeTalentId } = useAgencyFilter()
-  const [campaigns] = useState(mockCampaigns) // In production: useSWR('/api/agency/campaigns', fetcher)
+  const { data, isLoading } = useSWR<CampaignResponse>('/api/agency/campaigns', fetcher)
+  const campaigns = data?.data ?? []
 
   const filteredCampaigns = campaigns.filter((c)=>{
     if (!activeTalentId) return true
     return c.talents?.some((x)=>x.talentId===activeTalentId)
   })
 
-  const activeCount = filteredCampaigns.filter(c => c.status === 'ACTIVE').length
+  const activeCount = filteredCampaigns.filter((c) => c.status === 'ACTIVE').length
+  const totalAssignments = filteredCampaigns.reduce((sum, c) => sum + (c.talents?.length || 0), 0)
 
   return (
     <div className="mx-auto flex max-w-6xl gap-6 px-6 pt-6 pb-10">
@@ -70,19 +52,19 @@ export default function Overview() {
         {/* Metric cards */}
         <div className="grid md:grid-cols-3 gap-4">
           <div className="rounded-2xl bg-white/3 border border-white/5 px-4 py-3">
-            <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-1">Total revenue</div>
-            <div className="text-lg font-semibold text-slate-100">$24,500</div>
-            <div className="text-[11px] text-slate-400 mt-1">+12% from last month</div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-1">Total campaigns</div>
+            <div className="text-lg font-semibold text-slate-100">{campaigns.length}</div>
+            <div className="text-[11px] text-slate-400 mt-1">All time</div>
           </div>
           <div className="rounded-2xl bg-white/3 border border-white/5 px-4 py-3">
             <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-1">Pending payments</div>
-            <div className="text-lg font-semibold text-slate-100">$3,200</div>
-            <div className="text-[11px] text-slate-400 mt-1">2 invoices pending</div>
+            <div className="text-lg font-semibold text-slate-100">{activeCount}</div>
+            <div className="text-[11px] text-slate-400 mt-1">Active engagements</div>
           </div>
           <div className="rounded-2xl bg-white/3 border border-white/5 px-4 py-3">
-            <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-1">Active campaigns</div>
-            <div className="text-lg font-semibold text-slate-100">{activeCount}</div>
-            <div className="text-[11px] text-slate-400 mt-1">{filteredCampaigns.length} total campaigns</div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-1">Talent assignments</div>
+            <div className="text-lg font-semibold text-slate-100">{totalAssignments}</div>
+            <div className="text-[11px] text-slate-400 mt-1">{filteredCampaigns.length} visible campaigns</div>
           </div>
         </div>
 
@@ -90,7 +72,9 @@ export default function Overview() {
         <div>
           <h2 className="text-sm font-semibold text-slate-100 mb-3">Recent campaigns</h2>
           <div className="space-y-[2px] rounded-2xl bg-white/2 border border-white/5 p-1">
-            {filteredCampaigns.length === 0 ? (
+            {isLoading ? (
+              <div className="text-center py-8 text-slate-400 text-sm">Loading campaigns…</div>
+            ) : filteredCampaigns.length === 0 ? (
               <div className="text-center py-8 text-slate-400 text-sm">
                 No campaigns {activeTalentId ? 'for this talent' : 'found'}
               </div>

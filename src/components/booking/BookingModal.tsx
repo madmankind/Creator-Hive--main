@@ -11,12 +11,11 @@ type BookingModalProps = {
   open: boolean;
   onClose: () => void;
   talents: Talent[];
-  onViewPod?: () => void;
 };
 
 const startDateOptions = ["ASAP", "Within 2 weeks", "Next month", "Flexible"];
 
-export function BookingModal({ open, onClose, talents, onViewPod }: BookingModalProps) {
+export function BookingModal({ open, onClose, talents }: BookingModalProps) {
   const router = useRouter();
   const [bookingType, setBookingType] = useState<"short" | "long">("short");
   const [startDate, setStartDate] = useState("");
@@ -53,14 +52,35 @@ export function BookingModal({ open, onClose, talents, onViewPod }: BookingModal
       ? talents[0].headline
       : `${talents.length} talents selected`;
 
+  const [error, setError] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    // TODO: wire to API / email
-    setTimeout(() => {
-      setSubmitting(false);
+    setError(null);
+    try {
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingType,
+          startDate,
+          campaignDescription,
+          budgetRange,
+          email,
+          talentIds: talents.map((talent) => talent.id),
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || "Failed to submit booking");
+      }
       setSuccess(true);
-    }, 800);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to submit booking");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -198,6 +218,9 @@ export function BookingModal({ open, onClose, talents, onViewPod }: BookingModal
                     placeholder="e.g., $5,000 – $10,000"
                   />
                 </div>
+                {error && (
+                  <p className="text-xs text-red-400">{error}</p>
+                )}
 
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
@@ -317,4 +340,3 @@ export function BookingModal({ open, onClose, talents, onViewPod }: BookingModal
     </AnimatePresence>
   );
 }
-

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -7,6 +8,7 @@ export default function ResultsPage() {
   const sp = useSearchParams();
   const q = sp.get("q") || "";
   const roles = useMemo(() => (sp.get("roles")?.split(",") || []).filter(Boolean), [sp]);
+  const rolesKey = useMemo(() => roles.join(","), [roles]);
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -26,7 +28,7 @@ export default function ResultsPage() {
         setLoading(false);
       }
     })();
-  }, [q, roles.join(",")]);
+  }, [q, rolesKey, roles]);
 
   return (
     <main className="min-h-screen bg-[#0B0F14] text-slate-200 px-6 py-10">
@@ -110,8 +112,6 @@ export default function ResultsPage() {
     </main>
   );
 }
-
-
 
 
 

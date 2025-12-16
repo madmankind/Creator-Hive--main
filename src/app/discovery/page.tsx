@@ -1,13 +1,15 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import useSWR from "swr";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useSession } from "next-auth/react";
 
 const fetcher = (u: string, init?: RequestInit) => fetch(u, init).then((r) => r.json());
 
 export default function DiscoveryPage() {
-  const { isAuthenticated } = useAuthStore();
+  const { data: session } = useSession();
+  const isAuthenticated = Boolean(session?.user);
   const [page, setPage] = useState(0);
   const [filter, setFilter] = useState<any>({}); // server filter body
 

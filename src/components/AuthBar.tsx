@@ -7,9 +7,13 @@ export default function AuthBar() {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
 
-  const maskUAE = (v: string) =>
-    '+971 ' + v.replace(/[^\d]/g, '').slice(0, 9)
-      .replace(/^(\d{2})(\d{3})(\d{4})$/, '$1 $2 $3') // xx xxx xxxx
+  const maskUAE = (v: string) => {
+    const digits = v.replace(/[^\d]/g, '').slice(0, 9)
+    if (digits.length === 0) return '+971 '
+    if (digits.length <= 2) return `+971 ${digits}`
+    if (digits.length <= 5) return `+971 ${digits.slice(0, 2)} ${digits.slice(2)}`
+    return `+971 ${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5)}`
+  }
 
   return (
     <div className="flex items-center gap-3">

@@ -1,49 +1,32 @@
 'use client'
-import { useState } from 'react'
+import useSWR from 'swr'
 import { useAgencyFilter } from '@/store/agencyFilter'
 
-// Mock data
-const mockInvoices = [
-  {
-    id: 'INV-001',
-    talentId: '1',
-    talentName: 'Sarah Chen',
-    campaignTitle: 'Summer Product Launch',
-    amount: 2500,
-    status: 'PAID',
-    dueDate: '2024-03-15',
-    paidDate: '2024-03-10'
-  },
-  {
-    id: 'INV-002',
-    talentId: '2',
-    talentName: 'Marcus Johnson',
-    campaignTitle: 'Brand Awareness Campaign',
-    amount: 1800,
-    status: 'PENDING',
-    dueDate: '2024-03-20',
-    paidDate: null
-  },
-  {
-    id: 'INV-003',
-    talentId: '3',
-    talentName: 'Emma Rodriguez',
-    campaignTitle: 'Holiday Video Series',
-    amount: 3200,
-    status: 'OVERDUE',
-    dueDate: '2024-02-28',
-    paidDate: null
-  }
-]
+type InvoiceResponse = {
+  data: Array<{
+    id: string;
+    amount: number;
+    status: string;
+    dueDate: string | null;
+    paidDate: string | null;
+    talentId: string;
+    talent?: { name: string | null };
+    campaign?: { title: string | null };
+  }>;
+};
+
+const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 export default function Invoices() {
   const { activeTalentId } = useAgencyFilter()
-  const [invoices] = useState(mockInvoices)
-
-  const filteredInvoices = invoices.filter((inv)=>{
+  const { data } = useSWR<InvoiceResponse>('/api/invoices', fetcher)
+  const invoices = (data?.data || []).filter((inv)=>{
     if (!activeTalentId) return true
     return inv.talentId === activeTalentId
   })
+  const totalInvoiced = invoices.reduce((sum, inv) => sum + inv.amount, 0)
+  const pendingTotal = invoices.filter((inv) => inv.status === 'PENDING').reduce((sum, inv) => sum + inv.amount, 0)
+  const overdueTotal = invoices.filter((inv) => inv.status === 'OVERDUE').reduce((sum, inv) => sum + inv.amount, 0)
 
   return (
     <div className="space-y-6">
@@ -58,19 +41,19 @@ export default function Invoices() {
         <div className="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
           <div className="text-sm text-white/70">Total invoiced</div>
           <div className="text-2xl font-semibold mt-1">
-            ${filteredInvoices.reduce((sum, inv) => sum + inv.amount, 0).toLocaleString()}
+            ${totalInvoiced.toLocaleString()}
           </div>
         </div>
         <div className="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
           <div className="text-sm text-white/70">Pending</div>
           <div className="text-2xl font-semibold mt-1">
-            ${filteredInvoices.filter(inv => inv.status === 'PENDING').reduce((sum, inv) => sum + inv.amount, 0).toLocaleString()}
+            ${pendingTotal.toLocaleString()}
           </div>
         </div>
         <div className="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
           <div className="text-sm text-white/70">Overdue</div>
           <div className="text-2xl font-semibold mt-1 text-red-400">
-            ${filteredInvoices.filter(inv => inv.status === 'OVERDUE').reduce((sum, inv) => sum + inv.amount, 0).toLocaleString()}
+            ${overdueTotal.toLocaleString()}
           </div>
         </div>
       </div>
@@ -80,12 +63,12 @@ export default function Invoices() {
           <div className="text-sm text-white/70">All invoices</div>
         </div>
         <div className="divide-y divide-white/10">
-          {filteredInvoices.length === 0 ? (
+          {invoices.length === 0 ? (
             <div className="text-center py-12 text-white/50">
               No invoices {activeTalentId ? 'for this talent' : 'found'}
             </div>
           ) : (
-            filteredInvoices.map((invoice) => (
+            invoices.map((invoice) => (
               <div key={invoice.id} className="p-4 hover:bg-white/3 transition cursor-pointer">
                 <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
@@ -99,9 +82,9 @@ export default function Invoices() {
                         {invoice.status.toLowerCase()}
                       </div>
                     </div>
-                    <div className="text-sm text-white/60 mt-1">{invoice.talentName} • {invoice.campaignTitle}</div>
+                    <div className="text-sm text-white/60 mt-1">{invoice.talent?.name || 'Talent'} • {invoice.campaign?.title || 'Campaign'}</div>
                     <div className="text-xs text-white/50 mt-1">
-                      Due: {invoice.dueDate} {invoice.paidDate && `• Paid: ${invoice.paidDate}`}
+                      Due: {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : '—'} {invoice.paidDate && `• Paid: ${new Date(invoice.paidDate).toLocaleDateString()}`}
                     </div>
                   </div>
                   <div className="text-right">
@@ -116,10 +99,6 @@ export default function Invoices() {
     </div>
   )
 }
-
-
-
-
 
 
 
