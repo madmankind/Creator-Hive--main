@@ -31,7 +31,8 @@
     },
     "types": [
       "vitest/globals",
-      "node"
+      "node",
+      "next-auth"
     ]
   },
   "include": [
