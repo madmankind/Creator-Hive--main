@@ -5,7 +5,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -16,22 +15,24 @@ datasource db {
 // ============================================
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  role      UserRole @default(CREATOR)
-  emailVerified DateTime?
-  image     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  campaignFilesUploaded CampaignFile[]
+  walletTransactions    WalletTransaction[]
+  id                    String              @id @default(cuid())
+  email                 String              @unique
+  name                  String?
+  role                  UserRole            @default(CREATOR)
+  emailVerified         DateTime?
+  image                 String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
 
   // Relations
-  agencyAccount AgencyAccount?
-  creatorProfile CreatorProfile?
-  accounts Account[]
-  sessions Session[]
+  agencyAccount   AgencyAccount?
+  creatorProfile  CreatorProfile?
+  accounts        Account[]
+  sessions        Session[]
   bookingRequests BookingRequest[]
-  pods PodSelection[]
+  pods            PodSelection[]
 
   @@index([email])
   @@map("users")
@@ -83,18 +84,19 @@ model VerificationToken {
 // ============================================
 
 model AgencyAccount {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  name      String
-  website   String?
-  location  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  walletTransactions WalletTransaction[]
+  id                 String              @id @default(cuid())
+  userId             String              @unique
+  name               String
+  website            String?
+  location           String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   // Relations
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  creators  CreatorProfile[]
-  campaigns Campaign[]
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creators        CreatorProfile[]
+  campaigns       Campaign[]
   bookingRequests BookingRequest[]
 
   @@index([userId])
@@ -102,30 +104,34 @@ model AgencyAccount {
 }
 
 model CreatorProfile {
-  id          String   @id @default(cuid())
-  userId      String?  @unique
-  agencyId    String?
-  name        String
-  instagram   String?
-  bio         String?  @db.Text
-  hourlyRate  Int?
-  dayRate     Int?
-  skills      String[] // Array of skill strings
-  niches      String[] // Array of niche strings
-  location    String?
-  avatarUrl   String?
-  portfolioUrl String?
-  isVerified  Boolean  @default(false)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  walletTransactions     WalletTransaction[]
+  id                     String                 @id @default(cuid())
+  userId                 String?                @unique
+  agencyId               String?
+  name                   String
+  instagram              String?
+  bio                    String?                @db.Text
+  hourlyRate             Int?
+  dayRate                Int?
+  skills                 String[] // Array of skill strings
+  niches                 String[] // Array of niche strings
+  location               String?
+  avatarUrl              String?
+  portfolioUrl           String?
+  isVerified             Boolean                @default(false)
+  isActive               Boolean                @default(true)
+  stripeAccountId        String?                @unique
+  stripeOnboardingStatus StripeOnboardingStatus @default(NOT_STARTED)
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
 
   // Relations
-  agency      AgencyAccount? @relation(fields: [agencyId], references: [id], onDelete: SetNull)
-  user        User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  campaigns   CampaignTalent[]
-  messages    Message[]      @relation("CreatorMessages")
-  invoices    Invoice[]
+  agency    AgencyAccount?   @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  user      User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaigns CampaignTalent[]
+  messages  Message[]        @relation("CreatorMessages")
+  invoices  Invoice[]
+  invites   CampaignInvite[]
 
   @@index([userId])
   @@index([agencyId])
@@ -139,22 +145,26 @@ model CreatorProfile {
 // ============================================
 
 model Campaign {
-  id        String          @id @default(cuid())
-  agencyId  String
-  title     String
-  brief     String          @db.Text
-  status    CampaignStatus  @default(DRAFT)
-  startDate DateTime?
-  dueDate   DateTime?
-  budget    Int?            // In cents
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  id                 String              @id @default(cuid())
+  agencyId           String
+  title              String
+  brief              String              @db.Text
+  status             CampaignStatus      @default(DRAFT)
+  startDate          DateTime?
+  dueDate            DateTime?
+  budget             Int? // In cents
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  walletTransactions WalletTransaction[]
 
   // Relations
-  agency    AgencyAccount   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  talents   CampaignTalent[]
-  messages  Message[]
-  invoices  Invoice[]
+  agency   AgencyAccount    @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  talents  CampaignTalent[]
+  messages Message[]
+  invoices Invoice[]
+  pod      CampaignPod?
+  invites  CampaignInvite[]
+  files    CampaignFile[]
 
   @@index([agencyId])
   @@index([status])
@@ -163,18 +173,18 @@ model Campaign {
 }
 
 model CampaignTalent {
-  id         String   @id @default(cuid())
+  id         String               @id @default(cuid())
   campaignId String
   talentId   String
   status     CampaignTalentStatus @default(ASSIGNED)
-  rate       Int?     // Override rate for this campaign (in cents)
-  notes      String?  @db.Text
-  assignedAt DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  rate       Int? // Override rate for this campaign (in cents)
+  notes      String?              @db.Text
+  assignedAt DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
 
   // Relations
-  campaign   Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  talent     CreatorProfile @relation(fields: [talentId], references: [id], onDelete: Cascade)
+  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  talent   CreatorProfile @relation(fields: [talentId], references: [id], onDelete: Cascade)
 
   @@unique([campaignId, talentId])
   @@index([campaignId])
@@ -183,19 +193,98 @@ model CampaignTalent {
   @@map("campaign_talents")
 }
 
+model CampaignPod {
+  id         String   @id @default(cuid())
+  campaignId String   @unique
+  talentIds  String[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("campaign_pods")
+}
+
+model CampaignInvite {
+  id               String               @id @default(cuid())
+  campaignId       String
+  creatorProfileId String
+  status           CampaignInviteStatus @default(PENDING)
+  note             String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creator  CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, creatorProfileId])
+  @@index([campaignId])
+  @@index([creatorProfileId])
+  @@map("campaign_invites")
+}
+
+model CampaignFile {
+  id             String   @id @default(cuid())
+  campaignId     String
+  uploaderUserId String
+  storageBucket  String
+  storagePath    String   @unique
+  originalName   String
+  mimeType       String
+  sizeBytes      Int
+  createdAt      DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  uploader User     @relation(fields: [uploaderUserId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([uploaderUserId])
+  @@map("campaign_files")
+}
+
+model WalletTransaction {
+  id               String                @id @default(cuid())
+  userId           String
+  creatorProfileId String?
+  agencyAccountId  String?
+  campaignId       String?
+  type             WalletTransactionType
+  direction        WalletDirection
+  amount           Int
+  currency         String
+  status           WalletStatus
+  stripeObjectType String
+  stripeObjectId   String
+  metadata         Json?
+  createdAt        DateTime              @default(now())
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creator  CreatorProfile? @relation(fields: [creatorProfileId], references: [id], onDelete: SetNull)
+  agency   AgencyAccount?  @relation(fields: [agencyAccountId], references: [id], onDelete: SetNull)
+  campaign Campaign?       @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([creatorProfileId])
+  @@index([agencyAccountId])
+  @@index([campaignId])
+  @@index([stripeObjectId])
+  @@map("wallet_transactions")
+}
+
 model BookingRequest {
-  id             String        @id @default(cuid())
-  userId         String
-  agencyId       String?
-  bookingType    BookingType   @default(SHORT)
-  startDate      String?
-  budgetRange    String?
-  description    String        @db.Text
-  contactEmail   String
-  talentIds      String[]
-  status         BookingStatus @default(PENDING)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id           String        @id @default(cuid())
+  userId       String
+  agencyId     String?
+  bookingType  BookingType   @default(SHORT)
+  startDate    String?
+  budgetRange  String?
+  description  String        @db.Text
+  contactEmail String
+  talentIds    String[]
+  status       BookingStatus @default(PENDING)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   agency AgencyAccount? @relation(fields: [agencyId], references: [id], onDelete: SetNull)
@@ -214,8 +303,8 @@ model PodSelection {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
   @@unique([userId])
+  @@index([userId])
   @@map("pod_selections")
 }
 
@@ -224,17 +313,17 @@ model PodSelection {
 // ============================================
 
 model Message {
-  id         String   @id @default(cuid())
-  campaignId String?
-  senderId   String   // CreatorProfile ID
+  id          String   @id @default(cuid())
+  campaignId  String?
+  senderId    String // CreatorProfile ID
   recipientId String? // AgencyAccount ID or CreatorProfile ID
-  content    String   @db.Text
-  isRead     Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  content     String   @db.Text
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
 
   // Relations
-  campaign   Campaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  sender     CreatorProfile @relation("CreatorMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  campaign Campaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  sender   CreatorProfile @relation("CreatorMessages", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([campaignId])
   @@index([senderId])
@@ -248,19 +337,19 @@ model Message {
 // ============================================
 
 model Invoice {
-  id          String        @id @default(cuid())
-  campaignId  String?
-  talentId    String
-  agencyId    String?
-  amount      Int           // In cents
-  currency    String        @default("USD")
-  status      InvoiceStatus @default(PENDING)
-  dueDate     DateTime?
-  paidAt      DateTime?
-  invoiceNumber String      @unique
-  notes       String?       @db.Text
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id            String        @id @default(cuid())
+  campaignId    String?
+  talentId      String
+  agencyId      String?
+  amount        Int // In cents
+  currency      String        @default("USD")
+  status        InvoiceStatus @default(PENDING)
+  dueDate       DateTime?
+  paidAt        DateTime?
+  invoiceNumber String        @unique
+  notes         String?       @db.Text
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   // Relations
   campaign    Campaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
@@ -278,17 +367,17 @@ model Invoice {
 model Transaction {
   id          String            @id @default(cuid())
   invoiceId   String?           @unique
-  amount      Int               // In cents
+  amount      Int // In cents
   currency    String            @default("USD")
   type        TransactionType
   status      TransactionStatus @default(PENDING)
   description String?           @db.Text
-  metadata    Json?             // Additional transaction data
+  metadata    Json? // Additional transaction data
   processedAt DateTime?
   createdAt   DateTime          @default(now())
 
   // Relations
-  invoice     Invoice?          @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
 
   @@index([invoiceId])
   @@index([status])
@@ -354,4 +443,36 @@ enum BookingStatus {
   PENDING
   REVIEWING
   CONFIRMED
+}
+
+enum CampaignInviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum StripeOnboardingStatus {
+  NOT_STARTED
+  PENDING
+  COMPLETE
+}
+
+enum WalletTransactionType {
+  PAYMENT_INTENT
+  TRANSFER
+  PAYOUT
+  REFUND
+  ADJUSTMENT
+}
+
+enum WalletDirection {
+  CREDIT
+  DEBIT
+}
+
+enum WalletStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
 }
