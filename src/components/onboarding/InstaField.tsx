@@ -10,8 +10,13 @@ function normalize(value: string) {
   return v.toLowerCase();
 }
 
-export default function InstaField() {
-  const [raw, setRaw] = useState("");
+type InstaFieldProps = {
+  value?: string;
+  onChange?: (username: string) => void;
+};
+
+export default function InstaField({ value, onChange }: InstaFieldProps) {
+  const [raw, setRaw] = useState(value ?? "");
   const username = useMemo(() => normalize(raw), [raw]);
   const url = username ? `https://instagram.com/${username}` : "";
 
@@ -47,6 +52,12 @@ export default function InstaField() {
     run();
     return () => { cancelled = true; };
   }, [username]);
+
+  useEffect(() => {
+    if (typeof onChange === "function") {
+      onChange(username);
+    }
+  }, [username, onChange]);
 
   return (
     <div className="space-y-3">
@@ -93,7 +104,6 @@ export default function InstaField() {
     </div>
   );
 }
-
 
 
 

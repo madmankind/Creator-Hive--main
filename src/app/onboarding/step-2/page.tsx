@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import InstaField from "@/components/onboarding/InstaField";
+import useSWR from "swr";
+import { useEffect } from "react";
 
 const SKILLS = [
   'Content Creation', 'Photography', 'Videography', 'Graphic Design', 
@@ -12,9 +14,31 @@ const SKILLS = [
 
 export default function BuildProfile() {
   const router = useRouter()
+  const [name, setName] = useState('')
   const [oneLiner, setOneLiner] = useState('')
   const [selectedSkills, setSelectedSkills] = useState<string[]>([])
   const [hourlyRate, setHourlyRate] = useState('')
+  const [instagram, setInstagram] = useState('')
+  const [location, setLocation] = useState('')
+  const [niches, setNiches] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const { data: existing, isLoading } = useSWR("/api/onboarding/creator/profile", (u) => fetch(u).then(r => r.json()))
+
+  useEffect(() => {
+    if (existing?.profile) {
+      setName(existing.profile.name || "")
+      setOneLiner(existing.profile.bio || "")
+      setSelectedSkills(existing.profile.skills || [])
+      setHourlyRate(existing.profile.hourlyRate ? String(existing.profile.hourlyRate) : "")
+      setInstagram(existing.profile.instagram || existing.profile.username || "")
+      setLocation(existing.profile.location || "")
+      setNiches((existing.profile.niches || []).join(", "))
+      setAvatarUrl(existing.profile.avatarUrl || "")
+    }
+  }, [existing])
   const [showTooltip, setShowTooltip] = useState(false)
 
   const handleSkillToggle = (skill: string) => {
@@ -28,9 +52,34 @@ export default function BuildProfile() {
     })
   }
 
-  const handleContinue = () => {
-    // In a real app, save the profile data
-    router.push('/')
+  const handleContinue = async () => {
+    setError(null)
+    setSaving(true)
+    try {
+      const res = await fetch("/api/onboarding/creator/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          instagram,
+          bio: oneLiner,
+          location,
+          skills: selectedSkills,
+          niches: niches.split(",").map((n) => n.trim()).filter(Boolean),
+          avatarUrl: avatarUrl || undefined,
+          hourlyRate,
+        }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error || "Failed to save profile")
+      }
+      router.push("/discovery")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save profile")
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -61,6 +110,21 @@ export default function BuildProfile() {
         </div>
 
         <div className="space-y-8">
+          {/* Name */}
+          <div>
+            <label className="block text-sm font-medium text-white/90 mb-3">
+              Full name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your full name"
+              className="w-full rounded-2xl bg-white/5 text-white/90 placeholder-white/40
+                         outline-none ring-1 ring-white/10 focus:ring-[0.8px]
+                         focus:ring-[rgb(var(--ring))] transition px-6 py-4"
+            />
+          </div>
           {/* One-liner */}
           <div>
             <label className="block text-sm font-medium text-white/90 mb-3">
@@ -86,7 +150,7 @@ export default function BuildProfile() {
             <label className="block text-sm text-white/70">
               @Instagram display name
             </label>
-            <InstaField />
+            <InstaField value={instagram} onChange={setInstagram} />
             <p className="text-xs text-white/45">
               We&apos;ll auto-link to your Instagram profile and show a quick public preview. For follower counts and deeper insights, we can connect your account later via Instagram Graph API.
             </p>
@@ -120,6 +184,38 @@ export default function BuildProfile() {
                 )
               })}
             </div>
+          </div>
+
+          {/* Location */}
+          <div>
+            <label className="block text-sm font-medium text-white/90 mb-3">
+              Location
+            </label>
+            <input
+              type="text"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="City, Country"
+              className="w-full rounded-2xl bg-white/5 text-white/90 placeholder-white/40
+                         outline-none ring-1 ring-white/10 focus:ring-[0.8px]
+                         focus:ring-[rgb(var(--ring))] transition px-6 py-4"
+            />
+          </div>
+
+          {/* Niches */}
+          <div>
+            <label className="block text-sm font-medium text-white/90 mb-3">
+              Niches / interests <span className="text-white/60">(comma separated)</span>
+            </label>
+            <input
+              type="text"
+              value={niches}
+              onChange={(e) => setNiches(e.target.value)}
+              placeholder="Tech, Luxury, Lifestyle"
+              className="w-full rounded-2xl bg-white/5 text-white/90 placeholder-white/40
+                         outline-none ring-1 ring-white/10 focus:ring-[0.8px]
+                         focus:ring-[rgb(var(--ring))] transition px-6 py-4"
+            />
           </div>
 
           {/* Hourly Rate */}
@@ -166,11 +262,17 @@ export default function BuildProfile() {
             <div className="border-2 border-dashed border-white/20 rounded-2xl p-8 text-center hover:border-white/30 transition">
               <div className="text-2xl mb-2">📷</div>
               <p className="text-sm text-white/60 mb-2">
-                Upload a professional photo
+                Link to a hosted image (optional)
               </p>
-              <button className="text-xs text-white/90 bg-white/10 px-4 py-2 rounded-full hover:bg-white/15 transition">
-                Choose file
-              </button>
+              <input
+                type="url"
+                value={avatarUrl}
+                onChange={(e) => setAvatarUrl(e.target.value)}
+                placeholder="https://..."
+                className="w-full rounded-xl bg-white/5 text-white/90 placeholder-white/40
+                           outline-none ring-1 ring-white/10 focus:ring-[0.8px]
+                           focus:ring-[rgb(var(--ring))] transition px-4 py-2 mt-3"
+              />
             </div>
           </div>
         </div>
@@ -179,11 +281,13 @@ export default function BuildProfile() {
         <div className="text-center mt-12">
           <button
             onClick={handleContinue}
+            disabled={saving || isLoading}
             className="rounded-full px-8 py-3 text-[14px] bg-white/10 ring-1 ring-white/10
-                       hover:bg-white/15 transition"
+                       hover:bg-white/15 transition disabled:opacity-50"
           >
-            Continue
+            {saving ? "Saving..." : "Save profile"}
           </button>
+          {error && <div className="text-sm text-red-400 mt-3">{error}</div>}
         </div>
       </div>
     </main>

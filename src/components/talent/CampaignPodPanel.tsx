@@ -111,18 +111,25 @@ export function CampaignPodPanel({ onOpenBrief, onOpenProfile }: Props) {
                 onClick={onOpenBrief}
                 className="rounded-full bg-white px-4 py-1.5 text-[11px] font-semibold text-black hover:bg-white/90"
               >
-                Continue to brief
+                Set up pod
               </button>
             </div>
           </div>
 
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
             {selectedTalents.map((t) => (
-              <button
+              <div
                 key={t.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => onOpenProfile?.(t.id)}
-                className="group relative flex min-w-[160px] items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 text-left ring-1 ring-white/10 hover:bg-white/8"
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onOpenProfile?.(t.id);
+                  }
+                }}
+                className="group relative flex min-w-[160px] items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 text-left ring-1 ring-white/10 hover:bg-white/8 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-xs text-white/80">
                   {t.name.charAt(0)}
@@ -147,7 +154,7 @@ export function CampaignPodPanel({ onOpenBrief, onOpenProfile }: Props) {
                 >
                   <X className="h-3 w-3" />
                 </button>
-              </button>
+              </div>
             ))}
           </div>
         </motion.section>
@@ -155,6 +162,5 @@ export function CampaignPodPanel({ onOpenBrief, onOpenProfile }: Props) {
     </AnimatePresence>
   );
 }
-
 
 

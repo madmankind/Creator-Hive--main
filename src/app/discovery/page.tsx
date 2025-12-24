@@ -4,6 +4,7 @@ import useSWR from "swr";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { cn } from "@/lib/utils";
 
 const fetcher = (u: string, init?: RequestInit) => fetch(u, init).then((r) => r.json());
 
@@ -12,6 +13,8 @@ export default function DiscoveryPage() {
   const isAuthenticated = Boolean(session?.user);
   const [page, setPage] = useState(0);
   const [filter, setFilter] = useState<any>({}); // server filter body
+  const [keyword, setKeyword] = useState("");
+  const [campaignId, setCampaignId] = useState<string | null>(null);
 
   // Dictionary selections
   const [selectedLocations, setSelectedLocations] = useState<Array<{ id: string; name: string }>>([]);
@@ -32,10 +35,10 @@ export default function DiscoveryPage() {
   const body = useMemo(
     () => ({
       page,
-      sort: { field: "followers", direction: "desc" },
-      filter,
+      sort: { field: "name", direction: "asc" },
+      filter: { ...filter, keywords: keyword },
     }),
-    [page, filter],
+    [page, filter, keyword],
   );
 
   const { data, isLoading, error } = useSWR(
@@ -43,9 +46,16 @@ export default function DiscoveryPage() {
     ([u, b]) => fetcher(u, { method: "POST", body: b }),
     { keepPreviousData: true },
   );
+  const { data: campaigns } = useSWR(isAuthenticated ? "/api/agency/campaigns" : null, fetcher);
+  const { data: podData, mutate: refreshPod } = useSWR(
+    campaignId ? `/api/pods/${campaignId}` : null,
+    fetcher,
+  );
 
   const items = data?.data || data?.results || [];
   const hasNext = Boolean(data?.meta?.hasMore);
+  const total = data?.meta?.total ?? 0;
+  const selectedIds: string[] = podData?.pod?.talentIds ?? [];
 
   if (!isAuthenticated) {
     return (
@@ -82,7 +92,15 @@ export default function DiscoveryPage() {
 
           <div className="space-y-2">
             <label className="text-xs text-white/60">@creator or email</label>
-            <input className="w-full rounded-lg bg-white/5 ring-1 ring-white/10 px-3 py-2 text-sm outline-none" placeholder="Search" />
+            <input
+              className="w-full rounded-lg bg-white/5 ring-1 ring-white/10 px-3 py-2 text-sm outline-none"
+              placeholder="Search"
+              value={keyword}
+              onChange={(e) => {
+                setPage(0);
+                setKeyword(e.target.value);
+              }}
+            />
           </div>
 
           <div className="space-y-4">
@@ -122,7 +140,34 @@ export default function DiscoveryPage() {
 
         {/* Results list */}
         <section className="col-span-12 md:col-span-9 xl:col-span-9 p-4">
-          <div className="text-sm text-white/50 mb-3">{new Intl.NumberFormat().format(6000000)} profiles</div>
+          <div className="text-sm text-white/50 mb-3">
+            {new Intl.NumberFormat().format(total)} profiles
+          </div>
+          {campaigns?.data?.length > 0 && (
+            <div className="mb-4 flex items-center gap-3">
+              <label className="text-sm text-white/70">Active campaign:</label>
+              <select
+                value={campaignId ?? ""}
+                onChange={(e) => {
+                  setCampaignId(e.target.value || null);
+                  refreshPod();
+                }}
+                className="rounded-full bg-white/5 px-3 py-2 text-sm text-white ring-1 ring-white/10 outline-none"
+              >
+                <option value="">Select campaign</option>
+                {campaigns.data.map((c: any) => (
+                  <option key={c.id} value={c.id} className="bg-[#0B0F14]">
+                    {c.title}
+                  </option>
+                ))}
+              </select>
+              {campaignId && (
+                <span className="text-xs text-white/50">
+                  Pod size: {selectedIds.length}
+                </span>
+              )}
+            </div>
+          )}
 
           {isLoading ? (
             <div className="text-white/60">Loading…</div>
@@ -131,7 +176,24 @@ export default function DiscoveryPage() {
           ) : (
             <div className="space-y-3">
               {items.map((it: any) => (
-                <Row key={it.id || it.userId || it.username} item={it} />
+                <Row
+                  key={it.id || it.userId || it.username}
+                  item={it}
+                  campaignId={campaignId}
+                  selected={selectedIds.includes(it.id)}
+                  onToggle={async (talentId) => {
+                    if (!campaignId) return;
+                    const nextIds = selectedIds.includes(talentId)
+                      ? selectedIds.filter((id) => id !== talentId)
+                      : [...selectedIds, talentId];
+                    await fetch(`/api/pods/${campaignId}/select`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ talentIds: nextIds }),
+                    });
+                    refreshPod();
+                  }}
+                />
               ))}
             </div>
           )}
@@ -158,7 +220,17 @@ export default function DiscoveryPage() {
   );
 }
 
-function Row({ item }: { item: any }) {
+function Row({
+  item,
+  campaignId,
+  selected,
+  onToggle,
+}: {
+  item: any;
+  campaignId: string | null;
+  selected: boolean;
+  onToggle: (talentId: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const er = typeof item.engagementRate === 'number' ? (item.engagementRate * 100) : undefined;
 
@@ -187,6 +259,17 @@ function Row({ item }: { item: any }) {
       </div>
       <div className="flex items-center gap-2">
         <button className="rounded-full bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15" onClick={() => setOpen(true)}>View</button>
+        {campaignId && (
+          <button
+            className={cn(
+              "rounded-full px-3 py-1.5 text-sm",
+              selected ? "bg-emerald-500 text-black" : "bg-white/5 hover:bg-white/10 text-white"
+            )}
+            onClick={() => onToggle(item.id)}
+          >
+            {selected ? "In pod" : "Add to pod"}
+          </button>
+        )}
         <button className="rounded-full bg-white/5 px-3 py-1.5 text-sm">Save</button>
       </div>
 

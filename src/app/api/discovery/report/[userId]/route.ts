@@ -1,36 +1,45 @@
-import { curatedTalent } from "@/lib/curatedTalent";
+import { db } from "@/server/db";
+import { requireUser } from "@/server/authz";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(_: Request, { params }: { params: { userId: string } }) {
-  const handle = params.userId?.toLowerCase();
-  const talent = curatedTalent.find(
-    (entry) => entry.id === params.userId || entry.instagramHandle.toLowerCase() === handle,
-  );
+  const authResult = await requireUser({ roles: ["AGENCY", "ADMIN"] });
+  if ("error" in authResult) return authResult.error;
 
-  if (!talent) {
+  const handle = params.userId?.toLowerCase();
+  const profile = await db.creatorProfile.findFirst({
+    where: {
+      OR: [
+        { id: params.userId },
+        { instagram: { equals: handle, mode: "insensitive" } },
+      ],
+    },
+  });
+
+  if (!profile) {
     return Response.json({ error: true, message: "Talent not found" }, { status: 404 });
   }
 
   return Response.json({
     profile: {
-      name: talent.name,
-      username: talent.instagramHandle,
-      followers: talent.followers,
-      engagementRate: talent.engagementRate,
-      avgEngagement: talent.avgEngagement,
-      languages: talent.languages,
-      location: talent.location,
-      interests: talent.interests,
-      brands: talent.brandPartners,
-      shortBio: talent.shortBio,
-      niches: talent.nicheSummary,
+      name: profile.name,
+      username: profile.instagram ?? profile.id,
+      followers: null,
+      engagementRate: null,
+      avgEngagement: null,
+      languages: [],
+      location: profile.location,
+      interests: profile.niches ?? [],
+      brands: [],
+      shortBio: profile.bio,
+      niches: profile.niches,
     },
-    availability: talent.availability,
-    platforms: talent.platformTags,
-    roleTags: talent.roleTags,
+    availability: [],
+    platforms: [],
+    roleTags: profile.skills ?? [],
     meta: {
-      source: "curated",
+      source: "database",
     },
   });
 }

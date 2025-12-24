@@ -6,10 +6,30 @@ import { motion } from 'framer-motion'
 export default function OnboardingStep1() {
   const router = useRouter()
   const [selected, setSelected] = useState<'independent' | 'agency' | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleContinue = () => {
-    if (selected) {
-      router.push('/onboarding/step-2')
+  const handleContinue = async () => {
+    if (!selected) return;
+    setError(null);
+
+    if (selected === "agency") {
+      router.push("/discovery");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await fetch("/api/onboarding/creator/start", { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || "Unable to start onboarding");
+      }
+      router.push("/onboarding/step-2");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -81,18 +101,18 @@ export default function OnboardingStep1() {
         <div className="text-center">
           <button
             onClick={handleContinue}
-            disabled={!selected}
+            disabled={!selected || loading}
             className="rounded-full px-8 py-3 text-[14px] bg-white/10 ring-1 ring-white/10
                        hover:bg-white/15 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Continue
+            {loading ? "Please wait…" : "Continue"}
           </button>
+          {error && <div className="mt-3 text-sm text-red-400">{error}</div>}
         </div>
       </div>
     </main>
   )
 }
-
 
 
 

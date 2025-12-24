@@ -20,6 +20,12 @@ type CampaignResponse = {
 };
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
+const formatDate = (value: string | null | undefined, options?: Intl.DateTimeFormatOptions) => {
+  if (!value) return "TBD";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "TBD";
+  return parsed.toLocaleDateString("en-US", options);
+};
 
 export default function Campaigns() {
   const { activeTalentId } = useAgencyFilter()
@@ -89,7 +95,7 @@ export default function Campaigns() {
                         {campaign.brief}
                       </div>
                       <div className="text-[10px] text-slate-500">
-                        {new Date(campaign.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {campaign.talents?.length || 0} talent{campaign.talents?.length !== 1 ? 's' : ''}
+                        {formatDate(campaign.startDate, { month: "short", day: "numeric" })} · {campaign.talents?.length || 0} talent{campaign.talents?.length !== 1 ? 's' : ''}
                       </div>
                     </div>
                     <div className={cn(
@@ -146,13 +152,13 @@ export default function Campaigns() {
                   <div>
                     <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-1">Start date</div>
                     <div className="text-sm text-slate-100">
-                      {new Date(selectedCampaign.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {formatDate(selectedCampaign.startDate, { month: "short", day: "numeric", year: "numeric" })}
                     </div>
                   </div>
                   <div>
                     <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-1">Due date</div>
                     <div className="text-sm text-slate-100">
-                      {new Date(selectedCampaign.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {formatDate(selectedCampaign.dueDate, { month: "short", day: "numeric", year: "numeric" })}
                     </div>
                   </div>
                 </div>
@@ -161,7 +167,7 @@ export default function Campaigns() {
               {/* Assigned talents */}
               <div className="mb-6 pb-4 border-b border-white/5">
                 <h3 className="text-sm font-semibold text-slate-100 mb-3">Assigned talents</h3>
-                    <div className="space-y-2">
+                <div className="space-y-2">
                   {selectedCampaign.talents?.map((assignment) => (
                     <div 
                       key={assignment.talentId} 
@@ -169,9 +175,9 @@ export default function Campaigns() {
                     >
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-medium text-slate-300">
-                          {assignment.talent.name.charAt(0)}
+                          {(assignment.talent?.name ?? "U").charAt(0)}
                         </div>
-                        <span className="text-[13px] font-medium text-slate-100">{assignment.talent.name}</span>
+                        <span className="text-[13px] font-medium text-slate-100">{assignment.talent?.name ?? "Unknown talent"}</span>
                       </div>
                       <span className={cn(
                         "text-[10px] px-2 py-0.5 rounded-full font-semibold",

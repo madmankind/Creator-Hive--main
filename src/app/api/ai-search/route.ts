@@ -99,12 +99,6 @@ export async function POST(req: NextRequest) {
   try {
     const { query, roles } = await req.json();
 
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: "Missing OPENAI_API_KEY" },
-        { status: 500 }
-      );
-    }
     // Allow search with just roles selected (no query text required)
     if ((!query || typeof query !== "string" || query.trim().length === 0) && 
         (!roles || !Array.isArray(roles) || roles.length === 0)) {
@@ -139,12 +133,27 @@ Selected Roles: ${Array.isArray(roles) ? roles.join(", ") : "None selected"}
       searchDSL: `(${query || 'talent'}) AND (${Array.isArray(roles) ? roles.join(' OR ') : 'any'})`
     };
 
+    const openAiKey = process.env.OPENAI_API_KEY;
+    const useMockOnly = !openAiKey;
+
+    if (useMockOnly) {
+      const mockResults = generateMockResults(mockResponse, roles);
+      return NextResponse.json({
+        ok: true,
+        query,
+        roles,
+        ai: mockResponse,
+        results: mockResults,
+        source: "mock",
+      });
+    }
+
     // Try OpenAI first, fallback to mock
     try {
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Authorization": `Bearer ${openAiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({

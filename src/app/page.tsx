@@ -7,8 +7,10 @@ import { CampaignPodPanel } from "@/components/talent/CampaignPodPanel";
 import { BookingModal } from "@/components/booking/BookingModal";
 import { ClientAuthDialog } from "@/components/auth/ClientAuthDialog";
 import { TalentOnboardingDialog } from "@/components/auth/TalentOnboardingDialog";
+import { PodSetupOverlay } from "@/features/pod-setup/PodSetupOverlay";
 import { curatedTalent } from "@/lib/curatedTalent";
 import { useCampaignPodStore, type Talent as PodTalent } from "@/store/useCampaignPodStore";
+import { usePodConfigStore } from "@/store/usePodConfigStore";
 import { useSession } from "next-auth/react";
 
 export default function HomePage() {
@@ -22,8 +24,9 @@ export default function HomePage() {
   const [talentAuthOpen, setTalentAuthOpen] = useState(false);
   const [pendingDiscover, setPendingDiscover] = useState(false);
   const { selectedTalents } = useCampaignPodStore();
+  const { openPodSetup } = usePodConfigStore();
   const { data: session } = useSession();
-  const role = session?.user?.role;
+  const role = (session?.user as { role?: string | null } | undefined)?.role ?? null;
   const isClient = role === "AGENCY";
   useEffect(() => {
     if (isClient && pendingDiscover) {
@@ -156,8 +159,7 @@ export default function HomePage() {
         <CampaignPodPanel
           onOpenBrief={() => {
             if (selectedTalents.length > 0) {
-              setBookingTalents(selectedTalents);
-              setBookingOpen(true);
+              openPodSetup(selectedTalents);
             }
           }}
           onOpenProfile={(talentId) => {
@@ -169,6 +171,9 @@ export default function HomePage() {
           }}
         />
       )}
+
+      {/* Pod Setup Overlay */}
+      <PodSetupOverlay />
 
       {/* Booking Modal */}
       <BookingModal

@@ -1,6 +1,9 @@
 import NextAuth from "next-auth";
+import type { Session, User } from "next-auth";
+import type { JWT } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
 import { db } from "@/server/db";
+import type { UserRole } from "@prisma/client";
 
 
 const FREE_EMAIL_DOMAINS = [
@@ -34,12 +37,16 @@ if (!authSecret) {
 
 // Check if DATABASE_URL is configured
 const databaseUrl = process.env.DATABASE_URL;
-const isDatabaseConfigured = databaseUrl && 
-  !databaseUrl.includes("placeholder") && 
+const isDatabaseConfigured =
+  typeof databaseUrl === "string" &&
+  databaseUrl.length > 0 &&
+  !databaseUrl.includes("placeholder") &&
   databaseUrl !== "postgresql://placeholder:placeholder@localhost:5432/placeholder";
 
 if (!isDatabaseConfigured) {
-  console.warn("⚠️ DATABASE_URL is not properly configured. Using mock authentication for development.");
+  throw new Error(
+    "DATABASE_URL is not configured. Authentication requires a real Postgres connection."
+  );
 }
 
 // @ts-expect-error - NextAuth v5 beta types may not be fully compatible
@@ -60,87 +67,69 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         try {
-          if (!credentials?.email || !credentials.userType) {
+          const emailInput = credentials?.email;
+          const userTypeInput = credentials?.userType;
+          const displayNameInput = credentials?.displayName;
+
+          if (typeof emailInput !== "string" || typeof userTypeInput !== "string") {
             throw new Error("Missing credentials");
           }
 
-          const email = credentials.email.toLowerCase().trim();
-          const userType = credentials.userType === "talent" ? "talent" : "client";
+          const email = emailInput.toLowerCase().trim();
+          const userType = userTypeInput === "talent" ? "talent" : "client";
 
           if (userType === "client" && !isCompanyEmail(email)) {
             throw new Error("Please use a company email to sign in.");
           }
 
-          const role = userType === "client" ? "AGENCY" : "CREATOR";
-          const defaultName = credentials.displayName || email.split("@")[0];
+          const role: UserRole =
+            userType === "client" ? "AGENCY" : "CREATOR";
+          const defaultName =
+            typeof displayNameInput === "string" && displayNameInput.trim().length > 0
+              ? displayNameInput
+              : email.split("@")[0];
 
-          // If database is not configured, use mock authentication for development
-          if (!isDatabaseConfigured) {
-            console.log("✅ Using mock authentication for:", email, "role:", role);
-            return {
-              id: `mock-${Date.now()}-${email}`,
-              email: email,
+          const user = await db.user.upsert({
+            where: { email },
+            update: {
+              role,
               name: defaultName,
-              role: role,
-            };
-          }
+            },
+            create: {
+              email,
+              name: defaultName,
+              role,
+            },
+          });
 
-          // Try database operations, but fall back to mock if it fails
-          try {
-            // Test database connection
-            await db.$connect();
-            
-            const user = await db.user.upsert({
-              where: { email },
-              update: {
-                role: role as any,
-                name: credentials.displayName ?? undefined,
-              },
+          if (role === "AGENCY") {
+            await db.agencyAccount.upsert({
+              where: { userId: user.id },
+              update: {},
               create: {
-                email,
-                name: defaultName,
-                role: role as any,
+                userId: user.id,
+                name: user.name || "My Agency",
               },
             });
-
-            if (role === "AGENCY") {
-              await db.agencyAccount.upsert({
-                where: { userId: user.id },
-                update: {},
-                create: {
-                  userId: user.id,
-                  name: user.name || "My Agency",
-                },
-              });
-            } else if (role === "CREATOR") {
-              await db.creatorProfile.upsert({
-                where: { userId: user.id },
-                update: {},
-                create: {
-                  userId: user.id,
-                  name: user.name || "Creator",
-                  skills: [],
-                  niches: [],
-                },
-              });
-            }
-
-            return {
-              id: user.id,
-              email: user.email,
-              name: user.name,
-              role: user.role,
-            };
-          } catch (dbError) {
-            console.warn("⚠️ Database operation failed, using mock authentication:", dbError);
-            // Fall back to mock authentication if database fails
-            return {
-              id: `mock-${Date.now()}-${email}`,
-              email: email,
-              name: defaultName,
-              role: role,
-            };
+          } else if (role === "CREATOR") {
+            await db.creatorProfile.upsert({
+              where: { userId: user.id },
+              update: {},
+              create: {
+                userId: user.id,
+                name: user.name || "Creator",
+                skills: [],
+                niches: [],
+              },
+            });
           }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+          };
         } catch (error) {
           console.error("❌ Auth authorize error:", error);
           // Re-throw with a user-friendly message
@@ -153,13 +142,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }: { token: any; user?: any }) {
-      if (user) {
-        token.role = (user as { role?: string }).role || token.role;
+    async jwt({ token, user }: { token: JWT; user?: User | null }) {
+      if (user?.role) {
+        token.role = user.role;
       }
       return token;
     },
-    async session({ session, token }: { session: any; token: any }) {
+    async session({ session, token }: { session: Session; token: JWT }) {
       if (session.user) {
         session.user.id = token.sub ?? session.user.id;
         if (typeof token.role === "string") {

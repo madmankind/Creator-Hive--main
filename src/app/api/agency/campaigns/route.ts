@@ -1,21 +1,14 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { z } from "zod";
 import { db } from "@/server/db";
 import { getOrCreateAgency } from "@/server/agency";
 import { ensureCuratedCreatorProfile } from "@/server/curated";
+import { requireUser } from "@/server/authz";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const user = await db.user.findUnique({
-    where: { email: session.user.email },
-  });
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
+  const authResult = await requireUser({ roles: ["AGENCY", "ADMIN"] });
+  if ("error" in authResult) return authResult.error;
+  const { user } = authResult;
 
   const agency = await getOrCreateAgency(user);
   const campaigns = await db.campaign.findMany({
@@ -34,37 +27,29 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const user = await db.user.findUnique({
-    where: { email: session.user.email },
-  });
-
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
+  const authResult = await requireUser({ roles: ["AGENCY", "ADMIN"] });
+  if ("error" in authResult) return authResult.error;
+  const { user } = authResult;
 
   const agency = await getOrCreateAgency(user);
 
-  let payload: {
-    title?: string;
-    brief?: string;
-    startDate?: string;
-    dueDate?: string;
-    talentIds?: string[];
-  } = {};
+  const schema = z.object({
+    title: z.string().min(2),
+    brief: z.string().min(2),
+    startDate: z.string().datetime().optional(),
+    dueDate: z.string().datetime().optional(),
+    talentIds: z.array(z.string()).optional(),
+    status: z.enum(["DRAFT", "ACTIVE", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).optional(),
+    budget: z.number().int().nonnegative().optional(),
+  });
+  let payload: z.infer<typeof schema>;
 
   try {
-    payload = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
-  }
-
-  if (!payload.title || !payload.brief) {
-    return NextResponse.json({ error: "Title and brief are required" }, { status: 400 });
+    payload = await schema.parseAsync(await req.json());
+  } catch (err) {
+    const message =
+      err instanceof z.ZodError ? err.issues.map((i) => i.message).join(", ") : "Invalid payload";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 
   const talentIds = payload.talentIds ?? [];
@@ -77,9 +62,11 @@ export async function POST(req: Request) {
   const campaign = await db.$transaction(async (tx) => {
     const createdCampaign = await tx.campaign.create({
       data: {
-        title: payload.title!,
-        brief: payload.brief!,
+        title: payload.title,
+        brief: payload.brief,
         agencyId: agency.id,
+        status: payload.status ?? "DRAFT",
+        budget: payload.budget,
         startDate: payload.startDate ? new Date(payload.startDate) : undefined,
         dueDate: payload.dueDate ? new Date(payload.dueDate) : undefined,
       },

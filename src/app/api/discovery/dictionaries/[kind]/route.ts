@@ -1,32 +1,54 @@
-import { curatedTalent } from "@/lib/curatedTalent";
+import { db } from "@/server/db";
+import { requireUser } from "@/server/authz";
+import type { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-function buildSet(getter: (talent: typeof curatedTalent[number]) => string | string[] | undefined) {
-  const values = new Set<string>();
-  curatedTalent.forEach((talent) => {
-    const value = getter(talent);
-    if (Array.isArray(value)) {
-      value.forEach((entry) => entry && values.add(entry));
-    } else if (typeof value === "string" && value.length > 0) {
-      values.add(value);
-    }
+async function getLocations() {
+  const rows = await db.creatorProfile.findMany({
+    where: { location: { not: null } },
+    select: { location: true },
+    distinct: ["location"],
+    orderBy: { location: "asc" },
   });
-  return Array.from(values);
+  return rows.map((row) => row.location!).filter(Boolean);
 }
 
-const dictionaries: Record<string, string[]> = {
-  interests: buildSet((talent) => talent.interests),
-  locations: buildSet((talent) => talent.location),
-  brands: buildSet((talent) => talent.brandPartners),
-  languages: buildSet((talent) => talent.languages),
+async function getInterests() {
+  const rows = await db.creatorProfile.findMany({
+    where: { niches: { isEmpty: false } },
+    select: { niches: true },
+  });
+  const set = new Set<string>();
+  rows.forEach((row) => {
+    row.niches?.forEach((n) => n && set.add(n));
+  });
+  return Array.from(set);
+}
+
+const emptyDict = async () => [] as string[];
+
+const resolvers: Record<string, () => Promise<string[]>> = {
+  interests: getInterests,
+  locations: getLocations,
+  brands: emptyDict,
+  languages: emptyDict,
 };
 
-export async function GET(req: Request, { params }: { params: { kind: string } }) {
-  const entries = dictionaries[params.kind];
-  if (!entries) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ kind: string }> }
+) {
+  const authResult = await requireUser({ roles: ["AGENCY", "ADMIN"] });
+  if ("error" in authResult) return authResult.error;
+
+  const { kind } = await params;
+  const resolver = resolvers[kind];
+  if (!resolver) {
     return new Response("Unknown dictionary", { status: 400 });
   }
+
+  const entries = await resolver();
 
   const url = new URL(req.url);
   const query = (url.searchParams.get("query") || "").toLowerCase();
@@ -37,5 +59,5 @@ export async function GET(req: Request, { params }: { params: { kind: string } }
     .slice(0, Number.isFinite(limit) ? limit : 50)
     .map((value) => ({ id: value, name: value }));
 
-  return Response.json({ data: filtered, meta: { total: entries.length, source: "curated" } });
+  return Response.json({ data: filtered, meta: { total: entries.length, source: "database" } });
 }

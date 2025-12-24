@@ -11,11 +11,12 @@ type BookingModalProps = {
   open: boolean;
   onClose: () => void;
   talents: Talent[];
+  onViewPod?: () => void;
 };
 
 const startDateOptions = ["ASAP", "Within 2 weeks", "Next month", "Flexible"];
 
-export function BookingModal({ open, onClose, talents }: BookingModalProps) {
+export function BookingModal({ open, onClose, talents, onViewPod }: BookingModalProps) {
   const router = useRouter();
   const [bookingType, setBookingType] = useState<"short" | "long">("short");
   const [startDate, setStartDate] = useState("");
@@ -24,12 +25,14 @@ export function BookingModal({ open, onClose, talents }: BookingModalProps) {
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Reset form state when modal opens - ensures we always start at brief step
   useEffect(() => {
     if (open) {
       setSuccess(false);
       setSubmitting(false);
+      setError(null);
       setBookingType("short");
       setStartDate("");
       setCampaignDescription("");
@@ -51,8 +54,6 @@ export function BookingModal({ open, onClose, talents }: BookingModalProps) {
       : talents.length === 1
       ? talents[0].headline
       : `${talents.length} talents selected`;
-
-  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -315,7 +316,10 @@ export function BookingModal({ open, onClose, talents }: BookingModalProps) {
                   <div className="mt-8 flex justify-center gap-3">
                     <button
                       type="button"
-                      onClick={onClose}
+                      onClick={() => {
+                        onClose();
+                        onViewPod?.();
+                      }}
                       className="rounded-full px-5 py-2.5 text-sm text-white/70 hover:bg-white/5 transition"
                     >
                       Back to discovery

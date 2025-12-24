@@ -8,6 +8,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 // Server-side client (for API routes and server components)
 export function createSupabaseServerClient() {
@@ -74,3 +75,14 @@ export async function createSupabaseSSRClient() {
   })
 }
 
+// Server-side service client (storage/uploads). Do NOT expose service key to client.
+export function createSupabaseServiceClient(): SupabaseClient {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!supabaseUrl || !serviceKey) {
+    throw new Error("Missing Supabase service role configuration");
+  }
+
+  return createClient(supabaseUrl, serviceKey);
+}

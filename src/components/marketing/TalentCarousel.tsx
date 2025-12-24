@@ -6,6 +6,8 @@ import { TalentCard } from '@/components/talent/TalentCard'
 import { useCampaignPodStore, type Talent as PodTalent } from '@/store/useCampaignPodStore'
 import { useFavoritesStore } from '@/store/useFavoritesStore'
 import { cn } from '@/lib/utils'
+import { InstagramEmbed } from '@/components/social/InstagramEmbed'
+import { TikTokEmbed } from '@/components/social/TikTokEmbed'
 
 interface TalentCarouselProps {
   talents: CuratedTalent[]
@@ -347,17 +349,11 @@ export function TalentCarousel({ talents, query, selectedRoles, onTalentClick }:
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -8 }}
                       transition={{ duration: 0.2 }}
-                      className="text-center py-12"
                     >
-                      <p className="text-sm text-white/60 mb-4">@{talentForTabs.instagramHandle}</p>
-                      <a
-                        href={talentForTabs.instagramUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-full bg-neutral-900/80 px-4 py-2 text-sm font-medium text-neutral-100 hover:bg-neutral-800 transition"
-                      >
-                        View Instagram profile
-                      </a>
+                      <InstagramEmbed
+                        username={talentForTabs.instagramHandle}
+                        url={talentForTabs.instagramUrl}
+                      />
                     </motion.div>
                   )}
 
@@ -368,23 +364,11 @@ export function TalentCarousel({ talents, query, selectedRoles, onTalentClick }:
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -8 }}
                       transition={{ duration: 0.2 }}
-                      className="text-center py-12"
                     >
-                      <p className="text-sm text-white/60 mb-4">
-                        {talentForTabs.tiktokHandle || 'TikTok'}
-                      </p>
-                      {talentForTabs.tiktokUrl ? (
-                        <a
-                          href={talentForTabs.tiktokUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 rounded-full bg-neutral-900/80 px-4 py-2 text-sm font-medium text-neutral-100 hover:bg-neutral-800 transition"
-                        >
-                          View TikTok profile
-                        </a>
-                      ) : (
-                        <p className="text-xs text-white/50">TikTok profile coming soon</p>
-                      )}
+                      <TikTokEmbed
+                        username={talentForTabs.tiktokHandle}
+                        url={talentForTabs.tiktokUrl}
+                      />
                     </motion.div>
                   )}
                 </AnimatePresence>
