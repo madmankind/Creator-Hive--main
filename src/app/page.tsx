@@ -96,6 +96,15 @@ export default function HomePage() {
                 onQueryChange={(q) => setSearchQuery(q)}
                 onRolesChange={(roles) => setSelectedRoles(roles)}
                 onDiscover={() => {
+                  if (!session?.user) {
+                    if (mode === 'client') {
+                      setPendingDiscover(true);
+                      setClientAuthOpen(true);
+                    } else {
+                      setTalentAuthOpen(true);
+                    }
+                    return;
+                  }
                   if (mode === 'client' && !isClient) {
                     setPendingDiscover(true);
                     setClientAuthOpen(true);
@@ -115,9 +124,6 @@ export default function HomePage() {
                   // Open booking modal with empty talents for brief builder
                   setBookingTalents([]);
                   setBookingOpen(true);
-                }}
-                onTalentApply={() => {
-                  setTalentAuthOpen(true);
                 }}
               />
             </div>

@@ -10,7 +10,32 @@ type ClientAuthDialogProps = {
   onSuccess: () => void
 }
 
-const FREE_EMAIL_DOMAINS = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'aol.com', 'mail.com', 'protonmail.com', 'yandex.com', 'gmx.com']
+const FREE_EMAIL_DOMAINS = [
+  'gmail.com',
+  'yahoo.com',
+  'hotmail.com',
+  'outlook.com',
+  'icloud.com',
+  'aol.com',
+  'mail.com',
+  'protonmail.com',
+  'proton.me',
+  'yandex.com',
+  'gmx.com',
+]
+
+const isProd = process.env.NODE_ENV === 'production'
+
+const normalizeError = (raw: string): string => {
+  const lower = raw.toLowerCase()
+  if (lower.includes('database_url')) {
+    return 'Database not configured. Set DATABASE_URL in .env.local and restart.'
+  }
+  if (lower.includes('econnrefused') || lower.includes('timeout') || lower.includes('p1001')) {
+    return 'Database connection failed. Check Supabase host/SSL and your IP allowlist.'
+  }
+  return raw
+}
 
 export function ClientAuthDialog({ open, onClose, onSuccess }: ClientAuthDialogProps) {
   const [email, setEmail] = useState('')
@@ -34,34 +59,30 @@ export function ClientAuthDialog({ open, onClose, onSuccess }: ClientAuthDialogP
     }
 
     if (!validateCompanyEmail(email)) {
-      setError('Please use a company email to sign up.')
+      setError('Please use a company email (no personal domains).')
       return
     }
 
     setSubmitting(true)
     try {
+      await fetch("/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: "AGENCY", email }),
+      }).catch(() => undefined);
+
       const result = await signIn("credentials", {
         redirect: false,
         email,
         userType: "client",
       })
-      setSubmitting(false)
 
       if (result?.error) {
-        // Show the actual error message to help with debugging
-        console.error("Sign in error:", result.error)
-        
-        // Provide more user-friendly error messages
-        if (result.error.includes("Configuration") || result.error.includes("AUTH_SECRET")) {
-          setError("Server configuration error. Please check server logs.")
-        } else if (result.error.includes("Database")) {
-          setError("Database connection error. Please check your DATABASE_URL.")
-        } else if (result.error.includes("company email")) {
-          setError(result.error)
-        } else {
-          // Show the actual error for debugging
-          setError(result.error || "Sign in failed. Please try again.")
+        const friendlyMessage = normalizeError(result.error)
+        if (!isProd) {
+          console.warn("Sign in failed:", result.error)
         }
+        setError(friendlyMessage || "Sign in failed. Please try again.")
         return
       }
 
@@ -70,18 +91,23 @@ export function ClientAuthDialog({ open, onClose, onSuccess }: ClientAuthDialogP
         return
       }
     } catch (err) {
-      setSubmitting(false)
-      console.error("Sign in error:", err)
-      const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred"
-      setError(errorMessage)
+      const rawMessage = err instanceof Error ? err.message : "An unexpected error occurred"
+      const friendlyMessage = normalizeError(rawMessage)
+      if (!isProd) {
+        console.warn("Unexpected sign in error:", err)
+      }
+      setError(isProd ? "Sign in failed. Please try again." : `Sign in failed. ${friendlyMessage}`)
       return
+    } finally {
+      setSubmitting(false)
     }
 
     setSubmitted(true)
+    onSuccess()
     setTimeout(() => {
-      onSuccess()
       setSubmitted(false)
       setEmail('')
+      onClose()
     }, 1500)
   }
 
@@ -180,10 +206,10 @@ export function ClientAuthDialog({ open, onClose, onSuccess }: ClientAuthDialogP
                   className="text-center py-4"
                 >
                   <h2 className="text-xl font-semibold text-white/90 mb-2">
-                    Check your inbox
+                    Signed in
                   </h2>
                   <p className="text-sm text-white/65">
-                    We&apos;ve sent a secure login link to your email.
+                    You&apos;re signed in. Preparing your discovery view…
                   </p>
                 </motion.div>
               )}

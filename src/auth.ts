@@ -1,9 +1,9 @@
-import NextAuth from "next-auth";
 import type { Session, User } from "next-auth";
 import type { JWT } from "next-auth/jwt";
+import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { db } from "@/server/db";
 import type { UserRole } from "@prisma/client";
+import { db } from "@/server/db";
 
 
 const FREE_EMAIL_DOMAINS = [
@@ -25,6 +25,8 @@ function isCompanyEmail(email: string) {
   return !FREE_EMAIL_DOMAINS.includes(domain);
 }
 
+const isDev = process.env.NODE_ENV !== "production";
+
 // Validate AUTH_SECRET is set
 const authSecret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
 if (!authSecret) {
@@ -43,9 +45,17 @@ const isDatabaseConfigured =
   !databaseUrl.includes("placeholder") &&
   databaseUrl !== "postgresql://placeholder:placeholder@localhost:5432/placeholder";
 
-if (!isDatabaseConfigured) {
+const isDatabaseDisabled = !isDatabaseConfigured;
+
+if (isDatabaseDisabled && !isDev) {
   throw new Error(
     "DATABASE_URL is not configured. Authentication requires a real Postgres connection."
+  );
+}
+
+if (isDatabaseDisabled && isDev) {
+  console.warn(
+    "DATABASE_URL is not configured. Running in development with auth disabled until a real Postgres URL is provided."
   );
 }
 
@@ -66,6 +76,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         displayName: { label: "Name", type: "text" },
       },
       async authorize(credentials) {
+        if (isDatabaseDisabled) {
+          throw new Error(
+            "DATABASE_URL not configured. Add a real Postgres connection string in .env.local and restart the dev server."
+          );
+        }
+
         try {
           const emailInput = credentials?.email;
           const userTypeInput = credentials?.userType;

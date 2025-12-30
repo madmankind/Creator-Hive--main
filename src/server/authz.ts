@@ -42,3 +42,9 @@ export async function requireUser(
 export function userHasRole(role: unknown, allowed: UserRole[]) {
   return typeof role === "string" && (allowed as string[]).includes(role);
 }
+
+export function redirectByRole(role?: UserRole | string | null) {
+  if (role === "CREATOR") return "/dashboard/profile";
+  if (role === "AGENCY" || role === "ADMIN") return "/discovery";
+  return "/";
+}

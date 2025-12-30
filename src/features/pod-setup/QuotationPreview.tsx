@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Download } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { calculateTalentRate, formatCurrency } from "@/lib/podPricing";
 import type { Talent } from "@/store/useCampaignPodStore";
 import type { TalentPodConfig } from "@/types/pod";
@@ -48,6 +48,10 @@ export function QuotationPreview({
   clientName = "Client",
   clientEmail = "client@example.com",
 }: QuotationPreviewProps) {
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
+  const [sent, setSent] = useState(false);
+
   const quotationNumber = useMemo(() => {
     return `Q-${Date.now().toString().slice(-6)}`;
   }, []);
@@ -87,6 +91,37 @@ export function QuotationPreview({
   }, [campaignDuration]);
 
   if (!open) return null;
+
+  const handleSend = async () => {
+    setSending(true);
+    setSendError("");
+    try {
+      const res = await fetch("/api/payments/bank-transfer-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company: clientName,
+          billingEmail: clientEmail,
+          amount: grandTotal,
+          campaignRef: quotationNumber,
+        }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(payload?.error || "Failed to send quotation");
+      }
+      setSent(true);
+      setTimeout(() => {
+        onClose();
+        setSent(false);
+      }, 900);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to send quotation";
+      setSendError(message);
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -285,11 +320,16 @@ export function QuotationPreview({
                 </button>
                 <button
                   type="button"
+                  onClick={handleSend}
+                  disabled={sending}
                   className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-sm font-black text-white hover:from-emerald-400 hover:to-teal-400 transition-all shadow-lg shadow-emerald-500/20 uppercase tracking-wider"
                 >
-                  Confirm & Send
+                  {sending ? "Sending…" : sent ? "Sent" : "Confirm & Send"}
                 </button>
               </div>
+              {sendError && (
+                <div className="px-8 pb-4 text-sm text-red-300">{sendError}</div>
+              )}
             </div>
           </motion.div>
         </>
@@ -297,5 +337,8 @@ export function QuotationPreview({
     </AnimatePresence>
   );
 }
+
+
+
 
 
