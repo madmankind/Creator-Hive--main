@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -19,6 +19,18 @@ export function TalentOnboardingDialog({ open, onClose, onSuccess }: TalentOnboa
   const [instagramHandle, setInstagramHandle] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!open) {
+      setStep('email');
+      setEmail('');
+      setWhatsapp('');
+      setUseWhatsapp(false);
+      setInstagramHandle('');
+      setSubmitting(false);
+      setError('');
+    }
+  }, [open])
 
   const maskUAE = (v: string) => {
     const digits = v.replace(/[^\d]/g, '').slice(0, 9)
@@ -66,14 +78,14 @@ export function TalentOnboardingDialog({ open, onClose, onSuccess }: TalentOnboa
       displayName: email || `Talent ${loginEmail.slice(0, 4)}`,
     })
 
-    setSubmitting(false)
-
     if (result?.error) {
+      setSubmitting(false)
       setError(result.error)
       return
     }
 
     setStep('instagram')
+    setSubmitting(false)
   }
 
   const handleInstagramSubmit = async (e: React.FormEvent) => {
@@ -86,24 +98,32 @@ export function TalentOnboardingDialog({ open, onClose, onSuccess }: TalentOnboa
     }
 
     setSubmitting(true)
-    setTimeout(() => {
-      setSubmitting(false)
-      setStep('confirmation')
-      setTimeout(() => {
-        onSuccess()
-        setStep('email')
-        setEmail('')
-        setWhatsapp('')
-        setInstagramHandle('')
-        setUseWhatsapp(false)
-        onClose()
-      }, 2500)
-    }, 600)
-  }
+    try {
+      await fetch("/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: "CREATOR",
+          email: useWhatsapp ? undefined : email,
+          whatsapp: useWhatsapp ? whatsapp.replace(/[^\d]/g, "") : undefined,
+          instagram: instagramHandle,
+        }),
+      });
+    } catch {
+      // ignore write failures in dev
+    }
 
-  const handleGoogleSignup = () => {
-    // TODO: Wire to Google OAuth
-    console.log('Google signup')
+    setSubmitting(false)
+    setStep('confirmation')
+    setTimeout(() => {
+      onSuccess()
+      setStep('email')
+      setEmail('')
+      setWhatsapp('')
+      setInstagramHandle('')
+      setUseWhatsapp(false)
+      onClose()
+    }, 1500)
   }
 
   return (
@@ -155,6 +175,35 @@ export function TalentOnboardingDialog({ open, onClose, onSuccess }: TalentOnboa
                   </div>
 
                   <div className="space-y-3">
+                    <div className="inline-flex items-center gap-1 rounded-full bg-white/5 p-1 ring-1 ring-white/10">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUseWhatsapp(false)
+                          setError('')
+                        }}
+                        className={cn(
+                          "px-3.5 py-1.5 rounded-full text-[12px] font-medium transition",
+                          !useWhatsapp ? "bg-white/10 text-white ring-1 ring-white/15" : "text-white/60 hover:text-white"
+                        )}
+                      >
+                        Email
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUseWhatsapp(true)
+                          setError('')
+                        }}
+                        className={cn(
+                          "px-3.5 py-1.5 rounded-full text-[12px] font-medium transition",
+                          useWhatsapp ? "bg-white/10 text-white ring-1 ring-white/15" : "text-white/60 hover:text-white"
+                        )}
+                      >
+                        WhatsApp
+                      </button>
+                    </div>
+
                     {!useWhatsapp ? (
                       <div>
                         <input
@@ -182,19 +231,6 @@ export function TalentOnboardingDialog({ open, onClose, onSuccess }: TalentOnboa
                         />
                       </div>
                     )}
-
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setUseWhatsapp(!useWhatsapp)
-                          setError('')
-                        }}
-                        className="text-xs text-white/60 hover:text-white/80 transition"
-                      >
-                        {useWhatsapp ? 'Use email instead' : 'Use WhatsApp instead'}
-                      </button>
-                    </div>
                   </div>
 
                   {error && (
@@ -203,17 +239,6 @@ export function TalentOnboardingDialog({ open, onClose, onSuccess }: TalentOnboa
 
                   <div className="space-y-3">
                     <button
-                      type="button"
-                      onClick={handleGoogleSignup}
-                      className="w-full flex items-center justify-center gap-2 rounded-full bg-white/5 ring-1 ring-white/10 px-5 py-3 hover:bg-white/10 transition"
-                    >
-                      <svg viewBox="0 0 48 48" className="h-5 w-5 fill-white/90">
-                        <path d="M44.5 20H24v8.5h11.8C34.8 34.6 30.2 37.5 24 37.5 15.9 37.5 9.5 31.1 9.5 23S15.9 8.5 24 8.5c4.1 0 7.4 1.6 9.9 3.8l6-6C36.7 2.3 30.8 0 24 0 10.7 0 0 10.7 0 24s10.7 24 24 24c12.4 0 23-9 23-24 0-1.6-.2-3.2-.5-4.5z"/>
-                      </svg>
-                      <span className="text-sm text-white/90">Sign up with Google</span>
-                    </button>
-
-                    <button
                       type="submit"
                       disabled={submitting || (!email.trim() && !whatsapp.trim())}
                       className={cn(
@@ -221,7 +246,7 @@ export function TalentOnboardingDialog({ open, onClose, onSuccess }: TalentOnboa
                         "disabled:opacity-50 disabled:cursor-not-allowed"
                       )}
                     >
-                      {submitting ? 'Sending...' : 'Send OTP'}
+                      {submitting ? 'Signing you in…' : 'Continue'}
                     </button>
                   </div>
                 </form>
@@ -278,10 +303,10 @@ export function TalentOnboardingDialog({ open, onClose, onSuccess }: TalentOnboa
                   className="text-center py-4"
                 >
                   <h2 className="text-xl font-semibold text-white/90 mb-2">
-                    Thanks for applying
+                    Under review
                   </h2>
                   <p className="text-sm text-white/65">
-                    Your profile is under review – we&apos;ll update you within 48 hours.
+                    We&apos;ll confirm within 48 hours.
                   </p>
                 </motion.div>
               )}

@@ -3,23 +3,24 @@ import { NextResponse } from "next/server";
 const Stripe: any = require("stripe");
 import { db } from "@/server/db";
 
-const stripeSecret = process.env.STRIPE_SECRET_KEY;
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-if (!stripeSecret) {
-  throw new Error("Missing STRIPE_SECRET_KEY");
+function getStripe() {
+  const stripeSecret = process.env.STRIPE_SECRET_KEY;
+  if (!stripeSecret) {
+    throw new Error("Missing STRIPE_SECRET_KEY");
+  }
+  return new Stripe(stripeSecret, {
+    apiVersion: "2024-11-20.acacia" as any,
+  });
 }
-if (!webhookSecret) {
-  throw new Error("Missing STRIPE_WEBHOOK_SECRET");
-}
-
-const stripe = new Stripe(stripeSecret, {
-  apiVersion: "2024-11-20.acacia" as any,
-});
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    return NextResponse.json({ error: "Missing STRIPE_WEBHOOK_SECRET" }, { status: 500 });
+  }
+
   const rawBody = await req.text();
   const signature = req.headers.get("stripe-signature");
 
@@ -27,7 +28,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing signature" }, { status: 400 });
   }
 
-let event: any;
+  const stripe = getStripe();
+  let event: any;
   try {
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
   } catch (err) {

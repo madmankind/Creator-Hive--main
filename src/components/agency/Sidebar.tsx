@@ -20,9 +20,9 @@ type AgencyResponse = {
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 const navItems = [
-  { href: '/dashboard/track', label: 'Track', icon: Gauge },
-  { href: '/dashboard/manage', label: 'Manage', icon: FolderKanban },
-  { href: '/dashboard/pay', label: 'Pay', icon: Wallet },
+  { href: '/dashboard/campaigns?mode=track', label: 'Track', icon: Gauge },
+  { href: '/dashboard/campaigns?mode=manage', label: 'Manage', icon: FolderKanban },
+  { href: '/dashboard/campaigns?mode=pay', label: 'Pay', icon: Wallet },
   { href: '/dashboard/discover', label: 'Discover', icon: Compass },
 ]
 
@@ -100,7 +100,11 @@ export default function Sidebar() {
       {/* Main navigation */}
       <nav className="mt-2 flex-1 px-2 space-y-1 text-sm">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
+          // Handle campaigns routes with mode query params
+          const isCampaignsRoute = item.href.startsWith('/dashboard/campaigns')
+          const isActive = isCampaignsRoute
+            ? pathname === '/dashboard/campaigns' || pathname.startsWith('/dashboard/campaigns')
+            : pathname === item.href || pathname.startsWith(`${item.href}/`)
           const Icon = item.icon
           return (
             <Link

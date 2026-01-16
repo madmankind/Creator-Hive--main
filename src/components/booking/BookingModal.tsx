@@ -26,6 +26,8 @@ export function BookingModal({ open, onClose, talents, onViewPod }: BookingModal
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tradeLicenseFile, setTradeLicenseFile] = useState<File | null>(null);
+  const [tradeLicenseFileName, setTradeLicenseFileName] = useState<string>("");
 
   // Reset form state when modal opens - ensures we always start at brief step
   useEffect(() => {
@@ -38,6 +40,8 @@ export function BookingModal({ open, onClose, talents, onViewPod }: BookingModal
       setCampaignDescription("");
       setBudgetRange("");
       setEmail("");
+      setTradeLicenseFile(null);
+      setTradeLicenseFileName("");
     }
   }, [open]);
 
@@ -70,6 +74,9 @@ export function BookingModal({ open, onClose, talents, onViewPod }: BookingModal
           budgetRange,
           email,
           talentIds: talents.map((talent) => talent.id),
+          tradeLicenseFileName: tradeLicenseFileName,
+          // In production, upload file to storage and send URL
+          // For now, just send filename as placeholder
         }),
       });
       if (!res.ok) {
@@ -271,6 +278,69 @@ export function BookingModal({ open, onClose, talents, onViewPod }: BookingModal
                     />
                   </div>
                 </div>
+
+                {/* Trade License Upload */}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-white/75">
+                    Trade License <span className="text-red-400">*</span>
+                    <span className="text-[11px] text-white/50 font-normal ml-1">(Required to send booking request)</span>
+                  </label>
+                  {!tradeLicenseFile ? (
+                    <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/20 bg-white/5 px-4 py-6 text-center transition hover:border-white/30 hover:bg-white/8">
+                      <svg className="mb-2 h-8 w-8 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      <span className="text-xs text-white/70">Click to upload PDF, JPG, or PNG</span>
+                      <span className="mt-1 text-[10px] text-white/50">Max 10MB</span>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 10 * 1024 * 1024) {
+                              setError("File size must be less than 10MB");
+                              return;
+                            }
+                            setTradeLicenseFile(file);
+                            setTradeLicenseFileName(file.name);
+                            setError(null);
+                          }
+                        }}
+                      />
+                    </label>
+                  ) : (
+                    <div className="flex items-center justify-between rounded-2xl bg-white/5 px-4 py-3 ring-1 ring-white/10">
+                      <div className="flex items-center gap-3">
+                        <svg className="h-5 w-5 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <div>
+                          <div className="text-xs font-medium text-white/90">{tradeLicenseFileName}</div>
+                          <div className="text-[10px] text-white/50">
+                            {(tradeLicenseFile.size / 1024).toFixed(1)} KB
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTradeLicenseFile(null);
+                          setTradeLicenseFileName("");
+                        }}
+                        className="text-xs text-white/60 hover:text-white/80 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                  {!tradeLicenseFile && (
+                    <p className="mt-1.5 text-[11px] text-white/50">
+                      Upload your trade license to proceed with booking request
+                    </p>
+                  )}
+                </div>
               </div>
 
               <footer className="mt-6 flex items-center justify-end gap-3">
@@ -283,11 +353,13 @@ export function BookingModal({ open, onClose, talents, onViewPod }: BookingModal
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || !tradeLicenseFile}
                   className={cn(
                     "flex items-center gap-2 rounded-full bg-white px-5 py-2 text-xs font-semibold text-black",
                     "hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-70",
+                    !tradeLicenseFile && "opacity-50",
                   )}
+                  title={!tradeLicenseFile ? "Please upload trade license to continue" : ""}
                 >
                   {submitting && (
                     <span className="h-3 w-3 animate-spin rounded-full border border-black/20 border-t-black" />

@@ -24,3 +24,17 @@ export function GlassPanel({ children, className, blur = true }: GlassPanelProps
 }
 
 
+
+
+
+
+
+
+
+
+
+
+<<<<<<< Current (Your changes)
+
+=======
+>>>>>>> Incoming (Background Agent changes)

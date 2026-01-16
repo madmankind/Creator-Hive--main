@@ -3,15 +3,16 @@ import { requireUser } from "@/server/authz";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_: Request, { params }: { params: { userId: string } }) {
+export async function GET(_: Request, context: { params: Promise<{ userId: string }> }) {
+  const { userId } = await context.params;
   const authResult = await requireUser({ roles: ["AGENCY", "ADMIN"] });
   if ("error" in authResult) return authResult.error;
 
-  const handle = params.userId?.toLowerCase();
+  const handle = userId?.toLowerCase();
   const profile = await db.creatorProfile.findFirst({
     where: {
       OR: [
-        { id: params.userId },
+        { id: userId },
         { instagram: { equals: handle, mode: "insensitive" } },
       ],
     },

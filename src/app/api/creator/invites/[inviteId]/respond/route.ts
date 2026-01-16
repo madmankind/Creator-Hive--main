@@ -7,7 +7,8 @@ const schema = z.object({
   action: z.enum(["ACCEPT", "DECLINE"]),
 });
 
-export async function POST(req: Request, { params }: { params: { inviteId: string } }) {
+export async function POST(req: Request, context: { params: Promise<{ inviteId: string }> }) {
+  const { inviteId } = await context.params;
   const authResult = await requireUser({ roles: ["CREATOR", "ADMIN"] });
   if ("error" in authResult) return authResult.error;
   const { user } = authResult;
@@ -26,7 +27,7 @@ export async function POST(req: Request, { params }: { params: { inviteId: strin
   }
 
   const invite = await (db as any).campaignInvite.findUnique({
-    where: { id: params.inviteId },
+    where: { id: inviteId },
   });
   if (!invite) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (invite.creatorProfileId !== profile.id && user.role !== "ADMIN") {
@@ -36,7 +37,7 @@ export async function POST(req: Request, { params }: { params: { inviteId: strin
   const status = payload.action === "ACCEPT" ? "ACCEPTED" : "DECLINED";
 
   const updated = await (db as any).campaignInvite.update({
-    where: { id: params.inviteId },
+    where: { id: inviteId },
     data: { status },
   });
 

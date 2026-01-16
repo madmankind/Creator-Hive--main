@@ -95,3 +95,17 @@ export function BriefUpload({ onFileSelect, onFileRemove, selectedFile }: BriefU
 }
 
 
+
+
+
+
+
+
+
+
+
+
+<<<<<<< Current (Your changes)
+
+=======
+>>>>>>> Incoming (Background Agent changes)

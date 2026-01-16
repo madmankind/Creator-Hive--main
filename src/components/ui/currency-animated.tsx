@@ -21,6 +21,6 @@ export function CurrencyAnimated({ value, className }: CurrencyAnimatedProps) {
     motionValue.set(value);
   }, [value, motionValue]);
 
-  return <motion.span className={className}>{display}</motion.span>;
+  return <motion.span className={["tabular-nums", className].filter(Boolean).join(" ")}>{display}</motion.span>;
 }
 

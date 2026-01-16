@@ -14,16 +14,17 @@ async function assertCampaignAccess(campaignId: string, user: { id: string; emai
   return { campaign };
 }
 
-export async function GET(_: Request, { params }: { params: { campaignId: string } }) {
+export async function GET(_: Request, context: { params: Promise<{ campaignId: string }> }) {
+  const { campaignId } = await context.params;
   const authResult = await requireUser({ roles: ["AGENCY", "ADMIN"] });
   if ("error" in authResult) return authResult.error;
   const { user } = authResult;
 
-  const access = await assertCampaignAccess(params.campaignId, user);
+  const access = await assertCampaignAccess(campaignId, user);
   if ("error" in access) return access.error;
 
   const files = await (db as any).campaignFile.findMany({
-    where: { campaignId: params.campaignId },
+    where: { campaignId },
     orderBy: { createdAt: "desc" },
   });
 

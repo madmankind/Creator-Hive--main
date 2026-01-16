@@ -16,6 +16,14 @@
 # next.js
 /.next/
 /out/
+# --- Local / transient artifacts ---
+.!*.env
+.env
+.env.*
+.tunnel.log
+.eslintrc*
+_snapshot/
+creatorhive_repo_snapshot.zip
 
 # production
 /build
@@ -44,4 +52,11 @@ next-env.d.ts
 
 # local development artifacts
 .tunnel.log
-.!*.env
+.!*!.env
+
+# Local artifacts
+.stash list
+git branch --show-current
+git status
+.env
+.tunnel.log

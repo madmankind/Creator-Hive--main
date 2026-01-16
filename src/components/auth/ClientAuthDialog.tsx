@@ -28,11 +28,14 @@ const isProd = process.env.NODE_ENV === 'production'
 
 const normalizeError = (raw: string): string => {
   const lower = raw.toLowerCase()
-  if (lower.includes('database_url')) {
-    return 'Database not configured. Set DATABASE_URL in .env.local and restart.'
+  if (lower.includes('database_url') || lower.includes('not configured') || lower.includes('denied access')) {
+    return 'Database not configured. Authentication will work in development mode without a database.'
   }
   if (lower.includes('econnrefused') || lower.includes('timeout') || lower.includes('p1001')) {
-    return 'Database connection failed. Check Supabase host/SSL and your IP allowlist.'
+    return 'Database connection failed. In development, authentication will work without a database connection.'
+  }
+  if (lower.includes('please use a company email')) {
+    return raw // Keep this error as-is
   }
   return raw
 }

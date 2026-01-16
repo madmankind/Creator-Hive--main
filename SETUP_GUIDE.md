@@ -218,6 +218,8 @@ PORT=3001 pnpm dev
 
 ## 🔗 **Useful Commands**
 
+> Supabase schema tip: run `create schema if not exists creatorhive;` once in the Supabase SQL editor (or `psql`) before running migrations. Ensure your `DATABASE_URL` includes `&schema=creatorhive` so Prisma stays out of the public schema. In a shell: `set -a; source .env.local; set +a` before `pnpm prisma migrate deploy`.
+
 ```bash
 # Development
 pnpm dev              # Start dev server

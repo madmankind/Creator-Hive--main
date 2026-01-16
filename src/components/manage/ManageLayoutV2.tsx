@@ -1,0 +1,372 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { feyTokens } from "@/lib/fey-design-tokens";
+import { Settings2, Share2, FileText } from "lucide-react";
+import { CampaignSwitcher } from "@/components/campaigns/CampaignSwitcher";
+import { Tooltip } from "./Tooltip";
+import { SectionFrame } from "./SectionFrame";
+import { TalentCarousel } from "./TalentCarousel";
+import { ExecutionHubPanel } from "./ExecutionHubPanel";
+import { WeeklyCalendarPanel } from "./WeeklyCalendarPanel";
+import type { TalentCampaignCard } from "@/components/campaigns/types";
+
+interface ManageLayoutV2Props {
+  cards: TalentCampaignCard[];
+  selectedCardId: string | null;
+  onCardSelect: (card: TalentCampaignCard) => void;
+  highlightedCardId?: string | null;
+  onSelectTalent: (cardId: string) => void;
+  campaignName?: string;
+  debugOutlines?: boolean;
+  onContractClick?: () => void;
+}
+
+/**
+ * ManageLayoutV2 - Deterministic layout for Manage page
+ * 
+ * Layout spec:
+ * - Main container: max-width 1280px, width 100%, px-24
+ * - Header height: 64px
+ * - Talent frame: fixed height 290px (outer), ~250px inner
+ * - Two-panel grid: 12 columns, gap 24px, LEFT spans 7, RIGHT spans 5
+ * - Both panels same height, computed from remaining viewport space
+ * - Only LEFT panel scrolls internally
+ * - Page no scroll (overflow hidden)
+ * - Reserve space for bottom nav: 88px + 24px = 112px
+ */
+export function ManageLayoutV2({
+  cards,
+  selectedCardId,
+  onCardSelect,
+  highlightedCardId,
+  onSelectTalent,
+  campaignName,
+  debugOutlines = false,
+  onContractClick,
+}: ManageLayoutV2Props) {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isSettingsOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!settingsRef.current) return;
+      if (settingsRef.current.contains(e.target as Node)) return;
+      setIsSettingsOpen(false);
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [isSettingsOpen]);
+
+  // Deterministic height calculations
+  const HEADER_HEIGHT = 64;
+  const TALENT_FRAME_HEIGHT = 290; // Outer frame height
+  const VERTICAL_GAP = 24; // Gap between talent frame and panels
+  const BOTTOM_NAV_HEIGHT = 88;
+  // Safe-area aware bottom padding (includes iOS safe-area-inset-bottom)
+  const BOTTOM_NAV_PADDING = `calc(${BOTTOM_NAV_HEIGHT}px + 24px + env(safe-area-inset-bottom, 0px))`;
+
+  const outlineStyle = debugOutlines
+    ? {
+        outline: "2px solid rgba(255,0,255,0.5)",
+        outlineOffset: "-2px",
+      }
+    : {};
+
+  return (
+    <div
+      className="relative flex flex-col"
+      style={{
+        height: "100dvh",
+        width: "100vw",
+        overflow: "hidden",
+        color: feyTokens.colors.text.primary,
+        background: "#07070B",
+        isolation: "isolate",
+      }}
+    >
+      {/* Opaque Base Layer */}
+      <div
+        className="fixed inset-0 pointer-events-none"
+        style={{
+          background: "#07070B",
+          zIndex: 0,
+        }}
+      />
+
+      {/* Background Gradients (same as original) */}
+      <div
+        className="fixed inset-0 pointer-events-none bg-hive-radial opacity-70"
+        style={{
+          zIndex: 1,
+          maskImage: "radial-gradient(70% 70% at 50% 20%, black 0%, black 55%, transparent 85%)",
+          WebkitMaskImage: "radial-gradient(70% 70% at 50% 20%, black 0%, black 55%, transparent 85%)",
+        }}
+      />
+      <div
+        className="fixed inset-0 pointer-events-none"
+        style={{
+          zIndex: 1,
+          background:
+            "radial-gradient(900px 520px at 18% 12%, rgba(0,220,255,0.08) 0%, rgba(0,0,0,0) 60%), radial-gradient(1200px 800px at 50% 40%, rgba(124,92,255,0.22) 0%, rgba(0,0,0,0) 62%)",
+          filter: "blur(10px)",
+        }}
+      />
+
+      {/* Centered Workspace Container */}
+      <div className="relative z-10 w-full flex-1 min-h-0 flex justify-center overflow-visible">
+        <div
+          className="w-full flex flex-col min-h-0"
+          style={{
+            maxWidth: "1280px",
+            paddingLeft: "24px",
+            paddingRight: "24px",
+            paddingTop: "16px",
+            paddingBottom: BOTTOM_NAV_PADDING,
+          }}
+        >
+          {/* Header (fixed height) - Strict flex row with reserved widths */}
+          <div
+            className="flex items-center"
+            style={{
+              flex: `0 0 ${HEADER_HEIGHT}px`,
+              height: `${HEADER_HEIGHT}px`,
+              gap: "24px",
+            }}
+          >
+            {/* Logo block (fixed width, truncate) */}
+            <div className="flex items-center" style={{ flex: "0 0 auto", minWidth: 0, maxWidth: "200px" }}>
+              <div
+                className="text-[14px] font-semibold truncate"
+                style={{ color: feyTokens.colors.text.primary }}
+              >
+                Creator Hive
+              </div>
+            </div>
+
+            {/* Campaign selector block (fixed width, truncate) */}
+            <div className="flex items-center" style={{ flex: "0 0 auto", minWidth: 0, maxWidth: "280px" }}>
+              <CampaignSwitcher />
+            </div>
+
+            {/* Campaign stats (flexible, truncate) */}
+            <div
+              className="text-[11px] truncate"
+              style={{ 
+                color: feyTokens.colors.text.muted,
+                flex: "0 1 auto",
+                minWidth: 0,
+              }}
+            >
+              {cards.length} talent · {cards.reduce((acc, c) => acc + c.deliverables.length, 0)} deliverables
+            </div>
+
+            {/* Spacer */}
+            <div style={{ flex: "1 1 auto", minWidth: 0 }} />
+
+            {/* Right: Utility Actions */}
+            <div className="flex items-center gap-2" ref={settingsRef}>
+              <Tooltip label="Contract">
+                <button
+                  onClick={onContractClick}
+                  className="flex items-center justify-center rounded-full border transition-colors hover:bg-white/10"
+                  style={{
+                    borderColor: "rgba(255,255,255,0.10)",
+                    background: "rgba(255,255,255,0.06)",
+                    color: feyTokens.colors.text.secondary,
+                    height: "36px",
+                    width: "36px",
+                  }}
+                >
+                  <FileText className="h-4 w-4" />
+                </button>
+              </Tooltip>
+              <Tooltip label="Settings">
+                <button
+                  onClick={() => setIsSettingsOpen((v) => !v)}
+                  className="flex items-center justify-center rounded-full border transition-colors hover:bg-white/10 relative"
+                  style={{
+                    borderColor: "rgba(255,255,255,0.10)",
+                    background: "rgba(255,255,255,0.06)",
+                    color: feyTokens.colors.text.secondary,
+                    height: "36px",
+                    width: "36px",
+                  }}
+                >
+                  <Settings2 className="h-4 w-4" />
+                </button>
+              </Tooltip>
+              <Tooltip label="Share">
+                <button
+                  onClick={() => {
+                    // TODO: share/export
+                  }}
+                  className="flex items-center justify-center rounded-full border transition-colors hover:bg-white/10"
+                  style={{
+                    borderColor: "rgba(255,255,255,0.10)",
+                    background: "rgba(255,255,255,0.06)",
+                    color: feyTokens.colors.text.secondary,
+                    height: "36px",
+                    width: "36px",
+                  }}
+                >
+                  <Share2 className="h-4 w-4" />
+                </button>
+              </Tooltip>
+
+              {isSettingsOpen && (
+                <div
+                  className="absolute right-0 mt-2 rounded-[14px] overflow-hidden"
+                  style={{
+                    top: "52px",
+                    width: "220px",
+                    background: "rgba(12,12,18,0.92)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    boxShadow: "0 18px 56px rgba(0,0,0,0.65)",
+                    backdropFilter: "blur(18px)",
+                  }}
+                >
+                  <button
+                    className="w-full text-left px-3 py-2 text-[12px] transition-colors"
+                    style={{ color: feyTokens.colors.text.secondary }}
+                    onClick={() => {
+                      setIsSettingsOpen(false);
+                      onContractClick?.();
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    Contract hub
+                  </button>
+                  <button
+                    className="w-full text-left px-3 py-2 text-[12px] transition-colors"
+                    style={{ color: feyTokens.colors.text.secondary }}
+                    onClick={() => {
+                      setIsSettingsOpen(false);
+                      // TODO: settings route
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    Settings
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Main Content Area */}
+          <div
+            className="flex-1 min-h-0 flex flex-col"
+            style={{
+              gap: `${VERTICAL_GAP}px`,
+              overflow: "hidden",
+            }}
+          >
+            {/* Talent Frame (fixed height) */}
+            <div
+              style={{
+                flex: `0 0 ${TALENT_FRAME_HEIGHT}px`,
+                height: `${TALENT_FRAME_HEIGHT}px`,
+                ...outlineStyle,
+              }}
+            >
+              <SectionFrame
+                fill={true}
+                radius={0}
+                contentPadding="14px 16px"
+                style={{
+                  height: "100%",
+                }}
+              >
+                <div
+                  style={{
+                    height: "100%",
+                    minHeight: 0,
+                    overflow: "hidden",
+                  }}
+                >
+                  <TalentCarousel
+                    cards={cards}
+                    selectedCardId={selectedCardId}
+                    onCardSelect={onCardSelect}
+                    highlightedCardId={highlightedCardId}
+                  />
+                </div>
+              </SectionFrame>
+            </div>
+
+            {/* Two-Panel Row (fills remaining height via flex) */}
+            <div
+              className="flex-1 min-h-0"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(12, minmax(0, 1fr))",
+                gap: "24px",
+                minHeight: 0,
+                alignItems: "stretch",
+              }}
+            >
+              {/* Left Panel: Execution Hub (spans 7 columns) */}
+              <div
+                style={{
+                  gridColumn: "span 7",
+                  height: "100%",
+                  minHeight: 0,
+                  ...outlineStyle,
+                }}
+              >
+                <SectionFrame
+                  fill={true}
+                  radius={0}
+                  contentPadding="18px 20px"
+                  style={{
+                    height: "100%",
+                  }}
+                >
+                  <ExecutionHubPanel cards={cards} campaignName={campaignName} />
+                </SectionFrame>
+              </div>
+
+              {/* Right Panel: Weekly Calendar (spans 5 columns) */}
+              <div
+                style={{
+                  gridColumn: "span 5",
+                  height: "100%",
+                  minHeight: 0,
+                  ...outlineStyle,
+                }}
+              >
+                <SectionFrame
+                  fill={true}
+                  radius={0}
+                  contentPadding="18px 20px"
+                  style={{
+                    height: "100%",
+                  }}
+                >
+                  <WeeklyCalendarPanel cards={cards} onSelectTalent={onSelectTalent} />
+                </SectionFrame>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Nav Reserve Debug Outline */}
+      {debugOutlines && (
+        <div
+          className="fixed left-0 right-0 bottom-0 pointer-events-none"
+          style={{
+            height: BOTTOM_NAV_PADDING,
+            outline: "2px solid rgba(0,255,255,0.5)",
+            outlineOffset: "-2px",
+            zIndex: 100,
+          }}
+        />
+      )}
+    </div>
+  );
+}
+

@@ -199,7 +199,6 @@ creator-hive-next/
 
 **API Routes:**
 - `POST /api/discovery/search` — Search the curated talent set
-- `GET /api/discovery/dictionaries/[kind]` — Get filter options derived from curated data
 - `GET /api/discovery/report/[userId]` — Get curated profile details
 - `GET /api/discovery/health` — Health check for the local dataset
 
@@ -352,7 +351,6 @@ creator-hive-next/
   - Results are derived from `src/lib/curatedTalent.ts`
   - Pagination is handled in-memory (`PAGE_SIZE = 15`)
 
-**`GET /api/discovery/dictionaries/[kind]`**
 - **Purpose:** Get filter dictionary options derived from curated data
 - **Kinds:** `locations`, `languages`, `interests`, `brands`
 - **Query Params:** `query` (search term), `limit` (default: 50)
