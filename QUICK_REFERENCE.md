@@ -1,161 +1,126 @@
-# ⚡ Creator Hive - Quick Reference
+# Creator Hive — Quick Reference Card
 
-Quick reference for common tasks and commands.
+**Last Updated:** 2026-01-12  
+**Status:** Phase A & B Complete (89%)
 
 ---
 
-## 🗄️ **Database Commands**
+## 🚀 COMMANDS
 
 ```bash
-# Generate Prisma Client (after schema changes)
+# Setup
+pnpm install
 pnpm db:generate
-
-# Push schema to database (development)
-pnpm db:push
-
-# Create migration (development)
 pnpm db:migrate
 
-# Apply migrations (production)
-pnpm db:migrate:deploy
-
-# Open database GUI
-pnpm db:studio
-
-# Seed database
-pnpm db:seed
-
-# Reset database (⚠️ deletes all data)
-pnpm db:reset
-```
-
----
-
-## 🔧 **Development Commands**
-
-```bash
-# Start dev server
+# Development
 pnpm dev
-
-# Build for production
-pnpm build
-
-# Start production server
-pnpm start
-
-# Type checking
 pnpm typecheck
-
-# Linting
 pnpm lint
 
-# Run tests
+# Testing
 pnpm test
-
-# Watch tests
-pnpm test:watch
-
-# E2E tests
 pnpm e2e
+
+# Database
+pnpm db:studio      # Prisma Studio
+pnpm db:seed        # Seed database
+pnpm db:reset       # Reset database
 ```
 
 ---
 
-## 📁 **Project Structure**
+## 📁 KEY FILES
 
-```
-src/
-├── app/              # Next.js pages & API routes
-├── components/       # React components
-├── lib/              # Utilities & helpers
-├── server/           # Server-only code (db.ts)
-├── store/            # Zustand stores
-└── types/            # TypeScript types
+### Backend
+- `prisma/schema.prisma` - Database schema
+- `src/app/api/campaigns/[id]/brief/route.ts` - Brief CRUD
+- `src/app/api/bookings/route.ts` - Booking flow
+- `src/lib/payReadiness.ts` - Pay gating
 
-prisma/
-├── schema.prisma     # Database schema
-└── seed.ts          # Seed data
-```
+### Frontend
+- `src/features/campaign-intelligence/TrackScreen.tsx` - Track page
+- `src/features/campaign-intelligence/ManageScreen.tsx` - Manage page
+- `src/components/campaigns/CampaignBriefForm.tsx` - Brief form
+- `src/components/ui/DateInputDMY.tsx` - Date input
 
 ---
 
-## 🔐 **Environment Variables**
+## 🔌 API ENDPOINTS
 
-Required in `.env.local`:
+### Brief APIs
+- `GET /api/campaigns/[id]/brief` - Get brief
+- `POST /api/campaigns/[id]/brief` - Create/update
+- `POST /api/campaigns/[id]/brief/lock` - Lock
+- `POST /api/campaigns/[id]/brief/send` - Send
+- `GET /api/campaigns/[id]/brief/versions` - History
 
-```env
-DATABASE_URL=...
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-NEXTAUTH_SECRET=...
-```
-
-See `.env.example` for full list.
-
----
-
-## 🎯 **Common Tasks**
-
-### Add a new database model
-
-1. Edit `prisma/schema.prisma`
-2. Run `pnpm db:push` (dev) or `pnpm db:migrate` (prod)
-3. Run `pnpm db:generate`
-
-### Create a new API route
-
-1. Create `src/app/api/[route]/route.ts`
-2. Use `db` from `src/server/db.ts`
-3. Validate with Zod schemas
-4. Handle errors with `handleDatabaseError`
-
-### Add a new component
-
-1. Create in `src/components/`
-2. Use TypeScript
-3. Add to appropriate folder (ui/, agency/, etc.)
-4. Export from index if reusable
+### Campaign APIs
+- `GET /api/campaigns` - List
+- `POST /api/agency/campaigns` - Create
+- `GET /api/agency/campaigns/[id]` - Details
 
 ---
 
-## 🐛 **Quick Fixes**
+## 🗄️ DATABASE
 
-### "Prisma Client not generated"
-```bash
-pnpm db:generate
+### Status Enums
+```prisma
+CampaignStatus: DRAFT → PROVISIONAL → CONFIRMED_BRIEF_PENDING → BRIEF_SENT → ACTIVE → IN_PROGRESS → COMPLETED
+BriefStatus: DRAFT → SENT → APPROVED/REJECTED
 ```
 
-### "Schema out of sync"
-```bash
-pnpm db:push
-```
-
-### "Missing environment variables"
-- Check `.env.local` exists
-- Restart dev server
-- Verify variable names match exactly
-
-### "Port 3000 in use"
-```bash
-lsof -ti:3000 | xargs kill -9
-```
+### Connection
+- `DATABASE_URL` - Pooled (port 6543) for app
+- `DIRECT_URL` - Direct (port 5432) for migrations
 
 ---
 
-## 📖 **Key Files**
+## 🎨 COMPONENTS
 
-- **Database Schema:** `prisma/schema.prisma`
-- **DB Client:** `src/server/db.ts`
-- **Supabase Client:** `src/lib/supabase.ts`
-- **Setup Guide:** `SETUP_GUIDE.md`
-- **Checklist:** `PROJECT_CHECKLIST.md`
+### DateInputDMY
+```tsx
+<DateInputDMY
+  value={isoDate} // YYYY-MM-DD
+  onChange={(isoDate) => handleDateChange(isoDate)}
+/>
+```
+
+### Brief Button States
+- No brief: "Create brief" (gray)
+- Draft: "Complete brief" (purple dot)
+- Sent: "Brief sent" (green dot)
 
 ---
 
-## 🔗 **Useful Links**
+## ⚠️ TROUBLESHOOTING
 
-- [Prisma Studio](http://localhost:5555) - Database GUI
-- [Next.js Docs](https://nextjs.org/docs)
-- [Supabase Docs](https://supabase.com/docs)
-- [Prisma Docs](https://www.prisma.io/docs)
+**Database Error:** Check `DATABASE_URL` and `DIRECT_URL`  
+**Prisma Error:** Run `pnpm db:generate`  
+**Date Clipping:** Check parent `overflow` (uses Portal)  
+**Carousel Overlap:** Verify flex constraints
 
+---
+
+## 📚 DOCUMENTATION
+
+1. **BUILD_STATUS_COMPLETE.md** - Full status
+2. **HANDOVER_GUIDE.md** - Agent handover
+3. **IMPLEMENTATION_REPORT.md** - Phase details
+4. **DEVELOPER_SUMMARY.md** - Implementation status
+
+---
+
+## ✅ CHECKLIST
+
+- [ ] Database migration run
+- [ ] Environment variables set
+- [ ] Brief flow tested
+- [ ] Date inputs verified
+- [ ] Talent carousel tested
+- [ ] TypeScript compiles
+- [ ] Linter passes
+
+---
+
+**For detailed info, see BUILD_STATUS_COMPLETE.md**
