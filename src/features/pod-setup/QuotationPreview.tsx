@@ -342,3 +342,13 @@ export function QuotationPreview({
 
 
 
+
+
+
+
+
+
+<<<<<<< Current (Your changes)
+
+=======
+>>>>>>> Incoming (Background Agent changes)

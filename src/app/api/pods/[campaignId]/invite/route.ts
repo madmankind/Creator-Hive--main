@@ -20,12 +20,13 @@ async function assertCampaignAccess(campaignId: string, user: { id: string; emai
   return { campaign };
 }
 
-export async function POST(req: Request, { params }: { params: { campaignId: string } }) {
+export async function POST(req: Request, context: { params: Promise<{ campaignId: string }> }) {
+  const { campaignId } = await context.params;
   const authResult = await requireUser({ roles: ["AGENCY", "ADMIN"] });
   if ("error" in authResult) return authResult.error;
   const { user } = authResult;
 
-  const access = await assertCampaignAccess(params.campaignId, user);
+  const access = await assertCampaignAccess(campaignId, user);
   if ("error" in access) return access.error;
 
   let payload: z.infer<typeof schema>;
@@ -39,13 +40,13 @@ export async function POST(req: Request, { params }: { params: { campaignId: str
   let created = 0;
   for (const talentId of payload.talentIds) {
     await (db as any).campaignInvite.upsert({
-      where: { campaignId_creatorProfileId: { campaignId: params.campaignId, creatorProfileId: talentId } },
+      where: { campaignId_creatorProfileId: { campaignId, creatorProfileId: talentId } },
       update: {
         status: "PENDING",
         note: payload.note,
       },
       create: {
-        campaignId: params.campaignId,
+        campaignId,
         creatorProfileId: talentId,
         status: "PENDING",
         note: payload.note,

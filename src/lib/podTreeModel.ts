@@ -47,3 +47,17 @@ export const mapTalentToRole = (talentRole: string): string => {
 };
 
 
+
+
+
+
+
+
+
+
+
+
+<<<<<<< Current (Your changes)
+
+=======
+>>>>>>> Incoming (Background Agent changes)

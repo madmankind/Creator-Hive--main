@@ -6,8 +6,22 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // Critical for migrations to work
+}
+
+enum HireType {
+  PROJECT
+  MONTHLY
+  HOURLY
+}
+
+enum UsageRightsTier {
+  NONE
+  STANDARD
+  FULL
+  BUYOUT
 }
 
 // ============================================
@@ -79,6 +93,49 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
+model SignupApplication {
+  id        String   @id @default(cuid())
+  role      UserRole
+  email     String
+  whatsapp  String?
+  instagram String?
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([role])
+  @@index([email])
+  @@map("signup_applications")
+}
+
+model CampaignPodSelectionConfig {
+  id               String          @id @default(cuid())
+  campaignId       String
+  creatorProfileId String
+  hireType         HireType        @default(PROJECT)
+  startDate        DateTime?
+  endDate          DateTime?
+  estimatedDays    Int?
+  hours            Int?
+  months           Int?
+  dayRate          Int?
+  hourlyRate       Int?
+  monthlyRate      Int?
+  usageRightsTier  UsageRightsTier @default(NONE)
+  usageRightsFee   Int?
+  lineTotal        Int?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  campaign       Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creatorProfile CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, creatorProfileId])
+  @@index([campaignId])
+  @@index([creatorProfileId])
+  @@map("campaign_pod_selection_configs")
+}
+
 // ============================================
 // AGENCY & TALENT MANAGEMENT
 // ============================================
@@ -126,12 +183,13 @@ model CreatorProfile {
   updatedAt              DateTime               @updatedAt
 
   // Relations
-  agency    AgencyAccount?   @relation(fields: [agencyId], references: [id], onDelete: SetNull)
-  user      User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  campaigns CampaignTalent[]
-  messages  Message[]        @relation("CreatorMessages")
-  invoices  Invoice[]
-  invites   CampaignInvite[]
+  agency                      AgencyAccount?               @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  user                        User?                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaigns                   CampaignTalent[]
+  messages                    Message[]                    @relation("CreatorMessages")
+  invoices                    Invoice[]
+  invites                     CampaignInvite[]
+  campaignPodSelectionConfigs CampaignPodSelectionConfig[]
 
   @@index([userId])
   @@index([agencyId])
@@ -148,7 +206,7 @@ model Campaign {
   id                 String              @id @default(cuid())
   agencyId           String
   title              String
-  brief              String              @db.Text
+  brief              String              @db.Text // Legacy: kept for backward compatibility
   status             CampaignStatus      @default(DRAFT)
   startDate          DateTime?
   dueDate            DateTime?
@@ -158,18 +216,57 @@ model Campaign {
   walletTransactions WalletTransaction[]
 
   // Relations
-  agency   AgencyAccount    @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  talents  CampaignTalent[]
-  messages Message[]
-  invoices Invoice[]
-  pod      CampaignPod?
-  invites  CampaignInvite[]
-  files    CampaignFile[]
+  agency                      AgencyAccount                @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  talents                     CampaignTalent[]
+  messages                    Message[]
+  invoices                    Invoice[]
+  pod                         CampaignPod?
+  invites                     CampaignInvite[]
+  files                       CampaignFile[]
+  campaignPodSelectionConfigs CampaignPodSelectionConfig[]
+  metrics                     CampaignMetric[]
+  payments                    CampaignPayment[]
+  campaignBrief               CampaignBrief?
 
   @@index([agencyId])
   @@index([status])
   @@index([createdAt])
   @@map("campaigns")
+}
+
+model CampaignBrief {
+  id                String      @id @default(cuid())
+  campaignId        String      @unique
+  version           Int         @default(1)
+  status            BriefStatus @default(DRAFT)
+  isLocked          Boolean     @default(false)
+  lockedAt          DateTime?
+  sentAt            DateTime?
+  
+  // Audit fields
+  lastEditedBy      String?     // User ID or name (string for dev compatibility)
+  lastEditedByName   String?     // User name for display
+  
+  // Brief sections
+  primaryObjective  String?     // awareness | consideration | conversion
+  keyMessage        String?     @db.VarChar(280) // 280 chars max
+  creativeDirection Json?        // Checkbox-driven + optional notes
+  mandatoryRequirements String?  @db.Text
+  approvalRules     String?     @db.Text
+  postingRules      String?     @db.Text
+  
+  // Attachments (references to CampaignFile)
+  attachmentIds     String[]
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([isLocked])
+  @@index([status])
+  @@map("campaign_briefs")
 }
 
 model CampaignTalent {
@@ -241,6 +338,42 @@ model CampaignFile {
   @@index([campaignId])
   @@index([uploaderUserId])
   @@map("campaign_files")
+}
+
+model CampaignMetric {
+  id          String   @id @default(cuid())
+  campaignId  String
+  date        DateTime
+  views       Int      @default(0)
+  reach       Int      @default(0)
+  engagements Int      @default(0)
+  spend       Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt   DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, date])
+  @@index([campaignId])
+  @@index([date])
+  @@map("campaign_metrics")
+}
+
+model CampaignPayment {
+  id         String        @id @default(cuid())
+  campaignId String
+  amount     Decimal       @db.Decimal(12, 2)
+  status     PaymentStatus @default(COMMITTED)
+  dueDate    DateTime
+  paidAt     DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("campaign_payments")
 }
 
 model WalletTransaction {
@@ -397,11 +530,14 @@ enum UserRole {
 }
 
 enum CampaignStatus {
-  DRAFT
-  ACTIVE
-  IN_PROGRESS
+  PROVISIONAL              // Talent selected, awaiting acceptance
+  CONFIRMED_BRIEF_PENDING  // Talent accepted, brief not yet sent
+  BRIEF_SENT               // Brief sent to talent, awaiting content
+  IN_PROGRESS              // Content submitted, in production
   COMPLETED
   CANCELLED
+  DRAFT                    // Legacy: kept for backward compatibility
+  ACTIVE                   // Legacy: kept for backward compatibility
 }
 
 enum CampaignTalentStatus {
@@ -475,4 +611,17 @@ enum WalletStatus {
   PENDING
   SUCCEEDED
   FAILED
+}
+
+enum PaymentStatus {
+  COMMITTED
+  INVOICED
+  PAID
+}
+
+enum BriefStatus {
+  DRAFT
+  SENT
+  APPROVED
+  REJECTED
 }

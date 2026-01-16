@@ -15,6 +15,8 @@ export default {
         accent: "#22D3EE",
       },
       fontFamily: {
+        // Primary app font. Prefer using `font-sans` everywhere.
+        sans: ["var(--font-inter)", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
         inter: ["var(--font-inter)", "Inter", "ui-sans-serif", "system-ui"],
       },
       boxShadow: {

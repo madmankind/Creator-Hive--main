@@ -23,3 +23,17 @@ export function EngagementToggle({ value, onChange }: EngagementToggleProps) {
 }
 
 
+
+
+
+
+
+
+
+
+
+
+<<<<<<< Current (Your changes)
+
+=======
+>>>>>>> Incoming (Background Agent changes)

@@ -17,3 +17,17 @@ export const emeraldTheme = {
 };
 
 
+
+
+
+
+
+
+
+
+
+
+<<<<<<< Current (Your changes)
+
+=======
+>>>>>>> Incoming (Background Agent changes)

@@ -15,19 +15,20 @@ async function assertAccess(campaignId: string, user: { id: string; email: strin
   return { campaign };
 }
 
-export async function GET(_: Request, { params }: { params: { campaignId: string; fileId: string } }) {
+export async function GET(_: Request, context: { params: Promise<{ campaignId: string; fileId: string }> }) {
+  const { campaignId, fileId } = await context.params;
   const authResult = await requireUser({ roles: ["AGENCY", "ADMIN"] });
   if ("error" in authResult) return authResult.error;
   const { user } = authResult;
 
-  const access = await assertAccess(params.campaignId, user);
+  const access = await assertAccess(campaignId, user);
   if ("error" in access) return access.error;
 
   const file = await (db as any).campaignFile.findUnique({
-    where: { id: params.fileId },
+    where: { id: fileId },
   });
 
-  if (!file || file.campaignId !== params.campaignId) {
+  if (!file || file.campaignId !== campaignId) {
     return NextResponse.json({ error: "File not found" }, { status: 404 });
   }
 

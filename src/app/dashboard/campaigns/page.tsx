@@ -1,326 +1,65 @@
-'use client'
-import { useState } from 'react'
-import { useAgencyFilter } from '@/store/agencyFilter'
-import useSWR from 'swr'
-import { usePathname, useSearchParams, useRouter } from 'next/navigation'
-import { cn } from '@/lib/utils'
+"use client";
 
-type CampaignWithTalents = {
-  id: string;
-  title: string;
-  brief: string;
-  status: string;
-  startDate: string | null;
-  dueDate: string | null;
-  talents: Array<{ talentId: string; status: string; talent?: { name: string | null } }>;
-};
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { CampaignCommandCenter } from "@/features/campaign-intelligence/CampaignCommandCenter";
+import { CampaignProvider } from "@/contexts/CampaignContext";
 
-type CampaignResponse = {
-  data: CampaignWithTalents[];
-};
+function CampaignsContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const mode = (searchParams.get("mode") || "track") as "track" | "manage" | "pay";
+  const [selectedCampaignIds, setSelectedCampaignIds] = useState<string[]>([]);
 
-const fetcher = (url: string) => fetch(url).then(r => r.json())
-const formatDate = (value: string | null | undefined, options?: Intl.DateTimeFormatOptions) => {
-  if (!value) return "TBD";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "TBD";
-  return parsed.toLocaleDateString("en-US", options);
-};
+  // Sync selection from URL
+  useEffect(() => {
+    const campaignId = searchParams.get("campaignId");
+    if (campaignId) {
+      setSelectedCampaignIds((prev) => (prev.length === 1 && prev[0] === campaignId ? prev : [campaignId]));
+    } else if (selectedCampaignIds.length) {
+      setSelectedCampaignIds([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
-export default function Campaigns() {
-  const { activeTalentId } = useAgencyFilter()
-  const { data, mutate } = useSWR<CampaignResponse>("/api/agency/campaigns", fetcher)
-  const [showModal, setShowModal] = useState(false)
-  const searchParams = useSearchParams()
-  const pathname = usePathname()
-  const router = useRouter()
-  
-  const campaigns = data?.data || []
+  const handleCampaignChange = (ids: string[]) => {
+    setSelectedCampaignIds(ids);
+    const params = new URLSearchParams(searchParams.toString());
+    if (ids.length === 1) {
+      params.set("campaignId", ids[0]);
+    } else {
+      params.delete("campaignId");
+    }
+    if (!params.get("mode")) {
+      params.set("mode", mode);
+    }
+    const qs = params.toString();
+    router.replace(`/dashboard/campaigns${qs ? `?${qs}` : ""}`, { scroll: false });
+  };
 
-  const filteredCampaigns = campaigns.filter((c)=>{
-    if (!activeTalentId) return true
-    return c.talents?.some((x)=>x.talentId===activeTalentId)
-  })
-
-  // Get selected campaign from URL or default to first
-  const selectedId = searchParams.get('id') || filteredCampaigns[0]?.id
-  const selectedCampaign = filteredCampaigns.find((c) => c.id === selectedId)
-
+  // All campaign modes use full-width layout with bottom dock navigation only
+  // No side navigation - the bottom dock is the ONLY page switcher
   return (
-    <div className="mx-auto flex h-full max-w-6xl flex-col px-6 pt-6 pb-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-[22px] font-semibold text-slate-100">Campaigns</h1>
-          <p className="text-sm text-slate-400 mt-0.5">Manage your campaigns and track progress</p>
-        </div>
-        <button 
-          onClick={() => setShowModal(true)}
-          className="rounded-full bg-white text-black px-5 py-2 text-sm font-medium hover:bg-white/90 transition"
-        >
-          + New campaign
-        </button>
-      </div>
-
-      {/* Two-column layout */}
-      <div className="flex flex-1 gap-5 min-h-0">
-        {/* Left: Campaign list */}
-        <section className="w-[40%] max-w-sm space-y-[2px] overflow-y-auto pr-1">
-          <div className="rounded-2xl bg-white/2 border border-white/5 p-1">
-            {data == null ? (
-              <div className="text-center py-8 text-slate-400 text-sm">Loading campaigns…</div>
-            ) : filteredCampaigns.length === 0 ? (
-              <div className="text-center py-8 text-slate-400 text-sm">
-                No campaigns {activeTalentId ? 'for this talent' : 'found'}
-              </div>
-            ) : (
-              filteredCampaigns.map((campaign) => {
-                const isSelected = campaign.id === selectedId
-                return (
-                  <button
-                    key={campaign.id}
-                    onClick={() => {
-                      router.push(`${pathname}?id=${campaign.id}`)
-                    }}
-                    className={cn(
-                      "flex items-start justify-between rounded-xl px-3 py-3 w-full text-left hover:bg-white/5 transition cursor-pointer group",
-                      isSelected && 'bg-white/8 border-l-2 border-purple-500'
-                    )}
-                  >
-                    <div className="flex-1 min-w-0 pr-2">
-                      <div className="text-sm font-medium text-slate-100 group-hover:text-white mb-0.5">
-                        {campaign.title}
-                      </div>
-                      <div className="text-[11px] text-slate-400 line-clamp-1 mb-1">
-                        {campaign.brief}
-                      </div>
-                      <div className="text-[10px] text-slate-500">
-                        {formatDate(campaign.startDate, { month: "short", day: "numeric" })} · {campaign.talents?.length || 0} talent{campaign.talents?.length !== 1 ? 's' : ''}
-                      </div>
-                    </div>
-                    <div className={cn(
-                      "text-[10px] px-2 py-1 rounded-full font-semibold flex-shrink-0",
-                      campaign.status === 'ACTIVE' 
-                        ? 'bg-emerald-500/20 text-emerald-300' 
-                        : campaign.status === 'DRAFT'
-                        ? 'bg-amber-500/20 text-amber-300'
-                        : 'bg-neutral-500/20 text-neutral-300'
-                    )}>
-                      {campaign.status.toLowerCase()}
-                    </div>
-                  </button>
-                )
-              })
-            )}
-          </div>
-        </section>
-
-        {/* Right: Campaign detail */}
-        <section className="flex-1 rounded-2xl bg-white/3 border border-white/5 px-5 py-4 overflow-y-auto">
-          {selectedCampaign ? (
-            <div>
-              {/* Top bar */}
-              <div className="flex items-start justify-between mb-6 pb-4 border-b border-white/5">
-                <div className="flex-1">
-                  <h2 className="text-lg font-semibold text-slate-100 mb-2">{selectedCampaign.title}</h2>
-                  <div className={cn(
-                    "inline-block text-[11px] px-2.5 py-1 rounded-full font-semibold",
-                    selectedCampaign.status === 'ACTIVE' 
-                      ? 'bg-emerald-500/20 text-emerald-300' 
-                      : selectedCampaign.status === 'DRAFT'
-                      ? 'bg-amber-500/20 text-amber-300'
-                      : 'bg-neutral-500/20 text-neutral-300'
-                  )}>
-                    {selectedCampaign.status.toLowerCase()}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button className="rounded-full bg-white/5 border border-white/10 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/10 transition">
-                    View brief
-                  </button>
-                  <button className="rounded-full bg-white/5 border border-white/10 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/10 transition">
-                    Message
-                  </button>
-                </div>
-              </div>
-
-              {/* Summary */}
-              <div className="mb-6 pb-4 border-b border-white/5">
-                <h3 className="text-sm font-semibold text-slate-100 mb-3">Summary</h3>
-                <p className="text-[13px] text-slate-300 leading-relaxed mb-4">{selectedCampaign.brief}</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-1">Start date</div>
-                    <div className="text-sm text-slate-100">
-                      {formatDate(selectedCampaign.startDate, { month: "short", day: "numeric", year: "numeric" })}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-1">Due date</div>
-                    <div className="text-sm text-slate-100">
-                      {formatDate(selectedCampaign.dueDate, { month: "short", day: "numeric", year: "numeric" })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Assigned talents */}
-              <div className="mb-6 pb-4 border-b border-white/5">
-                <h3 className="text-sm font-semibold text-slate-100 mb-3">Assigned talents</h3>
-                <div className="space-y-2">
-                  {selectedCampaign.talents?.map((assignment) => (
-                    <div 
-                      key={assignment.talentId} 
-                      className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-medium text-slate-300">
-                          {(assignment.talent?.name ?? "U").charAt(0)}
-                        </div>
-                        <span className="text-[13px] font-medium text-slate-100">{assignment.talent?.name ?? "Unknown talent"}</span>
-                      </div>
-                      <span className={cn(
-                        "text-[10px] px-2 py-0.5 rounded-full font-semibold",
-                        assignment.status === 'IN_PROGRESS' 
-                          ? 'bg-blue-500/20 text-blue-300' 
-                          : assignment.status === 'SUBMITTED' 
-                          ? 'bg-purple-500/20 text-purple-300' 
-                          : assignment.status === 'APPROVED' 
-                          ? 'bg-emerald-500/20 text-emerald-300' 
-                          : 'bg-neutral-500/20 text-neutral-300'
-                      )}>
-                        {assignment.status.toLowerCase().replace('_', ' ')}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Timeline placeholder */}
-              <div>
-                <h3 className="text-sm font-semibold text-slate-100 mb-3">Timeline</h3>
-                <div className="text-sm text-slate-400">No timeline items yet</div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-full text-slate-400 text-sm">
-              Select a campaign to view details
-            </div>
-          )}
-        </section>
-      </div>
-
-      {showModal && (
-        <NewCampaignModal 
-          onClose={() => setShowModal(false)} 
-          onSaved={() => { 
-            setShowModal(false); 
-            mutate(); 
-          }} 
-        />
-      )}
-    </div>
-  )
+    <CampaignProvider>
+      <CampaignCommandCenter
+        initialMode={mode}
+        selectedCampaignIds={selectedCampaignIds}
+        onCampaignChange={handleCampaignChange}
+      />
+    </CampaignProvider>
+  );
 }
 
-type AgencyResponse = {
-  talents?: Array<{ id: string; name: string; role?: string | null }>;
-};
-
-function NewCampaignModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const { data: me } = useSWR<AgencyResponse>("/api/agency/me", fetcher);
-  const [title, setTitle] = useState("");
-  const [brief, setBrief] = useState("");
-  const [selected, setSelected] = useState<string[]>([]);
-
-  const talents = me?.talents || [];
-
-  async function save() {
-    try {
-      const res = await fetch("/api/agency/campaigns", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, brief, talentIds: selected }),
-      });
-      if (res.ok) {
-        onSaved();
-      } else {
-        alert("Failed to create campaign");
-      }
-    } catch (error) {
-      console.error(error);
-      alert("Network error");
-    }
-  }
-
+export default function CampaignsPage() {
   return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-black/50 backdrop-blur-sm">
-      <div className="w-[560px] max-w-[95vw] rounded-3xl bg-[#111318] border border-white/5 shadow-[0_18px_45px_rgba(0,0,0,0.65)] p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-lg font-semibold text-neutral-50">New Campaign</div>
-          <button 
-            onClick={onClose} 
-            className="text-neutral-400 hover:text-neutral-100 transition w-8 h-8 rounded-full hover:bg-white/5 flex items-center justify-center"
-          >
-            ✕
-          </button>
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center" style={{ background: "#07070A" }}>
+          <div className="text-white/40 text-sm">Loading campaign intelligence...</div>
         </div>
-        <div className="space-y-4">
-          <input 
-            className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:ring-2 focus:ring-[#7C3AED]/50 text-neutral-100 placeholder:text-neutral-400" 
-            placeholder="Campaign title" 
-            value={title} 
-            onChange={e => setTitle(e.target.value)} 
-          />
-          <textarea 
-            className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-3 min-h-[100px] outline-none focus:ring-2 focus:ring-[#7C3AED]/50 text-neutral-100 placeholder:text-neutral-400 resize-none" 
-            placeholder="Campaign brief and requirements" 
-            value={brief} 
-            onChange={e => setBrief(e.target.value)} 
-          />
-        </div>
-        <div className="mt-5">
-          <div className="text-sm text-neutral-300 mb-3">Assign talents</div>
-          <div className="flex flex-wrap gap-2">
-            {talents.map((t) => {
-              const active = selected.includes(t.id);
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => setSelected(s => active ? s.filter(x => x !== t.id) : [...s, t.id])}
-                  className={`
-                    px-3 py-1.5 rounded-full text-sm border transition
-                    ${active 
-                      ? 'bg-[#7C3AED]/20 border-[#7C3AED]/40 text-[#A855F7]' 
-                      : 'bg-white/5 border-white/10 hover:bg-white/10 text-neutral-300'
-                    }
-                  `}
-                >
-                  {t.name} {t.role ? `· ${t.role}` : ''}
-                </button>
-              );
-            })}
-          </div>
-          {talents.length === 0 && (
-            <div className="text-sm text-neutral-400 py-4">No talents found. Add talents in your agency settings.</div>
-          )}
-        </div>
-        <div className="mt-6 flex justify-end gap-3">
-          <button 
-            onClick={onClose} 
-            className="rounded-full bg-white/5 border border-white/10 px-4 h-10 hover:bg-white/10 transition text-sm text-neutral-300"
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={save}
-            disabled={!title.trim() || !brief.trim()}
-            className="rounded-full bg-[#7C3AED] text-white px-4 h-10 hover:bg-[#8B5CF6] transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-          >
-            Create Campaign
-          </button>
-        </div>
-      </div>
-    </div>
+      }
+    >
+      <CampaignsContent />
+    </Suspense>
   );
 }

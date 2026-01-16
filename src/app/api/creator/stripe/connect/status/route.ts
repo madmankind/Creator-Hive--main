@@ -3,15 +3,15 @@ import Stripe from "stripe";
 import { db } from "@/server/db";
 import { requireUser } from "@/server/authz";
 
-const stripeSecret = process.env.STRIPE_SECRET_KEY;
-
-if (!stripeSecret) {
-  throw new Error("Missing STRIPE_SECRET_KEY");
+function getStripe() {
+  const stripeSecret = process.env.STRIPE_SECRET_KEY;
+  if (!stripeSecret) {
+    throw new Error("Missing STRIPE_SECRET_KEY");
+  }
+  return new Stripe(stripeSecret, {
+    apiVersion: "2024-11-20.acacia" as any,
+  });
 }
-
-const stripe = new Stripe(stripeSecret, {
-  apiVersion: "2024-11-20.acacia" as any,
-});
 
 export async function GET() {
   const authResult = await requireUser({ roles: ["CREATOR", "ADMIN"] });
@@ -26,6 +26,7 @@ export async function GET() {
     return NextResponse.json({ status: "NOT_STARTED", accountId: null });
   }
 
+  const stripe = getStripe();
   const account = await stripe.accounts.retrieve(profile.stripeAccountId);
   const submitted = account.details_submitted && account.charges_enabled && account.payouts_enabled;
   const status = submitted ? "COMPLETE" : "PENDING";

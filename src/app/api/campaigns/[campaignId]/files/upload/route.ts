@@ -26,12 +26,13 @@ function slugify(name: string) {
     .replace(/^-|-$/g, "");
 }
 
-export async function POST(req: Request, { params }: { params: { campaignId: string } }) {
+export async function POST(req: Request, context: { params: Promise<{ campaignId: string }> }) {
+  const { campaignId } = await context.params;
   const authResult = await requireUser({ roles: ["AGENCY", "ADMIN"] });
   if ("error" in authResult) return authResult.error;
   const { user } = authResult;
 
-  const access = await assertCampaignAccess(params.campaignId, user);
+  const access = await assertCampaignAccess(campaignId, user);
   if ("error" in access) return access.error;
 
   const formData = await req.formData();
@@ -50,7 +51,7 @@ export async function POST(req: Request, { params }: { params: { campaignId: str
     }
 
     const safeName = slugify(file.name) || "file";
-    const path = `campaigns/${params.campaignId}/${Date.now()}-${safeName}`;
+    const path = `campaigns/${campaignId}/${Date.now()}-${safeName}`;
 
     const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, file, {
       contentType: file.type || "application/octet-stream",
@@ -63,7 +64,7 @@ export async function POST(req: Request, { params }: { params: { campaignId: str
 
     const record = await (db as any).campaignFile.create({
       data: {
-        campaignId: params.campaignId,
+        campaignId,
         uploaderUserId: user.id,
         storageBucket: BUCKET,
         storagePath: path,

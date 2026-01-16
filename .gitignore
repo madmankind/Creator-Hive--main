@@ -44,4 +44,10 @@ next-env.d.ts
 
 # local development artifacts
 .tunnel.log
-.!*.env
+.!*!.env
+
+# Local artifacts
+.eslintrc*
+_snapshot/
+.tunnel.log
+creatorhive_repo_snapshot.zip

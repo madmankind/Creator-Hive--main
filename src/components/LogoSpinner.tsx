@@ -28,11 +28,11 @@ export function LogoSpinner({ active }: { active: boolean }) {
           >
             <div className="absolute -inset-6 rounded-3xl bg-[radial-gradient(circle_at_top,_rgba(124,58,237,0.55),_transparent_65%)] blur-xl" />
             <Image
-              src="/creator-hive-logo.svg"
+              src="/brand/ch-icon.svg"
               alt="Creator Hive"
-              width={56}
+              width={50}
               height={56}
-              className="relative rounded-3xl shadow-lg"
+              className="relative rounded-2xl shadow-lg"
             />
           </motion.div>
         </motion.div>

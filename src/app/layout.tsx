@@ -4,11 +4,12 @@ import { Inter } from 'next/font/google'
 import { Analytics } from "@vercel/analytics/react";
 import { Providers } from "@/components/Providers";
 import { AppShell } from "@/components/AppShell";
-import { AppLogo } from "@/components/AppLogo";
-import Link from "next/link";
+import { GlobalHeader } from "@/components/nav/GlobalHeader";
+import { DevToolsSuppressor } from "@/components/DevToolsSuppressor";
+import { Suspense } from "react";
 import clsx from 'clsx'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
+const inter = Inter({ subsets: ['latin'], display: 'swap', variable: '--font-inter' })
 
 export const metadata: Metadata = {
   title: 'Creator Hive',
@@ -17,8 +18,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={clsx(inter.variable)}>
-      <body className="bg-[#0B0F14] text-white antialiased font-inter">
+    <html lang="en" className={clsx(inter.className, inter.variable)}>
+      <body className="bg-[#0B0F14] text-white antialiased font-sans">
         {/* Spotlight column (Fey style) */}
         <div
           aria-hidden
@@ -27,14 +28,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                      opacity-80"
         />
         <Providers>
-          {/* Global shell with logo */}
-          <header className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
-            <div className="container mx-auto px-4 py-4">
-              <Link href="/" className="pointer-events-auto inline-block">
-                <AppLogo />
-              </Link>
-            </div>
-          </header>
+          {/* Suppress dev tool badges in production */}
+          <DevToolsSuppressor />
+          
+          {/* Global header - conditionally hidden on campaign intelligence pages */}
+          <Suspense fallback={null}>
+            <GlobalHeader />
+          </Suspense>
 
           {/* App shell with route transition tracking */}
           <AppShell>

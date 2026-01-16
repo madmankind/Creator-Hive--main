@@ -4,6 +4,7 @@ import useSWR from "swr";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { feyTokens } from "@/lib/fey-design-tokens";
 
 const fetcher = (u: string, init?: RequestInit) => fetch(u, init).then((r) => r.json());
 type Availability = "hourly" | "monthly" | "";
@@ -50,11 +51,15 @@ export default function DashboardDiscovery() {
   if (!isAuthenticated) {
     return (
       <div className="text-center space-y-3 py-10">
-        <h3 className="text-lg font-semibold text-slate-900">Members-only discovery</h3>
-        <p className="text-sm text-slate-600">Sign in to view curated talent.</p>
+        <h3 className="text-lg font-semibold" style={{ color: feyTokens.colors.text.primary }}>Members-only discovery</h3>
+        <p className="text-sm" style={{ color: feyTokens.colors.text.muted }}>Sign in to view curated talent.</p>
         <Link
           href="/"
-          className="inline-flex items-center justify-center rounded-full bg-indigo-600 text-white px-4 py-2 text-sm font-semibold hover:bg-indigo-500 transition"
+          className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition"
+          style={{
+            background: feyTokens.colors.red.glow,
+            color: "white",
+          }}
         >
           Go to sign in
         </Link>
@@ -63,7 +68,7 @@ export default function DashboardDiscovery() {
   }
 
   return (
-    <div className="grid grid-cols-12 gap-4 text-slate-900">
+    <div className="grid grid-cols-12 gap-4" style={{ color: feyTokens.colors.text.primary }}>
       <aside className="col-span-12 md:col-span-4 lg:col-span-3 space-y-4">
         <FilterInput label="Keyword" placeholder="@creator or email" value={keyword} onChange={(v) => { setPage(0); setKeyword(v); }} />
         <FilterInput
@@ -75,7 +80,7 @@ export default function DashboardDiscovery() {
         <FilterInput label="Location" placeholder="City, Country" value={location} onChange={(v) => { setPage(0); setLocation(v); }} />
 
         <div className="space-y-2">
-          <label className="text-xs text-slate-600">Platforms</label>
+          <label className="text-xs" style={{ color: feyTokens.colors.text.label }}>Platforms</label>
           <div className="flex flex-wrap gap-2">
             {["instagram", "tiktok", "youtube"].map((p) => {
               const active = platforms.includes(p);
@@ -83,12 +88,12 @@ export default function DashboardDiscovery() {
                 <button
                   key={p}
                   type="button"
-                  className={cn(
-                    "rounded-full border px-3 py-1.5 text-sm capitalize transition",
-                    active
-                      ? "border-indigo-200 bg-indigo-50 text-indigo-700"
-                      : "border-[rgba(0,0,0,0.08)] bg-white text-slate-700 hover:bg-slate-50"
-                  )}
+                  className="rounded-full border px-3 py-1.5 text-sm capitalize transition"
+                  style={{
+                    borderColor: active ? feyTokens.borders.active : feyTokens.borders.default,
+                    background: active ? `${feyTokens.colors.red.glow}20` : feyTokens.glass.panel.background,
+                    color: active ? feyTokens.colors.text.primary : feyTokens.colors.text.secondary,
+                  }}
                   onClick={() => {
                     setPage(0);
                     setPlatforms((prev) =>
@@ -104,9 +109,14 @@ export default function DashboardDiscovery() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs text-slate-600">Availability</label>
+          <label className="text-xs" style={{ color: feyTokens.colors.text.label }}>Availability</label>
           <select
-            className="w-full rounded-lg border border-[rgba(0,0,0,0.08)] bg-white px-3 py-2 text-sm outline-none"
+            className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+            style={{
+              borderColor: feyTokens.borders.default,
+              background: feyTokens.glass.panel.background,
+              color: feyTokens.colors.text.primary,
+            }}
             value={availability}
             onChange={(e) => {
               setPage(0);
@@ -121,38 +131,52 @@ export default function DashboardDiscovery() {
       </aside>
 
       <section className="col-span-12 md:col-span-8 lg:col-span-9 space-y-3">
-        <div className="text-sm text-slate-600">
+        <div className="text-sm" style={{ color: feyTokens.colors.text.muted }}>
           {new Intl.NumberFormat().format(total)} profiles
         </div>
 
         {isLoading ? (
-          <div className="text-sm text-slate-600">Loading…</div>
+          <div className="text-sm" style={{ color: feyTokens.colors.text.muted }}>Loading…</div>
         ) : error ? (
-          <div className="text-sm text-red-500">Error loading results.</div>
+          <div className="text-sm" style={{ color: feyTokens.colors.status.error }}>Error loading results.</div>
         ) : (
           <div className="grid gap-3">
             {items.map((it: any) => (
               <div
                 key={it.id || it.userId || it.username}
-                className="rounded-xl border border-[rgba(0,0,0,0.08)] bg-white p-4 shadow-sm flex items-center justify-between"
+                className="rounded-lg border p-4 flex items-center justify-between transition-colors hover:bg-white/5"
+                style={{
+                  borderColor: feyTokens.borders.default,
+                  background: feyTokens.glass.panel.background,
+                }}
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-10 w-10 rounded-full bg-indigo-50 text-indigo-700 grid place-items-center text-xs font-semibold">
+                  <div
+                    className="h-10 w-10 rounded-full grid place-items-center text-xs font-semibold"
+                    style={{
+                      background: `${feyTokens.colors.red.glow}20`,
+                      color: feyTokens.colors.red.glow,
+                    }}
+                  >
                     {(it.username || "?").slice(0, 2).toUpperCase()}
                   </div>
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold text-slate-900 truncate">
+                    <div className="text-sm font-semibold truncate" style={{ color: feyTokens.colors.text.primary }}>
                       {it.fullName || it.username || "Unnamed"}
                     </div>
-                    <div className="text-[12px] text-slate-500 truncate">{it.location || "Location unknown"}</div>
-                    <div className="text-[12px] text-slate-500">
+                    <div className="text-[12px] truncate" style={{ color: feyTokens.colors.text.muted }}>{it.location || "Location unknown"}</div>
+                    <div className="text-[12px]" style={{ color: feyTokens.colors.text.muted }}>
                       {it.roles?.slice(0, 3)?.join(" • ") || "No roles listed"}
                     </div>
                   </div>
                 </div>
                 <button
                   type="button"
-                  className="rounded-full bg-indigo-600 text-white px-4 py-2 text-sm font-semibold hover:bg-indigo-500 transition"
+                  className="rounded-full px-4 py-2 text-sm font-semibold transition"
+                  style={{
+                    background: feyTokens.colors.red.glow,
+                    color: "white",
+                  }}
                 >
                   View
                 </button>
@@ -165,14 +189,23 @@ export default function DashboardDiscovery() {
           <button
             disabled={page === 0}
             onClick={() => setPage((p) => Math.max(0, p - 1))}
-            className="rounded-full px-4 py-2 bg-white border border-[rgba(0,0,0,0.08)] text-sm hover:bg-slate-50 disabled:opacity-50"
+            className="rounded-full px-4 py-2 border text-sm transition disabled:opacity-50"
+            style={{
+              borderColor: feyTokens.borders.default,
+              background: feyTokens.glass.panel.background,
+              color: feyTokens.colors.text.secondary,
+            }}
           >
             Prev
           </button>
           <button
             disabled={!hasNext}
             onClick={() => setPage((p) => p + 1)}
-            className="rounded-full px-4 py-2 bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 disabled:opacity-50"
+            className="rounded-full px-4 py-2 text-sm font-semibold transition disabled:opacity-50"
+            style={{
+              background: feyTokens.colors.red.glow,
+              color: "white",
+            }}
           >
             Next
           </button>
@@ -195,9 +228,14 @@ function FilterInput({
 }) {
   return (
     <div className="space-y-2">
-      <label className="text-xs text-slate-600">{label}</label>
+      <label className="text-xs" style={{ color: feyTokens.colors.text.label }}>{label}</label>
       <input
-        className="w-full rounded-lg border border-[rgba(0,0,0,0.08)] bg-white px-3 py-2 text-sm outline-none"
+        className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+        style={{
+          borderColor: feyTokens.borders.default,
+          background: feyTokens.glass.panel.background,
+          color: feyTokens.colors.text.primary,
+        }}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}

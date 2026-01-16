@@ -3,20 +3,15 @@ import { db } from "@/server/db";
 import { requireUser } from "@/server/authz";
 
 export const dynamic = "force-dynamic";
+const isDev = process.env.NODE_ENV === "development";
 
 type Sort = { field?: string; direction?: "asc" | "desc" };
-type FollowersRange = { min?: number; max?: number };
-type Range = { min?: number };
 type FilterBody = {
   keywords?: string;
   roles?: string[];
-  locations?: string[];
-  languages?: string[];
-  interests?: string[];
-  brands?: string[];
-  followers?: FollowersRange;
-  engagementRate?: Range;
   platforms?: string[];
+  location?: string;
+  availability?: "hourly" | "monthly";
 };
 type Body = { page?: number; pageSize?: number; sort?: Sort; filter?: FilterBody };
 
@@ -42,7 +37,6 @@ export async function POST(req: Request) {
   const page = Math.max(0, payload.page ?? 0);
   const pageSize = clampPageSize(payload.pageSize);
   const filter = payload.filter ?? {};
-  const ignoredFilters: string[] = [];
 
   const where: Prisma.CreatorProfileWhereInput = {
     isActive: true,
@@ -63,33 +57,31 @@ export async function POST(req: Request) {
     where.skills = { hasSome: filter.roles };
   }
 
-  if (filter.locations?.length) {
+  if (filter.location) {
     const baseAnd = Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : [];
     where.AND = [
       ...baseAnd,
       {
-        OR: filter.locations.map((loc) => ({
-          location: { contains: loc, mode: "insensitive" },
-        })),
+        location: { contains: filter.location, mode: "insensitive" },
       },
     ];
   }
 
-  // Unsupported filters (not in schema) are acknowledged but ignored
-  ([
-    ["languages", filter.languages],
-    ["brands", filter.brands],
-    ["followers", filter.followers],
-    ["engagementRate", filter.engagementRate],
-    ["platforms", filter.platforms],
-  ] as const).forEach(([name, value]) => {
-    if (value != null && ((Array.isArray(value) && value.length) || (!Array.isArray(value) && value))) {
-      ignoredFilters.push(name);
+  if (filter.platforms?.length) {
+    const platforms = new Set(filter.platforms.map((p) => p.toLowerCase()));
+    const platformConditions: Prisma.CreatorProfileWhereInput[] = [];
+    if (platforms.has("instagram") || platforms.has("ig")) {
+      platformConditions.push({ instagram: { not: null } });
     }
-  });
+    if (platformConditions.length) {
+      where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), ...platformConditions];
+    }
+  }
 
-  if (filter.interests?.length) {
-    where.niches = { hasSome: filter.interests };
+  if (filter.availability === "hourly") {
+    where.hourlyRate = { not: null };
+  } else if (filter.availability === "monthly") {
+    where.dayRate = { not: null };
   }
 
   const orderBy: Prisma.CreatorProfileOrderByWithRelationInput =
@@ -107,21 +99,33 @@ export async function POST(req: Request) {
     }),
   ]);
 
-  const data = creators.map((creator) => ({
-    id: creator.id,
-    username: creator.instagram ?? creator.id,
-    fullName: creator.name,
-    followers: null,
-    engagementRate: null,
-    engagement: null,
-    location: creator.location,
-    languages: [],
-    interests: creator.niches ?? [],
-    brands: [],
-    roles: creator.skills ?? [],
-    avatarUrl: creator.avatarUrl,
-    bio: creator.bio,
-  }));
+  const data = creators.map((creator) => {
+    const missing: string[] = [];
+    if (!creator.name) missing.push("name");
+    if (!creator.location) missing.push("location");
+    if (!creator.skills?.length) missing.push("skills");
+
+    if (isDev && missing.length) {
+      // eslint-disable-next-line no-console
+      console.warn(`Discovery result missing fields for creator ${creator.id}: ${missing.join(", ")}`);
+    }
+
+    return {
+      id: creator.id,
+      username: creator.instagram ?? creator.id,
+      fullName: creator.name || creator.instagram || "Unknown",
+      followers: null,
+      engagementRate: null,
+      engagement: null,
+      location: creator.location || "Unknown",
+      languages: [],
+      interests: creator.niches ?? [],
+      brands: [],
+      roles: creator.skills ?? [],
+      avatarUrl: creator.avatarUrl || undefined,
+      bio: creator.bio || "",
+    };
+  });
 
   const hasMore = page * pageSize + creators.length < total;
 
@@ -132,7 +136,6 @@ export async function POST(req: Request) {
       pageSize,
       hasMore,
       total,
-      ignoredFilters,
       source: "database",
     },
   });
