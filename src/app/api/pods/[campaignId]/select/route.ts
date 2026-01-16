@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/server/db";
 import { requireUser } from "@/server/authz";
 import { getOrCreateAgency } from "@/server/agency";
+import { computeLineTotal } from "@/lib/podPricing";
 
 const schema = z.object({
   talentIds: z.array(z.string()).min(1),
@@ -19,12 +20,13 @@ async function assertCampaignAccess(campaignId: string, user: { id: string; emai
   return { campaign };
 }
 
-export async function POST(req: Request, { params }: { params: { campaignId: string } }) {
+export async function POST(req: Request, context: { params: Promise<{ campaignId: string }> }) {
+  const { campaignId } = await context.params;
   const authResult = await requireUser({ roles: ["AGENCY", "ADMIN"] });
   if ("error" in authResult) return authResult.error;
   const { user } = authResult;
 
-  const access = await assertCampaignAccess(params.campaignId, user);
+  const access = await assertCampaignAccess(campaignId, user);
   if ("error" in access) return access.error;
 
   let payload: z.infer<typeof schema>;
@@ -36,13 +38,87 @@ export async function POST(req: Request, { params }: { params: { campaignId: str
   }
 
   const pod = await (db as any).campaignPod.upsert({
-    where: { campaignId: params.campaignId },
+    where: { campaignId },
     update: { talentIds: payload.talentIds, updatedAt: new Date() },
     create: {
-      campaignId: params.campaignId,
+      campaignId,
       talentIds: payload.talentIds,
     },
   });
+
+  const existingConfigs = await db.campaignPodSelectionConfig.findMany({
+    where: { campaignId },
+  });
+  const existingMap = new Map(existingConfigs.map((c) => [c.creatorProfileId, c]));
+
+  // Remove configs for removed talents
+  const removedIds = existingConfigs
+    .map((c) => c.creatorProfileId)
+    .filter((id) => !payload.talentIds.includes(id));
+  if (removedIds.length) {
+    await db.campaignPodSelectionConfig.deleteMany({
+      where: {
+        campaignId,
+        creatorProfileId: { in: removedIds },
+      },
+    });
+  }
+
+  // Upsert configs for added talents
+  const addedIds = payload.talentIds.filter((id) => !existingMap.has(id));
+  if (addedIds.length) {
+    const creators = await db.creatorProfile.findMany({
+      where: { id: { in: addedIds } },
+      select: {
+        id: true,
+        dayRate: true,
+        hourlyRate: true,
+      },
+    });
+    const byId = new Map(creators.map((c) => [c.id, c]));
+
+    await Promise.all(
+      addedIds.map(async (creatorProfileId) => {
+        const creator = byId.get(creatorProfileId);
+        const dayRate = creator?.dayRate ?? 0;
+        const hourlyRate = creator?.hourlyRate ?? 0;
+        const monthlyRate = creator?.dayRate ? creator.dayRate * 20 : 0;
+        const estimatedDays = 1;
+        const lineTotal = computeLineTotal({
+          hireType: "PROJECT",
+          estimatedDays,
+          dayRate,
+          usageRightsFee: 0,
+        });
+        await db.campaignPodSelectionConfig.upsert({
+          where: {
+            campaignId_creatorProfileId: {
+              campaignId,
+              creatorProfileId,
+            },
+          },
+          update: {
+            hireType: "PROJECT",
+            estimatedDays,
+            dayRate,
+            hourlyRate,
+            monthlyRate,
+            lineTotal,
+          },
+          create: {
+            campaignId,
+            creatorProfileId,
+            hireType: "PROJECT",
+            estimatedDays,
+            dayRate,
+            hourlyRate,
+            monthlyRate,
+            lineTotal,
+          },
+        });
+      }),
+    );
+  }
 
   return NextResponse.json({ ok: true, pod });
 }

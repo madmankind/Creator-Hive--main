@@ -39,7 +39,16 @@ export async function POST(req: Request) {
     startDate: z.string().datetime().optional(),
     dueDate: z.string().datetime().optional(),
     talentIds: z.array(z.string()).optional(),
-    status: z.enum(["DRAFT", "ACTIVE", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).optional(),
+    status: z.enum([
+      "DRAFT",
+      "PROVISIONAL",
+      "CONFIRMED_BRIEF_PENDING",
+      "BRIEF_SENT",
+      "ACTIVE",
+      "IN_PROGRESS",
+      "COMPLETED",
+      "CANCELLED",
+    ]).optional(),
     budget: z.number().int().nonnegative().optional(),
   });
   let payload: z.infer<typeof schema>;

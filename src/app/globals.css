@@ -7,12 +7,27 @@
   --text-primary: #e6edf3;
   --text-dim: #9aa4af;
   --ring: #2b323b;
-  --accent: #60a5fa;
+  /* Accent is stored as an RGB triplet so we can use `rgb(var(--accent) / <alpha>)`. */
+  --accent: 96 165 250;
+
+  /* Font plumbing (Tailwind v4 reads these for `font-sans` preflight). */
+  --font-sans: var(--font-inter);
+  --default-font-family: var(--font-inter);
+
+  /* Fey-like subtle surfaces (opt-in; keep most UI neutral). */
+  --surface-a: 0.04;
+  --surface-ring-a: 0.08;
 }
+
+[data-accent="track"] { --accent: 239 68 68; }     /* red */
+[data-accent="manage"] { --accent: 168 85 247; }   /* purple */
+[data-accent="pay"] { --accent: 16 185 129; }      /* green */
+[data-accent="discover"] { --accent: 168 85 247; } /* purple */
 
 html,
 body {
   height: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -21,6 +36,10 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+#__next {
+  overflow-x: hidden;
 }
 
 /* Subtle vertical glow used behind hero */
@@ -91,6 +110,68 @@ body {
 .fade-edges::after {
   right: 0;
   background: linear-gradient(to left, var(--bg), transparent);
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Remove number input spinners */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Hide React DevTools and Next.js dev overlays */
+/* These rules work as a backup to the DevToolsSuppressor component */
+
+/* React DevTools badges and containers - comprehensive selectors */
+#__react-devtools-container__,
+[data-react-devtools-portal],
+.__react-devtools-container__,
+[data-react-devtools-badge],
+.__react-devtools-badge__,
+.__react-devtools-issue-badge__,
+[class*="react-devtools"],
+[id*="react-devtools"],
+div[class*="react-devtools-issue-badge"],
+div[class*="react-devtools-badge"],
+span[class*="react-devtools-issue-badge"],
+span[class*="react-devtools-badge"],
+#react-devtools-portal-root {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Next.js error overlay */
+body > div[data-nextjs-toast] {
+  display: none !important;
+}
+
+/* Additional patterns for dev tool badges - hide issue badges */
+[data-testid*="devtools"] {
+  display: none !important;
+}
+
+/* Hide React DevTools issue badges that appear as red pills */
+[aria-label*="Issue" i][class*="badge" i],
+[title*="Issue" i][class*="badge" i] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
 }
 
 

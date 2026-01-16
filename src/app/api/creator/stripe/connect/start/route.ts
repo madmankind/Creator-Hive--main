@@ -3,24 +3,27 @@ import Stripe from "stripe";
 import { db } from "@/server/db";
 import { requireUser } from "@/server/authz";
 
-const stripeSecret = process.env.STRIPE_SECRET_KEY;
-const appUrl = process.env.APP_URL;
-
-if (!stripeSecret) {
-  throw new Error("Missing STRIPE_SECRET_KEY");
+function getStripe() {
+  const stripeSecret = process.env.STRIPE_SECRET_KEY;
+  if (!stripeSecret) {
+    throw new Error("Missing STRIPE_SECRET_KEY");
+  }
+  return new Stripe(stripeSecret, {
+    apiVersion: "2024-11-20.acacia" as any,
+  });
 }
-if (!appUrl) {
-  throw new Error("Missing APP_URL");
-}
-
-const stripe = new Stripe(stripeSecret, {
-  apiVersion: "2024-11-20.acacia" as any,
-});
 
 export async function POST() {
   const authResult = await requireUser({ roles: ["CREATOR", "ADMIN"] });
   if ("error" in authResult) return authResult.error;
   const { user } = authResult;
+
+  const appUrl = process.env.APP_URL;
+  if (!appUrl) {
+    return NextResponse.json({ error: "Missing APP_URL" }, { status: 500 });
+  }
+
+  const stripe = getStripe();
 
   const profile: any = await db.creatorProfile.findUnique({
     where: { userId: user.id },

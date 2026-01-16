@@ -1,6 +1,6 @@
 // Pod pricing calculations
 
-import type { TalentPodConfig, EngagementType, AddOn } from "@/types/pod";
+import type { TalentPodConfig, EngagementType, AddOn, HireType, UsageRightsTier } from "@/types/pod";
 
 // Base day rates by role (USD)
 export const getBaseDayRate = (role: string): number => {
@@ -84,5 +84,42 @@ export const formatCurrency = (amount: number): string => {
     maximumFractionDigits: 0,
   }).format(amount);
 };
+
+export const computeLineTotal = (config: {
+  hireType?: HireType;
+  estimatedDays?: number | null;
+  hours?: number | null;
+  months?: number | null;
+  dayRate?: number | null;
+  hourlyRate?: number | null;
+  monthlyRate?: number | null;
+  usageRightsFee?: number | null;
+}): number => {
+  const hireType = config.hireType ?? "PROJECT";
+  const usageFee = config.usageRightsFee ?? 0;
+  if (hireType === "PROJECT") {
+    const days = config.estimatedDays ?? 1;
+    const rate = config.dayRate ?? 0;
+    return Math.max(0, rate * days + usageFee);
+  }
+  if (hireType === "HOURLY") {
+    const hours = config.hours ?? 0;
+    const rate = config.hourlyRate ?? 0;
+    return Math.max(0, rate * hours + usageFee);
+  }
+  // MONTHLY
+  const months = config.months ?? 1;
+  const rate = config.monthlyRate ?? 0;
+  return Math.max(0, rate * months + usageFee);
+};
+
+
+
+
+
+
+
+
+
 
 

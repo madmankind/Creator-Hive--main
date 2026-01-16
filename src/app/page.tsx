@@ -6,7 +6,7 @@ import { TalentCarousel } from "@/components/marketing/TalentCarousel";
 import { CampaignPodPanel } from "@/components/talent/CampaignPodPanel";
 import { BookingModal } from "@/components/booking/BookingModal";
 import { ClientAuthDialog } from "@/components/auth/ClientAuthDialog";
-import { TalentOnboardingDialog } from "@/components/auth/TalentOnboardingDialog";
+import { TalentOnboardingDialogFey } from "@/components/auth/TalentOnboardingDialogFey";
 import { PodSetupOverlay } from "@/features/pod-setup/PodSetupOverlay";
 import { curatedTalent } from "@/lib/curatedTalent";
 import { useCampaignPodStore, type Talent as PodTalent } from "@/store/useCampaignPodStore";
@@ -214,7 +214,7 @@ export default function HomePage() {
       />
 
       {/* Talent Onboarding Dialog */}
-      <TalentOnboardingDialog
+      <TalentOnboardingDialogFey
         open={talentAuthOpen}
         onClose={() => setTalentAuthOpen(false)}
         onSuccess={() => {

@@ -13,7 +13,8 @@ const updateSchema = z.object({
   budget: z.number().int().nonnegative().optional(),
 });
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(_: Request, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
   const authResult = await requireUser({ roles: ["AGENCY", "ADMIN"] });
   if ("error" in authResult) return authResult.error;
   const { user } = authResult;
@@ -21,7 +22,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
   const agency = user.role === "ADMIN" ? null : await getOrCreateAgency(user);
 
   const campaign = await db.campaign.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { talents: { include: { talent: true } } },
   });
 
@@ -36,7 +37,8 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
   return NextResponse.json({ campaign });
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
   const authResult = await requireUser({ roles: ["AGENCY", "ADMIN"] });
   if ("error" in authResult) return authResult.error;
   const { user } = authResult;
@@ -55,7 +57,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ error: parsed.error.flatten().formErrors.join(", ") }, { status: 400 });
   }
 
-  const campaign = await db.campaign.findUnique({ where: { id: params.id } });
+  const campaign = await db.campaign.findUnique({ where: { id } });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (agency && campaign.agencyId !== agency.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -69,7 +71,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   };
 
   const updated = await db.campaign.update({
-    where: { id: params.id },
+    where: { id },
     data,
     include: { talents: { include: { talent: true } } },
   });
