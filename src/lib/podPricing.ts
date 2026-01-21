@@ -122,8 +122,4 @@ export const computeLineTotal = (config: {
 
 
 
-<<<<<<< Current (Your changes)
-
-=======
->>>>>>> Incoming (Background Agent changes)
 

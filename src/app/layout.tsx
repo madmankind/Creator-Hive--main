@@ -4,9 +4,6 @@ import { Inter } from 'next/font/google'
 import { Analytics } from "@vercel/analytics/react";
 import { Providers } from "@/components/Providers";
 import { AppShell } from "@/components/AppShell";
-import { GlobalHeader } from "@/components/nav/GlobalHeader";
-import { DevToolsSuppressor } from "@/components/DevToolsSuppressor";
-import { Suspense } from "react";
 import clsx from 'clsx'
 
 const inter = Inter({ subsets: ['latin'], display: 'swap', variable: '--font-inter' })
@@ -28,14 +25,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                      opacity-80"
         />
         <Providers>
-          {/* Suppress dev tool badges in production */}
-          <DevToolsSuppressor />
-          
-          {/* Global header - conditionally hidden on campaign intelligence pages */}
-          <Suspense fallback={null}>
-            <GlobalHeader />
-          </Suspense>
-
           {/* App shell with route transition tracking */}
           <AppShell>
             {children}

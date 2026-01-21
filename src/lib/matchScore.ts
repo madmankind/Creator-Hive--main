@@ -129,7 +129,3 @@ export function calculateTalentMatchScore(
 
 
 
-<<<<<<< Current (Your changes)
-
-=======
->>>>>>> Incoming (Background Agent changes)
