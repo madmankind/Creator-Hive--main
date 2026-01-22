@@ -4,6 +4,13 @@ This document provides exact commands to restore the repository to the golden Fe
 
 ## Golden State Info
 
+### Baseline (Pre-Discovery+Booking Refactor): Latest Stable
+- **Branch**: `golden/baseline-pre-discovery-booking`
+- **Tag**: `golden/baseline-pre-discovery-booking`
+- **Commit**: See `git rev-parse golden/baseline-pre-discovery-booking`
+- **Features**: Landing page + dev-auth fallback + Fey unified dashboard v2 (right KPI panel, scroll, refined manage, no top pills)
+- **Purpose**: Safe restore point before Discovery + Booking refactor (Phase 1+)
+
 ### Latest (v2): Right KPI Panel + Scroll + Refined
 - **Branch**: `golden/fey-dashboard-v2`
 - **Tag**: `golden/fey-dashboard-v2`
@@ -19,7 +26,20 @@ This document provides exact commands to restore the repository to the golden Fe
 
 ⚠️ **WARNING**: This will discard all uncommitted changes. Stash first if you need to keep them.
 
-### Restore to v2 (Latest - Recommended)
+### Restore to Baseline (Pre-Discovery+Booking - Recommended)
+```bash
+# 1. Stash any uncommitted changes (optional but recommended)
+git stash push -m "backup-before-restore-$(date +%Y%m%d-%H%M%S)"
+
+# 2. Hard reset to baseline tag
+git fetch --tags
+git reset --hard golden/baseline-pre-discovery-booking
+
+# 3. Clean any untracked files (optional)
+git clean -fd
+```
+
+### Restore to v2 (Latest Dashboard)
 ```bash
 # 1. Stash any uncommitted changes (optional but recommended)
 git stash push -m "backup-before-restore-$(date +%Y%m%d-%H%M%S)"
@@ -49,7 +69,20 @@ git clean -fd
 
 If you want to switch to the golden branch without losing history:
 
-### Switch to v2 (Latest - Recommended)
+### Switch to Baseline (Pre-Discovery+Booking - Recommended)
+```bash
+# 1. Stash any uncommitted changes
+git stash push -m "backup-before-switch-$(date +%Y%m%d-%H%M%S)"
+
+# 2. Switch to baseline branch
+git checkout golden/baseline-pre-discovery-booking
+
+# 3. If branch doesn't exist locally, fetch and checkout
+git fetch origin golden/baseline-pre-discovery-booking
+git checkout golden/baseline-pre-discovery-booking
+```
+
+### Switch to v2 (Latest Dashboard)
 ```bash
 # 1. Stash any uncommitted changes
 git stash push -m "backup-before-switch-$(date +%Y%m%d-%H%M%S)"
@@ -75,9 +108,50 @@ git fetch origin golden/fey-dashboard-v1
 git checkout golden/fey-dashboard-v1
 ```
 
+## Recover WIP Stash
+
+If you stashed work before a restore and need to recover it:
+
+```bash
+# 1. List all stashes
+git stash list
+
+# 2. View a specific stash
+git stash show -p stash@{N}
+
+# 3. Apply a stash (keeps it in stash list)
+git stash apply stash@{N}
+
+# 4. Apply and remove from stash list
+git stash pop stash@{N}
+
+# 5. Create a branch from a stash
+git stash branch recovery-branch-name stash@{N}
+```
+
+**Common stash names:**
+- `WIP before Discovery+Booking refactor (Phase 0)` - Work stashed before Phase 1
+
+## Important Notes
+
+⚠️ **Do not continue Phase 1 (Discovery + Booking refactor) unless `git status` is clean.**
+
+Before starting any refactor:
+1. Ensure you're on the intended baseline branch
+2. Run `git status --porcelain` and confirm it's empty
+3. If you have uncommitted changes, commit or stash them first
+
 ## What's Included in Golden State
 
-### v2 (Latest)
+### Baseline (Pre-Discovery+Booking)
+- ✅ Landing page with "Welcome to Creator Hive"
+- ✅ Dev-auth fallback (localStorage session when auth not configured)
+- ✅ Fey unified dashboard v2 (all features below)
+- ✅ All campaign modes (Track/Manage/Pay/Discover) use unified shell
+- ✅ No white sidebar on campaign routes
+- ✅ Legacy routes redirect to unified route
+
+### v2 (Latest Dashboard)
 - ✅ Fey unified dashboard (dark gradient, glass panels, bottom dock navigation)
 - ✅ KPI/Planned panel on RIGHT side (not floating overlay)
 - ✅ Scrollable pages (no fixed viewport trap)
