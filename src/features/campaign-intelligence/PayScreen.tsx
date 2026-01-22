@@ -86,11 +86,6 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
     };
   }, [earnings, payouts]);
 
-  const modes = [
-    { value: "track", label: "Track" },
-    { value: "manage", label: "Manage" },
-    { value: "pay", label: "Pay" },
-  ];
 
   return (
     <div className="min-h-screen" style={{ color: feyTokens.colors.text.primary }}>
@@ -184,18 +179,11 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
             </span>
           </div>
 
-          {/* Right: Mode Tabs */}
-          <PillSegment
-            options={modes}
-            value="pay"
-            onChange={(v) => router.push(`/dashboard/campaigns?mode=${v}`)}
-            size="sm"
-          />
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="px-6 py-6 space-y-5">
+      {/* Main Content - Scrollable */}
+      <div className="px-6 py-6 space-y-5 overflow-y-auto" style={{ maxHeight: "calc(100vh - 80px)", paddingBottom: "calc(88px + 16px)" }}>
         {/* Face toggle */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <PillSegment
@@ -204,7 +192,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
               { value: "talent", label: "Talent Pay" },
             ]}
             value={payFace}
-            onChange={(v) => setPayFace(v as PayFace)}
+            onChange={(v: string) => setPayFace(v as PayFace)}
             size="sm"
           />
           <div className="text-xs" style={{ color: feyTokens.colors.text.muted }}>

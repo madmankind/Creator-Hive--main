@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { feyTokens } from "@/lib/fey-design-tokens";
-import { PillSegment } from "@/components/campaigns/primitives/PillSegment";
 import { FeySurface } from "@/components/campaigns/primitives/FeySurface";
 import { RightDrawer } from "@/components/campaigns/primitives/RightDrawer";
 import { BottomDock } from "@/components/nav/BottomDock";
@@ -33,12 +32,6 @@ export function DiscoverScreen({ selectedCampaignIds }: DiscoverScreenProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [savedCreators, setSavedCreators] = useState<string[]>([]);
 
-  const modes = [
-    { value: "track", label: "Track" },
-    { value: "manage", label: "Manage" },
-    { value: "pay", label: "Pay" },
-    { value: "discover", label: "Discover" },
-  ];
 
   // Mock creators
   const creators: Creator[] = [
@@ -129,18 +122,11 @@ export function DiscoverScreen({ selectedCampaignIds }: DiscoverScreenProps) {
             </div>
           </div>
 
-          {/* Right: Mode Tabs */}
-          <PillSegment
-            options={modes}
-            value="discover"
-            onChange={(v) => router.push(`/dashboard/campaigns?mode=${v}`)}
-            size="sm"
-          />
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="px-6 py-6">
+      {/* Main Content - Scrollable */}
+      <div className="px-6 py-6 overflow-y-auto" style={{ maxHeight: "calc(100vh - 80px)", paddingBottom: "calc(88px + 16px)" }}>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {/* Left: Filters (placeholder) */}
           <div className="lg:col-span-1">

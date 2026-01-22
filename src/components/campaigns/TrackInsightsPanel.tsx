@@ -32,6 +32,7 @@ interface TrackInsightsPanelProps {
   spent?: number;
   creatorsCount?: number;
   deliverablesCount?: number;
+  static?: boolean; // If true, render as static component (no floating/absolute positioning)
 }
 
 type TabType = "news" | "kpis" | "summary";
@@ -70,6 +71,7 @@ export function TrackInsightsPanel({
   spent,
   creatorsCount,
   deliverablesCount,
+  static: staticMode = false,
 }: TrackInsightsPanelProps) {
   const [activeTab, setActiveTab] = useState<TabType>("kpis");
   const [isExpanded, setIsExpanded] = useState(false);
@@ -369,6 +371,190 @@ export function TrackInsightsPanel({
   };
 
   const remaining = budget && spent ? budget - spent : undefined;
+
+  // Static mode: render as normal component without floating/absolute positioning
+  if (staticMode) {
+    return (
+      <div
+        className="rounded-[18px] w-full"
+        style={{
+          background: "radial-gradient(120% 140% at 50% 0%, rgba(120, 40, 40, 0.22) 0%, rgba(20, 20, 20, 0.94) 55%, rgba(10, 10, 10, 0.98) 100%)",
+          backdropFilter: "blur(24px)",
+          boxShadow: "0 20px 50px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04)",
+        }}
+      >
+        {/* Header with tabs */}
+        <div
+          className="border-b px-4 py-3"
+          style={{
+            borderColor: "rgba(255,255,255,0.06)",
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+            {(["news", "kpis", "summary"] as TabType[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => handleTabClick(tab)}
+                className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+                style={{
+                  backgroundColor: activeTab === tab ? "rgba(255,255,255,0.08)" : "transparent",
+                  color: activeTab === tab ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.55)",
+                }}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </div>
+          </div>
+        </div>
+
+        {/* Panel body */}
+        {!isCollapsed && (
+          <div
+            className="overflow-y-auto"
+            style={{
+              maxHeight: "600px",
+            }}
+          >
+            {activeTab === "news" && (
+              <div className="p-4">
+                <div className="relative h-[200px] overflow-hidden">
+                  <div
+                    className="absolute inset-0 transition-transform duration-1000 ease-linear"
+                    style={{
+                      transform: `translateY(-${currentNewsIndex * 60}px)`,
+                    }}
+                  >
+                    {MOCK_NEWS.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="h-[60px] flex flex-col justify-center"
+                        style={{
+                          opacity: Math.abs(idx - currentNewsIndex) <= 1 ? 1 : 0.3,
+                        }}
+                      >
+                        <div className="text-sm font-medium text-white/90 leading-snug mb-1">
+                          {item.headline}
+                        </div>
+                        <div className="text-[11px] text-white/40">
+                          {item.timestamp}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                  <div className="text-[11px] text-white/40">
+                    Updated {Math.floor(Math.random() * 5) + 1} min ago
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "kpis" && (
+              <div className="p-4">
+                <div className="mb-4">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-3">
+                    Planned vs Actual
+                  </h3>
+                  <KPIPlanner
+                    onDataChange={(data) => {
+                      if (data.mode === "planned") {
+                        onPlannedChange(data);
+                      } else {
+                        onActualChange(data);
+                      }
+                    }}
+                    objective={objective}
+                    dense={objective === "traffic" || objective === "conversions"}
+                  />
+                </div>
+              </div>
+            )}
+
+            {activeTab === "summary" && (
+              <div className="p-4 space-y-4">
+                <div>
+                  <div className="text-sm font-semibold mb-1" style={{ fontSize: "14px", fontWeight: 600, color: "#F2F2F2" }}>
+                    {campaignName || "No campaign selected"}
+                  </div>
+                  {clientName && (
+                    <div className="text-[12px] text-white/55">{clientName}</div>
+                  )}
+                </div>
+
+                {(startDate || endDate) && (
+                  <div>
+                    <div className="text-[11px] text-white/40 mb-1">Date range</div>
+                    <div className="text-[12px] text-white/75">
+                      {formatDate(startDate)} – {formatDate(endDate)}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <div className="text-[11px] text-white/40 mb-1">Objective</div>
+                  <div className="text-[12px] text-white/75 capitalize">{objective}</div>
+                </div>
+
+                <div>
+                  <div className="text-[11px] text-white/40 mb-1">Status</div>
+                  <div className="inline-flex px-2 py-1 rounded text-[11px] font-medium" style={{ backgroundColor: "rgba(245,158,11,0.15)", color: "#F59E0B" }}>
+                    On plan
+                  </div>
+                </div>
+
+                {budget !== undefined && (
+                  <div>
+                    <div className="text-[11px] text-white/40 mb-2">Budget</div>
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-[12px]">
+                        <span className="text-white/60">Total</span>
+                        <span className="text-white/90">${budget.toLocaleString()}</span>
+                      </div>
+                      {spent !== undefined && (
+                        <div className="flex justify-between text-[12px]">
+                          <span className="text-white/60">Spent</span>
+                          <span className="text-white/90">${spent.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {remaining !== undefined && (
+                        <div className="flex justify-between text-[12px]">
+                          <span className="text-white/60">Remaining</span>
+                          <span className="text-white/90">${remaining.toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {(creatorsCount !== undefined || deliverablesCount !== undefined) && (
+                  <div>
+                    <div className="text-[11px] text-white/40 mb-2">Resources</div>
+                    <div className="space-y-1.5">
+                      {creatorsCount !== undefined && (
+                        <div className="flex justify-between text-[12px]">
+                          <span className="text-white/60">Creators booked</span>
+                          <span className="text-white/90">{creatorsCount}</span>
+                        </div>
+                      )}
+                      {deliverablesCount !== undefined && (
+                        <div className="flex justify-between text-[12px]">
+                          <span className="text-white/60">Deliverables</span>
+                          <span className="text-white/90">{deliverablesCount}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div

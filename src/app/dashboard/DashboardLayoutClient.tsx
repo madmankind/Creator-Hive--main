@@ -14,16 +14,13 @@ export function DashboardLayoutClient({ children }: { children: ReactNode }) {
     (mode === "track" || mode === "manage" || mode === "pay" || mode === "discover" || !mode);
 
   if (isCampaignMode) {
-    // Full-viewport layout for Fey unified dashboard - no sidebar, no reserved space
-    // Use fixed positioning + opaque base to prevent any bleed from other routes/layouts.
-    // NO page scroll: overflow-hidden prevents document scroll; internal components manage their own scroll.
+    // Full-viewport layout for Fey unified dashboard - no sidebar, scrollable
     return (
       <div 
-        className="fixed inset-0 w-screen h-screen overflow-hidden"
+        className="min-h-screen w-screen"
         style={{
           background: "#07070A",
           zIndex: 1,
-          overscrollBehavior: "none",
         }}
       >
         {children}

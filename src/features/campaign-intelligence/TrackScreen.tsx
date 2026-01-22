@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { feyTokens } from "@/lib/fey-design-tokens";
-import { PillSegment } from "@/components/campaigns/primitives/PillSegment";
 import { MetricTile } from "@/components/campaigns/primitives/MetricTile";
 import { TrackChart } from "@/components/campaigns/TrackChart";
 import { TrackInsightsPanel } from "@/components/campaigns/TrackInsightsPanel";
@@ -49,7 +48,6 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
   }, [objective]);
 
   const timeRanges: TimeRange[] = ["1D", "7D", "30D", "90D", "YTD", "custom"];
-  const modes: DashboardMode[] = ["track", "manage", "pay"];
 
   // Mock KPI data
   const kpis = {
@@ -98,75 +96,77 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
             ))}
           </div>
 
-          {/* Right: Mode Tabs */}
-          <div className="flex items-center gap-2">
-            <PillSegment
-              options={modes.map((m) => ({ value: m, label: m.charAt(0).toUpperCase() + m.slice(1) }))}
-              value="track"
-              onChange={(v) => router.push(`/dashboard/campaigns?mode=${v}`)}
-              size="sm"
-            />
-          </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="px-6 py-6">
-        {/* Hero Chart - More Prominent */}
-        <div className="mb-8 relative">
-          <TrackChart
-            timeRange={timeRange}
-            campaignIds={activeCampaign ? [activeCampaign.id] : []}
-            metrics={selectedMetrics}
-            objective={objective}
-            onObjectiveChange={setObjective}
-            plannedData={plannedData}
-            actualData={actualData}
-            onPlannedChange={setPlannedData}
-            onActualChange={setActualData}
-          />
+      {/* Main Content - Scrollable */}
+      <div className="px-6 py-6 overflow-y-auto" style={{ maxHeight: "calc(100vh - 80px)" }}>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+          {/* Left Column: Main Content */}
+          <div className="lg:col-span-3 space-y-6">
+            {/* Hero Chart */}
+            <div className="relative">
+              <TrackChart
+                timeRange={timeRange}
+                campaignIds={activeCampaign ? [activeCampaign.id] : []}
+                metrics={selectedMetrics}
+                objective={objective}
+                onObjectiveChange={setObjective}
+                plannedData={plannedData}
+                actualData={actualData}
+                onPlannedChange={setPlannedData}
+                onActualChange={setActualData}
+              />
+            </div>
 
-          {/* Fey-style floating insights panel - wrapped in container for drag bounds */}
-          <div className="absolute inset-0" style={{ pointerEvents: "none" }}>
-            <TrackInsightsPanel
-              objective={objective}
-              plannedData={plannedData}
-              actualData={actualData}
-              onPlannedChange={setPlannedData}
-              onActualChange={setActualData}
-              campaignId={activeCampaign?.id}
-              campaignName={activeCampaign?.name}
-              clientName={activeCampaign?.clientName}
-              budget={activeCampaign?.budget}
-              spent={activeCampaign?.spend}
-              creatorsCount={8}
-              deliverablesCount={12}
-            />
+            {/* KPI Strip - Below Chart */}
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+              {/* Only show KPIs for allowedMetrics of current objective */}
+              {CAMPAIGN_OBJECTIVES[objective].allowedMetrics.map((metric) => {
+                const label = metric.charAt(0).toUpperCase() + metric.slice(1);
+                const value = kpis[metric as keyof typeof kpis] || "—";
+                return <MetricTile key={metric} label={label} value={value} />;
+              })}
+              <MetricTile label="Spend" value={kpis.spend} />
+              <MetricTile label="Remaining" value={kpis.remaining} />
+              <MetricTile label="Outstanding" value={kpis.outstanding} />
+            </div>
+
+            {/* Bottom Section: Creator Breakdown + Event Timeline */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <div className="lg:col-span-2">
+                <CreatorBreakdownTable campaignIds={activeCampaign ? [activeCampaign.id] : []} />
+              </div>
+              <div>
+                <EventTimeline campaignIds={activeCampaign ? [activeCampaign.id] : []} />
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: KPI/Planned Panel */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-6">
+              <TrackInsightsPanel
+                objective={objective}
+                plannedData={plannedData}
+                actualData={actualData}
+                onPlannedChange={setPlannedData}
+                onActualChange={setActualData}
+                campaignId={activeCampaign?.id}
+                campaignName={activeCampaign?.name}
+                clientName={activeCampaign?.clientName}
+                budget={activeCampaign?.budget}
+                spent={activeCampaign?.spend}
+                creatorsCount={8}
+                deliverablesCount={12}
+                static={true}
+              />
+            </div>
           </div>
         </div>
-
-        {/* KPI Strip - Below Chart */}
-        <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-          {/* Only show KPIs for allowedMetrics of current objective */}
-          {CAMPAIGN_OBJECTIVES[objective].allowedMetrics.map((metric) => {
-            const label = metric.charAt(0).toUpperCase() + metric.slice(1);
-            const value = kpis[metric as keyof typeof kpis] || "—";
-            return <MetricTile key={metric} label={label} value={value} />;
-          })}
-          <MetricTile label="Spend" value={kpis.spend} />
-          <MetricTile label="Remaining" value={kpis.remaining} />
-          <MetricTile label="Outstanding" value={kpis.outstanding} />
-        </div>
-
-        {/* Bottom Section: Creator Breakdown + Event Timeline */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3" style={{ paddingBottom: "calc(88px + 16px)" }}>
-          <div className="lg:col-span-2">
-            <CreatorBreakdownTable campaignIds={activeCampaign ? [activeCampaign.id] : []} />
-          </div>
-          <div>
-            <EventTimeline campaignIds={activeCampaign ? [activeCampaign.id] : []} />
-          </div>
-        </div>
+        
+        {/* Bottom padding for dock */}
+        <div style={{ height: "calc(88px + 16px)" }} />
       </div>
       
       {/* Bottom Dock Navigation */}

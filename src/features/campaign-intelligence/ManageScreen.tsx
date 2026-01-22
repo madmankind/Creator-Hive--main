@@ -146,11 +146,10 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
     <div
       className="relative flex flex-col overflow-hidden"
       style={{
-        minHeight: "100svh",
-        height: "100svh",
+        minHeight: "100vh",
         width: "100vw",
         color: feyTokens.colors.text.primary,
-        background: "#07070B", // Opaque base to prevent bleed
+        background: "#07070B",
         isolation: "isolate",
       }}
     >
@@ -300,14 +299,13 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
               </div>
             </div>
 
-          {/* MainContent (fills remaining height, reserves dock) */}
+          {/* MainContent (scrollable, reserves dock) */}
           <div
-            className="flex-1 min-h-0 flex flex-col"
+            className="flex-1 min-h-0 flex flex-col overflow-y-auto"
             style={{
               padding: "16px 24px 0",
               gap: "16px",
               paddingBottom: "calc(88px + 16px)", // reserve dock
-              overflow: "hidden",
             }}
           >
             {/* Grid layout: top big frame + bottom split frames */}
