@@ -8,6 +8,7 @@ import { FeySurface } from "@/components/campaigns/primitives/FeySurface";
 import { MetricTile } from "@/components/campaigns/primitives/MetricTile";
 import { Download, FileText, CreditCard, Info } from "lucide-react";
 import { PaymentMethodsPanel } from "@/components/campaigns/PaymentMethodsPanel";
+import { BottomDock } from "@/components/nav/BottomDock";
 import { useCampaign } from "@/contexts/CampaignContext";
 import { mockContracts, mockEarnings, mockInvoices, mockPayouts } from "@/mock/ledger";
 import type { Invoice, Payout, TalentContract, TalentEarning } from "@/components/campaigns/types";
@@ -761,6 +762,9 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
           </div>
         )}
       </div>
+      
+      {/* Bottom Dock Navigation */}
+      <BottomDock />
     </div>
   );
 }

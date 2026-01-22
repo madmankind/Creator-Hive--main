@@ -9,11 +9,12 @@ export function DashboardLayoutClient({ children }: { children: ReactNode }) {
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode");
   
-  // For Manage mode, render without sidebar (full-viewport canvas)
-  const isManageMode = pathname === "/dashboard/campaigns" && mode === "manage";
+  // For ALL campaign modes (track, manage, pay, discover), render without sidebar (full-viewport Fey unified dashboard)
+  const isCampaignMode = pathname === "/dashboard/campaigns" && 
+    (mode === "track" || mode === "manage" || mode === "pay" || mode === "discover" || !mode);
 
-  if (isManageMode) {
-    // Full-viewport layout for Manage - no sidebar, no reserved space
+  if (isCampaignMode) {
+    // Full-viewport layout for Fey unified dashboard - no sidebar, no reserved space
     // Use fixed positioning + opaque base to prevent any bleed from other routes/layouts.
     // NO page scroll: overflow-hidden prevents document scroll; internal components manage their own scroll.
     return (

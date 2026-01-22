@@ -6,6 +6,7 @@ import { feyTokens } from "@/lib/fey-design-tokens";
 import { PillSegment } from "@/components/campaigns/primitives/PillSegment";
 import { FeySurface } from "@/components/campaigns/primitives/FeySurface";
 import { RightDrawer } from "@/components/campaigns/primitives/RightDrawer";
+import { BottomDock } from "@/components/nav/BottomDock";
 import { Search, Bookmark, Eye, Plus } from "lucide-react";
 
 interface DiscoverScreenProps {
@@ -353,6 +354,9 @@ export function DiscoverScreen({ selectedCampaignIds }: DiscoverScreenProps) {
           </div>
         )}
       </RightDrawer>
+      
+      {/* Bottom Dock Navigation */}
+      <BottomDock />
     </div>
   );
 }

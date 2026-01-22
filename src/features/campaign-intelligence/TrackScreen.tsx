@@ -10,6 +10,7 @@ import { TrackInsightsPanel } from "@/components/campaigns/TrackInsightsPanel";
 import { CreatorBreakdownTable } from "@/components/campaigns/CreatorBreakdownTable";
 import { EventTimeline } from "@/components/campaigns/EventTimeline";
 import { CampaignSwitcher } from "@/components/campaigns/CampaignSwitcher";
+import { BottomDock } from "@/components/nav/BottomDock";
 import { useCampaign } from "@/contexts/CampaignContext";
 import { CAMPAIGN_OBJECTIVES, type CampaignObjective } from "@/lib/campaignObjectives";
 import { type KPIData } from "@/components/campaigns/KPIPlanner";
@@ -158,7 +159,7 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
         </div>
 
         {/* Bottom Section: Creator Breakdown + Event Timeline */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3" style={{ paddingBottom: "calc(88px + 16px)" }}>
           <div className="lg:col-span-2">
             <CreatorBreakdownTable campaignIds={activeCampaign ? [activeCampaign.id] : []} />
           </div>
@@ -167,6 +168,9 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
           </div>
         </div>
       </div>
+      
+      {/* Bottom Dock Navigation */}
+      <BottomDock />
     </div>
   );
 }
