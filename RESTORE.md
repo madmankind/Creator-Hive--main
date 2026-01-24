@@ -33,7 +33,7 @@ git stash push -m "backup-before-restore-$(date +%Y%m%d-%H%M%S)"
 
 # 2. Hard reset to baseline tag
 git fetch --tags
-git reset --hard golden/baseline-pre-discovery-booking
+git reset --hard refs/tags/golden/baseline-pre-discovery-booking
 
 # 3. Clean any untracked files (optional)
 git clean -fd
@@ -74,12 +74,9 @@ If you want to switch to the golden branch without losing history:
 # 1. Stash any uncommitted changes
 git stash push -m "backup-before-switch-$(date +%Y%m%d-%H%M%S)"
 
-# 2. Switch to baseline branch
-git checkout golden/baseline-pre-discovery-booking
-
-# 3. If branch doesn't exist locally, fetch and checkout
-git fetch origin golden/baseline-pre-discovery-booking
-git checkout golden/baseline-pre-discovery-booking
+# 2. Fetch tags and switch to baseline (detached HEAD at tag)
+git fetch --tags
+git checkout refs/tags/golden/baseline-pre-discovery-booking
 ```
 
 ### Switch to v2 (Latest Dashboard)
