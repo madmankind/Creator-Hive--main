@@ -22,6 +22,10 @@ This document provides exact commands to restore the repository to the golden Fe
 - **Tag**: `golden/fey-dashboard-v1`
 - **Commit**: See `git rev-parse golden/fey-dashboard-v1`
 
+### Checkpoints
+- **Restore baseline (tag)**: `refs/tags/golden/baseline-pre-discovery-booking`
+- **Restore phase0.5 restore-safety checkpoint**: `refs/tags/checkpoint/phase0.5-restore-safety`
+
 ## Quick Restore (Hard Reset)
 
 ⚠️ **WARNING**: This will discard all uncommitted changes. Stash first if you need to keep them.
@@ -34,6 +38,19 @@ git stash push -m "backup-before-restore-$(date +%Y%m%d-%H%M%S)"
 # 2. Hard reset to baseline tag
 git fetch --tags
 git reset --hard refs/tags/golden/baseline-pre-discovery-booking
+
+# 3. Clean any untracked files (optional)
+git clean -fd
+```
+
+### Restore to phase0.5 restore-safety checkpoint
+```bash
+# 1. Stash any uncommitted changes (optional but recommended)
+git stash push -m "backup-before-restore-$(date +%Y%m%d-%H%M%S)"
+
+# 2. Hard reset to phase0.5 restore-safety checkpoint
+git fetch --tags
+git reset --hard refs/tags/checkpoint/phase0.5-restore-safety
 
 # 3. Clean any untracked files (optional)
 git clean -fd
