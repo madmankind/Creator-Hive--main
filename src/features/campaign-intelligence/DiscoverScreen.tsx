@@ -1,97 +1,153 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
+import useSWR from "swr";
 import { feyTokens } from "@/lib/fey-design-tokens";
 import { FeySurface } from "@/components/campaigns/primitives/FeySurface";
 import { RightDrawer } from "@/components/campaigns/primitives/RightDrawer";
 import { BottomDock } from "@/components/nav/BottomDock";
-import { Search, Bookmark, Eye, Plus } from "lucide-react";
+import { TalentCard } from "@/components/talent/TalentCard";
+import { Search, X } from "lucide-react";
+import { DEFAULT_ROLES } from "@/lib/roles";
+import type { Talent } from "@/store/useCampaignPodStore";
 
 interface DiscoverScreenProps {
   selectedCampaignIds: string[];
 }
 
-interface Creator {
+const fetcher = (u: string, init?: RequestInit) => fetch(u, init).then((r) => r.json());
+
+/** Muted, Fey-compatible accent per role. Subdued, not neon. */
+const ROLE_ACCENT_MAP: Record<string, string> = {
+  "UGC Creator": "rgba(168,85,247,0.45)",
+  "Content Creator": "rgba(34,211,238,0.45)",
+  Videographer: "rgba(34,197,94,0.45)",
+  Photographer: "rgba(234,179,8,0.45)",
+  "Content Strategist": "rgba(236,72,153,0.4)",
+  Influencer: "rgba(249,115,22,0.45)",
+  Celebrity: "rgba(239,68,68,0.4)",
+  Developer: "rgba(59,130,246,0.45)",
+  "Brand Designer": "rgba(139,92,246,0.4)",
+  "Product Designer": "rgba(20,184,166,0.45)",
+  "Motion Designer": "rgba(244,63,94,0.4)",
+  "Art Director": "rgba(251,146,60,0.45)",
+  Copywriter: "rgba(132,204,22,0.45)",
+  Producer: "rgba(99,102,241,0.4)",
+  "Social Media Manager": "rgba(168,85,247,0.4)",
+  Editor: "rgba(6,182,212,0.45)",
+  Animator: "rgba(251,113,133,0.4)",
+};
+const DEFAULT_ACCENT = "rgba(255,255,255,0.25)";
+
+function getRoleAccent(role: string): string {
+  return ROLE_ACCENT_MAP[role] ?? DEFAULT_ACCENT;
+}
+
+function apiItemToTalent(it: {
   id: string;
-  name: string;
-  handle: string;
-  role: string;
-  platform: string;
-  followers: number;
-  avgViews: number;
-  er: number;
-  rateRange: string;
-  avatar?: string;
+  fullName?: string;
+  username?: string;
+  roles?: string[];
+  avatarUrl?: string;
+  bio?: string;
+}): Talent {
+  return {
+    id: it.id,
+    name: it.fullName || it.username || "Unnamed",
+    headline: it.roles?.slice(0, 2).join(" · "),
+    avatarUrl: it.avatarUrl,
+    roles: it.roles ?? [],
+    platforms: [],
+    bio: it.bio,
+  };
 }
 
 export function DiscoverScreen({ selectedCampaignIds }: DiscoverScreenProps) {
-  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session } = useSession();
+  const isAuthenticated = Boolean(session?.user);
+
+  // selectedRoles: from URL on init, then local state. Role chips in Filters toggle.
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(() => {
+    const r = searchParams.get("roles");
+    if (!r) return [];
+    return r
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
+  });
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null);
+  const [selectedTalent, setSelectedTalent] = useState<Talent | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [savedCreators, setSavedCreators] = useState<string[]>([]);
+  const [selectedTalents, setSelectedTalents] = useState<Talent[]>([]);
 
+  const selectedTalentIds = useMemo(() => new Set(selectedTalents.map((t) => t.id)), [selectedTalents]);
 
-  // Mock creators
-  const creators: Creator[] = [
-    {
-      id: "1",
-      name: "Sarah Chen",
-      handle: "@sarahchen",
-      role: "UGC Creator",
-      platform: "Instagram",
-      followers: 456700,
-      avgViews: 125000,
-      er: 4.2,
-      rateRange: "AED 1.5K - 2.5K",
-    },
-    {
-      id: "2",
-      name: "Alex Nguyen",
-      handle: "@alexnguyen",
-      role: "Content Creator",
-      platform: "TikTok",
-      followers: 891200,
-      avgViews: 450000,
-      er: 3.5,
-      rateRange: "AED 1.2K - 2.0K",
-    },
-    {
-      id: "3",
-      name: "Emily Smith",
-      handle: "@emilysmith",
-      role: "Videographer",
-      platform: "YouTube",
-      followers: 234500,
-      avgViews: 89000,
-      er: 3.4,
-      rateRange: "AED 1.8K - 2.8K",
-    },
-  ];
+  const toggleRole = useCallback((role: string) => {
+    setSelectedRoles((prev) =>
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]
+    );
+  }, []);
 
-  const handleViewCreator = (creator: Creator) => {
-    setSelectedCreator(creator);
+  const body = useMemo(
+    () => ({
+      page: 0,
+      pageSize: 80,
+      sort: { field: "name", direction: "asc" as const },
+      filter: {
+        keywords: searchQuery.trim() || undefined,
+        roles: selectedRoles.length > 0 ? selectedRoles : undefined,
+      },
+    }),
+    [searchQuery, selectedRoles]
+  );
+
+  const { data, isLoading, error } = useSWR(
+    isAuthenticated ? ["/api/discovery/search", JSON.stringify(body)] : null,
+    ([u, b]) => fetcher(u, { method: "POST", body: b }),
+    { revalidateOnFocus: false }
+  );
+
+  const items: Talent[] = useMemo(() => {
+    const raw = data?.data ?? data?.results ?? [];
+    return raw.map(apiItemToTalent);
+  }, [data]);
+
+  // Lanes: if no roles selected, one "All" lane; else one lane per selected role.
+  const lanes = useMemo(() => {
+    if (selectedRoles.length === 0) {
+      return [{ role: "All", talents: items }];
+    }
+    return selectedRoles.map((role) => ({
+      role,
+      talents: items.filter((t) => t.roles.some((r) => r === role)),
+    }));
+  }, [selectedRoles, items]);
+
+  const addToSelection = useCallback((t: Talent) => {
+    setSelectedTalents((prev) => (prev.some((x) => x.id === t.id) ? prev : [...prev, t]));
+  }, []);
+
+  const removeFromSelection = useCallback((id: string) => {
+    setSelectedTalents((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const handleViewCreator = (talent: Talent) => {
+    setSelectedTalent(talent);
     setIsDrawerOpen(true);
   };
 
-  const handleSaveCreator = (creatorId: string) => {
-    if (savedCreators.includes(creatorId)) {
-      setSavedCreators(savedCreators.filter((id) => id !== creatorId));
-    } else {
-      setSavedCreators([...savedCreators, creatorId]);
-    }
-  };
-
-  const formatNumber = (value: number) => {
-    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-    if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
-    return value.toString();
-  };
+  const trayHeight = 72;
+  const bottomDockHeight = 88;
+  const mainPaddingBottom = selectedTalents.length > 0
+    ? `calc(${bottomDockHeight}px + 16px + ${trayHeight}px)`
+    : `calc(${bottomDockHeight}px + 16px)`;
 
   return (
     <div className="min-h-screen" style={{ color: feyTokens.colors.text.primary }}>
-      {/* Header Row */}
+      {/* Header */}
       <div
         className="sticky top-0 z-30 border-b px-6 py-4"
         style={{
@@ -101,7 +157,6 @@ export function DiscoverScreen({ selectedCampaignIds }: DiscoverScreenProps) {
         }}
       >
         <div className="flex items-center justify-between">
-          {/* Left: Search */}
           <div className="flex-1 max-w-md">
             <div className="relative">
               <Search
@@ -121,142 +176,163 @@ export function DiscoverScreen({ selectedCampaignIds }: DiscoverScreenProps) {
               />
             </div>
           </div>
-
         </div>
       </div>
 
-      {/* Main Content - Scrollable */}
-      <div className="px-6 py-6 overflow-y-auto" style={{ maxHeight: "calc(100vh - 80px)", paddingBottom: "calc(88px + 16px)" }}>
+      {/* Main: Filters + Lanes */}
+      <div
+        className="px-6 py-6 overflow-y-auto"
+        style={{ maxHeight: "calc(100vh - 80px)", paddingBottom: mainPaddingBottom }}
+      >
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {/* Left: Filters (placeholder) */}
+          {/* Filters: role chips */}
           <div className="lg:col-span-1">
             <FeySurface variant="panel" overlay={true} padding="md">
               <div
                 className="mb-3 text-xs font-semibold uppercase tracking-wider"
                 style={{ color: feyTokens.colors.text.label }}
               >
-                Filters
+                Roles
               </div>
-              <div
-                className="text-xs"
-                style={{ color: feyTokens.colors.text.muted }}
-              >
-                Platform, location, follower range, ER%, category filters coming soon...
+              <div className="flex flex-wrap gap-2">
+                {DEFAULT_ROLES.slice(0, 12).map((r) => {
+                  const active = selectedRoles.includes(r);
+                  const accent = getRoleAccent(r);
+                  return (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => toggleRole(r)}
+                      className="rounded-full px-3 py-1.5 text-[11px] transition"
+                      style={{
+                        background: active ? `${accent}` : "rgba(255,255,255,0.06)",
+                        color: active ? "rgba(255,255,255,0.95)" : feyTokens.colors.text.muted,
+                        border: `1px solid ${active ? accent : "rgba(255,255,255,0.08)"}`,
+                      }}
+                    >
+                      {r}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-2 text-[10px]" style={{ color: feyTokens.colors.text.muted }}>
+                Select 1–5 roles for lanes. None = All.
               </div>
             </FeySurface>
           </div>
 
-          {/* Right: Results */}
-          <div className="lg:col-span-2">
-            <FeySurface variant="card" overlay={true} padding="none">
-              <div
-                className="border-b px-5 py-3.5"
-                style={{ borderColor: feyTokens.borders.default }}
-              >
+          {/* Lanes */}
+          <div className="lg:col-span-2 space-y-6">
+            {isLoading && (
+              <div className="text-xs" style={{ color: feyTokens.colors.text.muted }}>
+                Loading…
+              </div>
+            )}
+            {error && (
+              <div className="text-xs" style={{ color: feyTokens.colors.status.error }}>
+                Error loading results.
+              </div>
+            )}
+            {!isLoading && !error && lanes.map(({ role, talents }) => (
+              <section key={role}>
                 <div
-                  className="text-xs font-semibold uppercase tracking-wider"
-                  style={{ color: feyTokens.colors.text.label }}
+                  className="mb-2 text-[11px] font-semibold uppercase tracking-wider"
+                  style={{ color: getRoleAccent(role) }}
                 >
-                  Creators ({creators.length})
+                  {role}
                 </div>
-              </div>
-              <div className="divide-y" style={{ borderColor: feyTokens.borders.default }}>
-                {creators.map((creator) => (
-                  <div
-                    key={creator.id}
-                    className="flex items-center gap-4 px-5 py-4 transition-all hover:bg-white/5"
-                  >
-                    {/* Avatar */}
-                    <div
-                      className="flex h-12 w-12 items-center justify-center rounded-lg text-xs font-semibold flex-shrink-0"
-                      style={{
-                        background: `linear-gradient(135deg, ${feyTokens.colors.red.glow} 0%, ${feyTokens.colors.red.deep} 100%)`,
-                        color: "white",
-                      }}
-                    >
-                      {creator.name.charAt(0)}
+                <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                  {talents.length === 0 ? (
+                    <div className="text-[11px] py-4" style={{ color: feyTokens.colors.text.muted }}>
+                      No talent for this role.
                     </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div
-                        className="mb-1 text-xs font-semibold"
-                        style={{ color: feyTokens.colors.text.primary }}
-                      >
-                        {creator.name}
-                      </div>
-                      <div
-                        className="mb-1 text-[10px]"
-                        style={{ color: feyTokens.colors.text.muted }}
-                      >
-                        {creator.handle} · {creator.role} · {creator.platform}
-                      </div>
-                      <div className="flex items-center gap-4 text-[10px]" style={{ color: feyTokens.colors.text.secondary }}>
-                        <span>Followers: {formatNumber(creator.followers)}</span>
-                        <span>Avg Views: {formatNumber(creator.avgViews)}</span>
-                        <span>ER: {creator.er.toFixed(1)}%</span>
-                        <span>{creator.rateRange}</span>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleSaveCreator(creator.id)}
-                        className="rounded-lg border p-2 transition-colors hover:bg-white/10"
-                        style={{
-                          borderColor: savedCreators.includes(creator.id)
-                            ? feyTokens.colors.red.glow
-                            : feyTokens.borders.default,
-                          color: savedCreators.includes(creator.id)
-                            ? feyTokens.colors.red.glow
-                            : feyTokens.colors.text.secondary,
-                        }}
-                      >
-                        <Bookmark className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleViewCreator(creator)}
-                        className="rounded-lg border px-3 py-2 text-xs font-medium transition-colors hover:bg-white/10"
-                        style={{
-                          borderColor: feyTokens.borders.default,
-                          color: feyTokens.colors.text.secondary,
-                        }}
-                      >
-                        <Eye className="h-3.5 w-3.5 inline mr-1" />
-                        View
-                      </button>
-                      <button
-                        className="rounded-lg border px-3 py-2 text-xs font-medium transition-colors hover:bg-white/10"
-                        style={{
-                          borderColor: feyTokens.colors.red.glow,
-                          background: `${feyTokens.colors.red.glow}20`,
-                          color: feyTokens.colors.red.glow,
-                        }}
-                      >
-                        <Plus className="h-3.5 w-3.5 inline mr-1" />
-                        Add to Campaign
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </FeySurface>
+                  ) : (
+                    talents.map((t) => (
+                      <TalentCard
+                        key={t.id}
+                        talent={t}
+                        variant="discover"
+                        isAdded={selectedTalentIds.has(t.id)}
+                        onAdd={addToSelection}
+                        onOpenProfile={handleViewCreator}
+                        laneAccent={role !== "All" ? getRoleAccent(role) : undefined}
+                      />
+                    ))
+                  )}
+                </div>
+              </section>
+            ))}
           </div>
         </div>
       </div>
+
+      {/* Bottom Selection Tray */}
+      {selectedTalents.length > 0 && (
+        <div
+          className="fixed left-0 right-0 z-40 flex items-center gap-3 px-4 py-3 border-t"
+          style={{
+            bottom: bottomDockHeight,
+            height: trayHeight,
+            background: "rgba(10,10,14,0.96)",
+            backdropFilter: "blur(16px)",
+            borderColor: feyTokens.borders.default,
+          }}
+        >
+          <div className="flex flex-1 gap-2 overflow-x-auto items-center scrollbar-hide">
+            {selectedTalents.map((t) => (
+              <div
+                key={t.id}
+                className="flex items-center gap-2 flex-shrink-0 rounded-xl px-3 py-2"
+                style={{
+                  background: feyTokens.glass.panel.background,
+                  border: `1px solid ${feyTokens.borders.default}`,
+                }}
+              >
+                <div
+                  className="h-8 w-8 rounded-full flex items-center justify-center text-[10px] font-medium"
+                  style={{ background: "rgba(255,255,255,0.1)", color: feyTokens.colors.text.primary }}
+                >
+                  {t.name.charAt(0) || "?"}
+                </div>
+                <span className="text-xs max-w-[100px] truncate" style={{ color: feyTokens.colors.text.primary }}>
+                  {t.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeFromSelection(t.id)}
+                  className="p-1 rounded hover:bg-white/10 transition"
+                  style={{ color: feyTokens.colors.text.muted }}
+                  aria-label="Remove"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="flex-shrink-0 rounded-lg px-5 py-2.5 text-xs font-semibold transition"
+            style={{
+              background: feyTokens.colors.red.glow,
+              color: "white",
+            }}
+          >
+            Continue
+          </button>
+        </div>
+      )}
 
       {/* Creator Profile Drawer */}
       <RightDrawer
         isOpen={isDrawerOpen}
         onClose={() => {
           setIsDrawerOpen(false);
-          setSelectedCreator(null);
+          setSelectedTalent(null);
         }}
-        title={selectedCreator ? `${selectedCreator.name} - Profile` : "Creator Profile"}
+        title={selectedTalent ? `${selectedTalent.name} — Profile` : "Creator Profile"}
         width="520px"
       >
-        {selectedCreator && (
+        {selectedTalent && (
           <div className="p-6 space-y-6">
             <div>
               <div
@@ -266,68 +342,21 @@ export function DiscoverScreen({ selectedCampaignIds }: DiscoverScreenProps) {
                 Overview
               </div>
               <div style={{ color: feyTokens.colors.text.secondary }}>
-                {selectedCreator.handle} · {selectedCreator.role} · {selectedCreator.platform}
+                {selectedTalent.headline || selectedTalent.roles?.slice(0, 2).join(" · ")}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div
-                  className="mb-1 text-[10px] font-medium uppercase tracking-wider"
-                  style={{ color: feyTokens.colors.text.label }}
-                >
-                  Followers
-                </div>
-                <div
-                  className="text-lg font-semibold"
-                  style={{ color: feyTokens.colors.text.primary }}
-                >
-                  {formatNumber(selectedCreator.followers)}
-                </div>
-              </div>
-              <div>
-                <div
-                  className="mb-1 text-[10px] font-medium uppercase tracking-wider"
-                  style={{ color: feyTokens.colors.text.label }}
-                >
-                  Avg Views
-                </div>
-                <div
-                  className="text-lg font-semibold"
-                  style={{ color: feyTokens.colors.text.primary }}
-                >
-                  {formatNumber(selectedCreator.avgViews)}
-                </div>
-              </div>
-              <div>
-                <div
-                  className="mb-1 text-[10px] font-medium uppercase tracking-wider"
-                  style={{ color: feyTokens.colors.text.label }}
-                >
-                  ER%
-                </div>
-                <div
-                  className="text-lg font-semibold"
-                  style={{ color: feyTokens.colors.text.primary }}
-                >
-                  {selectedCreator.er.toFixed(1)}%
-                </div>
-              </div>
-              <div>
-                <div
-                  className="mb-1 text-[10px] font-medium uppercase tracking-wider"
-                  style={{ color: feyTokens.colors.text.label }}
-                >
-                  Rate Range
-                </div>
-                <div
-                  className="text-lg font-semibold"
-                  style={{ color: feyTokens.colors.text.primary }}
-                >
-                  {selectedCreator.rateRange}
-                </div>
-              </div>
-            </div>
+            {selectedTalent.bio && (
+              <p className="text-sm" style={{ color: feyTokens.colors.text.secondary }}>
+                {selectedTalent.bio}
+              </p>
+            )}
             <button
+              type="button"
+              onClick={() => {
+                addToSelection(selectedTalent);
+                setIsDrawerOpen(false);
+                setSelectedTalent(null);
+              }}
               className="w-full rounded-lg border px-4 py-3 text-xs font-medium transition-colors hover:bg-white/10"
               style={{
                 borderColor: feyTokens.colors.red.glow,
@@ -335,21 +364,13 @@ export function DiscoverScreen({ selectedCampaignIds }: DiscoverScreenProps) {
                 color: feyTokens.colors.red.glow,
               }}
             >
-              Add to Campaign Pod
+              Add to selection
             </button>
           </div>
         )}
       </RightDrawer>
-      
-      {/* Bottom Dock Navigation */}
+
       <BottomDock />
     </div>
   );
 }
-
-
-
-
-
-
-

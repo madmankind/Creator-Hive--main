@@ -25,6 +25,7 @@ This document provides exact commands to restore the repository to the golden Fe
 ### Checkpoints
 - **Restore baseline (tag)**: `refs/tags/golden/baseline-pre-discovery-booking`
 - **Restore phase0.5 restore-safety checkpoint**: `refs/tags/checkpoint/phase0.5-restore-safety`
+- **Restore phase1 discovery checkpoint**: `refs/tags/checkpoint/phase1-discovery`
 
 ## Quick Restore (Hard Reset)
 
@@ -51,6 +52,19 @@ git stash push -m "backup-before-restore-$(date +%Y%m%d-%H%M%S)"
 # 2. Hard reset to phase0.5 restore-safety checkpoint
 git fetch --tags
 git reset --hard refs/tags/checkpoint/phase0.5-restore-safety
+
+# 3. Clean any untracked files (optional)
+git clean -fd
+```
+
+### Restore to phase1 discovery checkpoint
+```bash
+# 1. Stash any uncommitted changes (optional but recommended)
+git stash push -m "backup-before-restore-$(date +%Y%m%d-%H%M%S)"
+
+# 2. Hard reset to phase1 discovery checkpoint
+git fetch --tags
+git reset --hard refs/tags/checkpoint/phase1-discovery
 
 # 3. Clean any untracked files (optional)
 git clean -fd
