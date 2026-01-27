@@ -4,22 +4,23 @@ import { motion, AnimatePresence } from 'framer-motion'
 import type { CuratedTalent } from '@/lib/curatedTalent'
 import { LandingTalentCard } from '@/components/marketing/LandingTalentCard'
 import { useCampaignPodStore, type Talent as PodTalent } from '@/store/useCampaignPodStore'
-import { useFavoritesStore } from '@/store/useFavoritesStore'
 import { cn } from '@/lib/utils'
-import { InstagramEmbed } from '@/components/social/InstagramEmbed'
-import { TikTokEmbed } from '@/components/social/TikTokEmbed'
 
-// Ordered role lanes for landing discovery
-const LANDING_ROLE_LANES = [
-  "UGC Creator",
-  "Content Creator",
-  "Videographer",
-  "Photographer",
-  "Editor",
-  "Motion Designer",
-  "Brand Designer",
-  "Content Strategist",
-] as const;
+// Role priority order for clustering (similar roles grouped together)
+const ROLE_PRIORITY: Record<string, number> = {
+  "UGC Creator": 1,
+  "Content Creator": 2,
+  "Videographer": 3,
+  "Photographer": 4,
+  "Editor": 5,
+  "Designer": 6,
+  "Copywriter": 7,
+  "Strategist": 8,
+  "Social Media Manager": 9,
+  "Influencer": 10,
+  "Producer": 11,
+  "Other": 12,
+}
 
 interface TalentCarouselProps {
   talents: CuratedTalent[]
@@ -32,12 +33,10 @@ interface TalentCarouselProps {
 
 export function TalentCarousel({ talents, query, selectedRoles, onTalentClick, onAddToPod, selectedPodIds = [] }: TalentCarouselProps) {
   const [activeTalentId, setActiveTalentId] = useState<string | null>(null)
-  const [activeProfileTab, setActiveProfileTab] = useState<'profile' | 'instagram' | 'tiktok'>('profile')
   const { addToPod } = useCampaignPodStore()
-  const { toggleFavorite, isFavorite } = useFavoritesStore()
 
-  // Filter talents based on query and selected roles (for search)
-  const baseFilteredTalents = useMemo(() => {
+  // Filter talents based on query and selected roles
+  const filteredTalents = useMemo(() => {
     let filtered = talents
 
     // Filter by selected roles
@@ -62,22 +61,22 @@ export function TalentCarousel({ talents, query, selectedRoles, onTalentClick, o
     return filtered
   }, [talents, query, selectedRoles])
 
-  // Group talents by role lanes
-  const roleLanes = useMemo(() => {
-    return LANDING_ROLE_LANES.map((role) => {
-      // Filter talents that have this role tag AND pass base filters
-      const laneTalents = baseFilteredTalents.filter((talent) =>
-        talent.roleTags.includes(role as any)
-      )
-      return {
-        role,
-        talents: laneTalents,
+  // Sort by role similarity (cluster similar roles together)
+  const sortedTalents = useMemo(() => {
+    return [...filteredTalents].sort((a, b) => {
+      // Get primary role (first role tag) priority
+      const aPrimary = a.roleTags[0] ? (ROLE_PRIORITY[a.roleTags[0]] || 999) : 999
+      const bPrimary = b.roleTags[0] ? (ROLE_PRIORITY[b.roleTags[0]] || 999) : 999
+      
+      // Primary sort by role priority
+      if (aPrimary !== bPrimary) {
+        return aPrimary - bPrimary
       }
-    }).filter((lane) => lane.talents.length > 0) // Only show lanes with results
-  }, [baseFilteredTalents])
-
-  // Legacy filteredTalents for detail panel (keep existing behavior)
-  const filteredTalents = baseFilteredTalents
+      
+      // Secondary sort by name for stability
+      return a.name.localeCompare(b.name)
+    })
+  }, [filteredTalents])
 
   // Convert CuratedTalent to PodTalent format
   const convertToPodTalent = (talent: CuratedTalent): PodTalent => ({
@@ -92,346 +91,149 @@ export function TalentCarousel({ talents, query, selectedRoles, onTalentClick, o
   })
 
   const activeTalent = activeTalentId
-    ? filteredTalents.find(t => t.id === activeTalentId)
+    ? sortedTalents.find(t => t.id === activeTalentId)
     : null
-
-  // Get full CuratedTalent from activeTalentId for tabs (has tiktokUrl)
-  const activeCuratedTalent = activeTalentId
-    ? talents.find(t => t.id === activeTalentId)
-    : null
-
-  // Use activeCuratedTalent for tabs (has tiktokUrl)
-  const talentForTabs = activeCuratedTalent || activeTalent
-
-  const handleBook = (talent: PodTalent) => {
-    // This will be handled by the parent component
-    onTalentClick?.(talent.id)
-  }
 
   const handleAddToPod = (talent: PodTalent) => {
     if (onAddToPod) {
       onAddToPod(talent.id)
     } else {
-      // Fallback to store if prop not provided (backward compatibility)
       addToPod(talent)
     }
   }
 
-  const handleOpenProfile = (talent: PodTalent) => {
-    const newActiveId = talent.id === activeTalentId ? null : talent.id
-    setActiveTalentId(newActiveId)
-    if (newActiveId) {
-      setActiveProfileTab('profile') // Reset to profile tab when opening
-    }
+  const handleToggleProfile = (talent: PodTalent) => {
+    setActiveTalentId(talent.id === activeTalentId ? null : talent.id)
   }
 
   return (
-    <>
-      <section className="relative overflow-hidden py-16 md:py-24">
-        {/* Purple gradient background - reverted to previous deeper purple with soft top edge */}
-        <div 
-          className="pointer-events-none absolute inset-0 bg-hive-radial opacity-70"
-          style={{
-            maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 100%)',
-          }}
-        />
-        
-        {/* Spotlight background */}
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="h-[60vh] w-[80vw] max-w-[1200px] blur-3xl opacity-[0.12] bg-gradient-to-b from-white/20 via-white/10 to-transparent rounded-full"></div>
+    <section className="relative py-16 md:py-24">
+      <div className="relative z-10 mx-auto max-w-7xl px-6">
+        {/* Header */}
+        <div className="text-center mb-12 md:mb-16">
+          <h2 className="text-[24px] md:text-[28px] font-semibold tracking-tight text-white/90 mb-3">
+            Among the brightest minds
+          </h2>
+          <p className="text-[14px] md:text-[15px] text-white/70 max-w-2xl mx-auto">
+            From UGC specialists to full-stack creative teams, explore curated talent ready to plug into your campaigns.
+          </p>
         </div>
 
-        <div className="relative z-10 mx-auto flex min-h-[60vh] max-w-7xl flex-col items-center justify-center px-6">
-          {/* Header */}
-          <div className="text-center mb-12 md:mb-16">
-            <h2 className="text-[24px] md:text-[28px] font-semibold tracking-tight text-white/90 mb-3">
-              Among the brightest minds
-            </h2>
-            <p className="text-[14px] md:text-[15px] text-white/70 max-w-2xl mx-auto">
-              From UGC specialists to full-stack creative teams, explore curated talent ready to plug into your campaigns.
-            </p>
+        {/* Single Horizontal Carousel */}
+        {sortedTalents.length === 0 ? (
+          <div className="text-center py-16 text-white/50">
+            <p className="text-[15px]">No perfect matches yet. Try adjusting your roles or using a more general brief.</p>
           </div>
-
-          {/* Role Lane Carousels */}
-          {roleLanes.length === 0 ? (
-            <div className="text-center py-16 text-white/50">
-              <p className="text-[15px]">No perfect matches yet. Try adjusting your roles or using a more general brief.</p>
-            </div>
-          ) : (
-            <div className="w-full space-y-8 md:space-y-10">
-              {roleLanes.map((lane, laneIndex) => {
-                const laneId = `lane-${lane.role.toLowerCase().replace(/\s+/g, '-')}`
-                return (
-                  <div key={lane.role} id={laneId} className="scroll-mt-20">
-                    {/* Lane Header */}
-                    <div className="flex items-center justify-between mb-4 px-2">
-                      <h3 className="text-lg font-semibold text-white/90">
-                        {lane.role}
-                        <span className="ml-2 text-sm font-normal text-white/50">
-                          ({lane.talents.length})
-                        </span>
-                      </h3>
-                    </div>
-
-                    {/* Lane Carousel */}
-                    <div className="w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4 -mx-6 px-6">
-                      <div className="flex gap-4 md:gap-6 min-w-max">
-                        {lane.talents.map((talent, cardIndex) => {
-                          const podTalent = convertToPodTalent(talent)
-                          const isAdded = selectedPodIds.includes(talent.id)
-                          return (
-                            <motion.div
-                              key={talent.id}
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: (laneIndex * 0.1) + (cardIndex * 0.05), duration: 0.3 }}
-                              className="flex-shrink-0 snap-start"
-                            >
-                              <LandingTalentCard
-                                talent={podTalent}
-                                isAdded={isAdded}
-                                onAdd={handleAddToPod}
-                                onOpenProfile={handleOpenProfile}
-                              />
-                            </motion.div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Detail Panel */}
-        <AnimatePresence>
-          {activeTalent && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-              className="relative max-w-5xl mx-auto mt-10 mb-16 px-6"
-            >
-              <div className="rounded-3xl bg-[#0D1117] ring-1 ring-white/10 p-6 md:p-8">
-                {/* Top row */}
-                <div className="flex items-start justify-between mb-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-white/10 ring-2 ring-white/20 overflow-hidden flex-shrink-0">
-                      <div className="w-full h-full bg-gradient-to-br from-white/20 to-white/5 flex items-center justify-center text-white/60 text-2xl font-medium">
-                        {activeTalent.name.charAt(0)}
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-semibold text-white/90 mb-1">
-                        <a
-                          href={activeTalent.instagramUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="hover:underline"
-                        >
-                          {activeTalent.name}
-                        </a>
-                      </h3>
-                      <p className="text-sm text-white/60 mb-1">{activeTalent.displayTitle}</p>
-                      <a
-                        href={activeTalent.instagramUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs text-white/50 hover:text-white/70"
+        ) : (
+          <div className="w-full">
+            <div className="overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4 -mx-6 px-6">
+              <div className="flex gap-4 min-w-max">
+                {sortedTalents.map((talent, index) => {
+                  const podTalent = convertToPodTalent(talent)
+                  const isAdded = selectedPodIds.includes(talent.id)
+                  const isExpanded = activeTalentId === talent.id
+                  
+                  return (
+                    <div key={talent.id} className="flex-shrink-0 snap-start flex flex-col">
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05, duration: 0.3 }}
                       >
-                        @{activeTalent.instagramHandle}
-                      </a>
+                        <LandingTalentCard
+                          talent={podTalent}
+                          isAdded={isAdded}
+                          onAdd={handleAddToPod}
+                          onOpenProfile={handleToggleProfile}
+                          isExpanded={isExpanded}
+                        />
+                      </motion.div>
+                      
+                      {/* Inline Expansion Panel */}
+                      <AnimatePresence>
+                        {isExpanded && talent && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                            animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
+                            exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                            transition={{ duration: 0.25, ease: "easeOut" }}
+                            className="w-[280px]"
+                          >
+                            <div className="rounded-2xl bg-[#0D1117] ring-1 ring-white/10 p-5">
+                              {/* Full Bio */}
+                              {talent.shortBio && (
+                                <p className="text-[13px] leading-relaxed text-white/70 mb-4">
+                                  {talent.shortBio}
+                                </p>
+                              )}
+                              
+                              {/* Platform Icons */}
+                              <div className="flex items-center gap-3 mb-4">
+                                {talent.instagramUrl && (
+                                  <a
+                                    href={talent.instagramUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-white/60 hover:text-white/90 transition"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                                    </svg>
+                                  </a>
+                                )}
+                                {talent.tiktokUrl && (
+                                  <a
+                                    href={talent.tiktokUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-white/60 hover:text-white/90 transition"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.26-4.61 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                                    </svg>
+                                  </a>
+                                )}
+                                {talent.platformTags.includes('YouTube') && (
+                                  <a
+                                    href={`https://youtube.com/@${talent.instagramHandle}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-white/60 hover:text-white/90 transition"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                                    </svg>
+                                  </a>
+                                )}
+                              </div>
+                              
+                              {/* Portfolio Link (if available) */}
+                              {talent.featuredVideoUrl && (
+                                <a
+                                  href={talent.featuredVideoUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-xs text-white/60 hover:text-white/80 transition underline"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  View portfolio →
+                                </a>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => {
-                        const podTalent = convertToPodTalent(activeTalent)
-                        handleAddToPod(podTalent)
-                      }}
-                      className="rounded-full bg-[#7C3AED] text-white shadow-[0_0_24px_rgba(124,58,237,0.45)] hover:bg-[#8B5CF6] hover:shadow-[0_0_32px_rgba(124,58,237,0.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A855F7]/70 px-4 py-2 text-[13px] font-medium transition"
-                    >
-                      Add to pod
-                    </button>
-                    <button
-                      onClick={() => {
-                        const podTalent = convertToPodTalent(activeTalent)
-                        handleBook(podTalent)
-                      }}
-                      className="rounded-full bg-white text-[14px] text-slate-900 px-5 py-2 shadow-lg hover:shadow-xl font-medium"
-                    >
-                      BOOK
-                    </button>
-                    <button
-                      onClick={() => setActiveTalentId(null)}
-                      className="w-8 h-8 rounded-full bg-white/5 ring-1 ring-white/10 flex items-center justify-center hover:bg-white/10 transition text-white/60"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-
-                {/* Tab Carousel */}
-                <div className="flex items-center justify-center gap-2 mb-6">
-                  <button
-                    type="button"
-                    onClick={() => setActiveProfileTab('profile')}
-                    className={cn(
-                      "rounded-full px-4 py-1.5 text-xs font-medium transition",
-                      activeProfileTab === 'profile'
-                        ? "bg-white/10 text-white ring-1 ring-white/20"
-                        : "bg-white/5 text-white/60 hover:bg-white/8"
-                    )}
-                  >
-                    Profile
-                  </button>
-                  {talentForTabs?.instagramUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveProfileTab('instagram')}
-                      className={cn(
-                        "rounded-full px-4 py-1.5 text-xs font-medium transition",
-                        activeProfileTab === 'instagram'
-                          ? "bg-white/10 text-white ring-1 ring-white/20"
-                          : "bg-white/5 text-white/60 hover:bg-white/8"
-                      )}
-                    >
-                      Instagram
-                    </button>
-                  )}
-                  {(talentForTabs?.tiktokUrl || talentForTabs?.platformTags.includes('TikTok')) && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveProfileTab('tiktok')}
-                      className={cn(
-                        "rounded-full px-4 py-1.5 text-xs font-medium transition",
-                        activeProfileTab === 'tiktok'
-                          ? "bg-white/10 text-white ring-1 ring-white/20"
-                          : "bg-white/5 text-white/60 hover:bg-white/8"
-                      )}
-                    >
-                      TikTok
-                    </button>
-                  )}
-                </div>
-
-                {/* Tab Content */}
-                <AnimatePresence mode="wait">
-                  {activeProfileTab === 'profile' && (
-                    <motion.div
-                      key="profile"
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      {/* Video / Media */}
-                      {activeTalent.featuredVideoUrl && (
-                  <div className="mb-6 rounded-xl overflow-hidden bg-black/20">
-                    <div className="aspect-video">
-                      <iframe
-                        src={activeTalent.featuredVideoUrl}
-                        className="w-full h-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Niche Summary */}
-                <div className="mb-6">
-                  <p className="text-[15px] leading-relaxed text-white/70">
-                    {activeTalent.nicheSummary}
-                  </p>
-                </div>
-
-                {/* Project Overview */}
-                <div className="mb-6">
-                  <h4 className="text-sm font-medium text-white/90 mb-3">Project overview</h4>
-                  <p className="text-[14px] leading-relaxed text-white/60">
-                    {activeTalent.nicheSummary}
-                  </p>
-                </div>
-
-                {/* Tags */}
-                <div className="flex flex-wrap gap-2">
-                  {activeTalent.roleTags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full bg-white/8 text-[11px] px-3 py-1 border border-white/10 text-white/80"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                  {activeTalent.platformTags.map((platform) => (
-                    <span
-                      key={platform}
-                      className="rounded-full bg-white/5 text-[11px] px-3 py-1 border border-white/10 text-white/60"
-                    >
-                      {platform}
-                    </span>
-                  ))}
-                  {activeTalent.availability.map((avail) => (
-                    <span
-                      key={avail}
-                      className={`rounded-full text-[11px] px-3 py-1 border ${
-                        avail === 'Monthly'
-                          ? 'bg-emerald-500/10 border-emerald-400/40 text-emerald-300'
-                          : 'bg-white/5 border-white/20 text-white/70'
-                      }`}
-                    >
-                      {avail}
-                    </span>
-                  ))}
-                  {activeTalent.location && (
-                    <span className="rounded-full bg-white/5 text-[11px] px-3 py-1 border border-white/10 text-white/60">
-                      📍 {activeTalent.location}
-                    </span>
-                  )}
-                </div>
-                    </motion.div>
-                  )}
-
-                  {activeProfileTab === 'instagram' && talentForTabs?.instagramUrl && (
-                    <motion.div
-                      key="instagram"
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <InstagramEmbed
-                        username={talentForTabs.instagramHandle}
-                        url={talentForTabs.instagramUrl}
-                      />
-                    </motion.div>
-                  )}
-
-                  {activeProfileTab === 'tiktok' && (talentForTabs?.tiktokUrl || talentForTabs?.platformTags.includes('TikTok')) && (
-                    <motion.div
-                      key="tiktok"
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <TikTokEmbed
-                        username={talentForTabs.tiktokHandle}
-                        url={talentForTabs.tiktokUrl}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                  )
+                })}
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </section>
-    </>
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
   )
 }
