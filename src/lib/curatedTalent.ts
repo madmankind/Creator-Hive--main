@@ -16,6 +16,13 @@ export type TalentCategoryTag =
 
 export type PlatformTag = "Instagram" | "TikTok" | "YouTube" | "Snapchat" | "Twitter/X" | "LinkedIn";
 
+export type PortfolioItem = {
+  type: "image" | "video";
+  src: string;
+  poster?: string;
+  title?: string;
+};
+
 export interface CuratedTalent {
   id: string;
   name: string;                 // e.g. "Lachy Groom"
@@ -34,7 +41,8 @@ export interface CuratedTalent {
   timezone?: string;
   languages?: string[];         // optional
   featuredVideoUrl?: string;    // e.g. a portfolio reel (YouTube/Vimeo/MP4)
-  portfolioImages?: string[];   // optional, for future gallery
+  portfolioImages?: string[];   // optional, for future gallery (deprecated, use portfolio)
+  portfolio?: PortfolioItem[]; // Portfolio items (images/videos)
   followers?: number;           // Numeric follower count for discovery view
   engagementRate?: number;      // Decimal (0.045 = 4.5%)
   avgEngagement?: number;       // Average engagements per post
@@ -88,6 +96,11 @@ export const curatedTalent: CuratedTalent[] = [
     avgEngagement: 2575,
     interests: ["Tech", "SaaS", "Product Launches"],
     brandPartners: ["STC", "Jahez", "Sary"],
+    portfolio: [
+      { type: "video", src: "/portfolio/work-1.svg", poster: "/portfolio/work-1.svg", title: "Tech Brand Film" },
+      { type: "image", src: "/portfolio/work-2.svg", title: "Product Launch Video" },
+      { type: "image", src: "/portfolio/work-3.svg", title: "Corporate Campaign" },
+    ],
   },
   {
     id: "talent-3",
@@ -110,6 +123,11 @@ export const curatedTalent: CuratedTalent[] = [
     avgEngagement: 3848,
     interests: ["Hospitality", "Real Estate", "Fashion"],
     brandPartners: ["Mandarin Oriental", "Emaar", "Aldar"],
+    portfolio: [
+      { type: "image", src: "/portfolio/work-1.svg", title: "Hotel Photography" },
+      { type: "image", src: "/portfolio/work-2.svg", title: "Real Estate Shoot" },
+      { type: "image", src: "/portfolio/work-3.svg", title: "Fashion Editorial" },
+    ],
   },
   {
     id: "talent-4",
@@ -131,6 +149,11 @@ export const curatedTalent: CuratedTalent[] = [
     avgEngagement: 1927,
     interests: ["Fintech", "Enterprise SaaS", "B2B"],
     brandPartners: ["QNB", "Bein Sports", "Careem"],
+    portfolio: [
+      { type: "image", src: "/portfolio/work-1.svg", title: "B2B Content Strategy" },
+      { type: "image", src: "/portfolio/work-2.svg", title: "Thought Leadership" },
+      { type: "image", src: "/portfolio/work-3.svg", title: "Brand Voice Development" },
+    ],
   },
   {
     id: "talent-5",
@@ -153,6 +176,11 @@ export const curatedTalent: CuratedTalent[] = [
     avgEngagement: 5330,
     interests: ["E-commerce", "Beauty", "Wellness"],
     brandPartners: ["Namshi", "Faces", "Noon"],
+    portfolio: [
+      { type: "image", src: "/portfolio/work-1.svg", title: "Social Media Campaign" },
+      { type: "image", src: "/portfolio/work-2.svg", title: "Growth Strategy" },
+      { type: "image", src: "/portfolio/work-3.svg", title: "Community Management" },
+    ],
   },
   {
     id: "talent-6",
@@ -177,6 +205,11 @@ export const curatedTalent: CuratedTalent[] = [
     avgEngagement: 5488,
     interests: ["Food & Beverage", "Consumer Electronics", "Apps"],
     brandPartners: ["Talabat", "Samsung", "Anghami"],
+    portfolio: [
+      { type: "video", src: "/portfolio/work-1.svg", poster: "/portfolio/work-1.svg", title: "UGC Video Content" },
+      { type: "image", src: "/portfolio/work-2.svg", title: "Food Delivery Campaign" },
+      { type: "image", src: "/portfolio/work-3.svg", title: "Product Demo" },
+    ],
   },
   {
     id: "talent-7",
@@ -198,6 +231,11 @@ export const curatedTalent: CuratedTalent[] = [
     avgEngagement: 1764,
     interests: ["Design Systems", "Brand Identity", "Templates"],
     brandPartners: ["Boutique 1", "Kuwait Finance House", "Sadu House"],
+    portfolio: [
+      { type: "image", src: "/portfolio/work-1.svg", title: "Brand Identity Design" },
+      { type: "image", src: "/portfolio/work-2.svg", title: "Social Media Templates" },
+      { type: "image", src: "/portfolio/work-3.svg", title: "Logo Design" },
+    ],
   },
   {
     id: "talent-8",
@@ -220,5 +258,10 @@ export const curatedTalent: CuratedTalent[] = [
     avgEngagement: 1767,
     interests: ["Corporate", "Events", "Commercial"],
     brandPartners: ["Audi", "PepsiCo", "Majid Al Futtaim"],
+    portfolio: [
+      { type: "video", src: "/portfolio/work-1.svg", poster: "/portfolio/work-1.svg", title: "Corporate Production" },
+      { type: "image", src: "/portfolio/work-2.svg", title: "Event Coverage" },
+      { type: "image", src: "/portfolio/work-3.svg", title: "Commercial Campaign" },
+    ],
   },
 ];

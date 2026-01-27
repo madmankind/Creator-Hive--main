@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { HeroBar } from "@/components/HeroBar";
 import { TalentCarousel } from "@/components/marketing/TalentCarousel";
+import { LandingTalentDetailPanel } from "@/components/marketing/LandingTalentDetailPanel";
 import { CampaignPodPanel } from "@/components/talent/CampaignPodPanel";
 import { BookingModal } from "@/components/booking/BookingModal";
 import { ClientAuthDialog } from "@/components/auth/ClientAuthDialog";
@@ -26,6 +27,8 @@ export default function HomePage() {
   
   // Landing pod state (localStorage-backed)
   const [selectedPodIds, setSelectedPodIds] = useState<string[]>([]);
+  // Active talent for detail panel
+  const [activeTalentId, setActiveTalentId] = useState<string | null>(null);
   
   const { selectedTalents } = useCampaignPodStore();
   const { openPodSetup } = usePodConfigStore();
@@ -220,6 +223,8 @@ export default function HomePage() {
             query={searchQuery} 
             selectedRoles={selectedRoles}
             selectedPodIds={selectedPodIds}
+            activeTalentId={activeTalentId}
+            onSelectTalent={setActiveTalentId}
             onAddToPod={addToPod}
             onTalentClick={(talentId) => {
               // Find the talent and open booking modal
@@ -239,6 +244,12 @@ export default function HomePage() {
                 setBookingOpen(true);
               }
             }}
+          />
+          
+          {/* Detail Panel */}
+          <LandingTalentDetailPanel
+            talent={activeTalentId ? curatedTalent.find(t => t.id === activeTalentId) || null : null}
+            onClose={() => setActiveTalentId(null)}
           />
         </section>
       )}
