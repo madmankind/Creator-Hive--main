@@ -1,38 +1,27 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { motion } from 'framer-motion'
-import type { CuratedTalent } from '@/lib/curatedTalent'
+import type { CuratedTalent, TalentCategoryTag } from '@/lib/curatedTalent'
 import { LandingTalentCard } from '@/components/marketing/LandingTalentCard'
-import { GroupDividerCard } from '@/components/marketing/GroupDividerCard'
 import { useCampaignPodStore, type Talent as PodTalent } from '@/store/useCampaignPodStore'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-// Group order for segmentation
-const GROUP_ORDER = [
-  { 
-    key: "Creators", 
-    roles: ["UGC Creator", "Content Creator", "Influencer"],
-    description: "Content creators and influencers ready for your campaigns"
-  },
-  { 
-    key: "Production", 
-    roles: ["Videographer", "Photographer", "Editor", "Producer"],
-    description: "Video and photo production specialists"
-  },
-  { 
-    key: "Design", 
-    roles: ["Brand Designer", "Product Designer", "Motion Designer", "Designer"],
-    description: "Visual design and brand identity experts"
-  },
-  { 
-    key: "Strategy", 
-    roles: ["Content Strategist", "Strategist", "Social Media Manager", "Copywriter"],
-    description: "Strategic planning and content development"
-  },
-] as const;
-
-type RailItem = 
-  | { type: 'divider'; groupKey: string; description: string }
-  | { type: 'talent'; talent: CuratedTalent };
+// Ordered list of primary roles for grouping
+const PRIMARY_ROLE_ORDER: TalentCategoryTag[] = [
+  "UGC Creator",
+  "Content Creator",
+  "Videographer",
+  "Photographer",
+  "Editor",
+  "Designer",
+  "Strategist",
+  "Copywriter",
+  "Producer",
+  "Influencer",
+  "Social Media Manager",
+  "Other",
+]
 
 interface TalentCarouselProps {
   talents: CuratedTalent[]
@@ -40,9 +29,8 @@ interface TalentCarouselProps {
   selectedRoles?: string[]
   onTalentClick?: (talentId: string) => void
   onAddToPod?: (talentId: string) => void
+  onBook?: (talent: PodTalent) => void
   selectedPodIds?: string[]
-  activeTalentId?: string | null
-  onSelectTalent?: (talentId: string | null) => void
 }
 
 export function TalentCarousel({ 
@@ -50,21 +38,24 @@ export function TalentCarousel({
   query, 
   selectedRoles, 
   onTalentClick, 
-  onAddToPod, 
+  onAddToPod,
+  onBook,
   selectedPodIds = [],
-  activeTalentId,
-  onSelectTalent,
 }: TalentCarouselProps) {
   const { addToPod } = useCampaignPodStore()
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [showArrows, setShowArrows] = useState(false)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(true)
 
   // Filter talents based on query and selected roles
   const filteredTalents = useMemo(() => {
     let filtered = talents
 
-    // Filter by selected roles
+    // Filter by selected roles (check primaryRole)
     if (selectedRoles && selectedRoles.length > 0) {
       filtered = filtered.filter(talent =>
-        talent.roleTags.some(tag => selectedRoles.includes(tag))
+        selectedRoles.includes(talent.primaryRole)
       )
     }
 
@@ -83,52 +74,59 @@ export function TalentCarousel({
     return filtered
   }, [talents, query, selectedRoles])
 
-  // Group and sort talents
-  const railItems = useMemo(() => {
-    const items: RailItem[] = []
-    const groupedTalents: Record<string, CuratedTalent[]> = {}
+  // Group by primaryRole and sort
+  const groupedTalents = useMemo(() => {
+    const grouped: CuratedTalent[] = []
+    const seen = new Set<string>()
     
-    // Initialize groups
-    GROUP_ORDER.forEach(group => {
-      groupedTalents[group.key] = []
-    })
-    
-    // Assign talents to first matching group
-    filteredTalents.forEach(talent => {
-      for (const group of GROUP_ORDER) {
-        if (talent.roleTags.some(tag => group.roles.includes(tag as any))) {
-          groupedTalents[group.key].push(talent)
-          break
+    // Group by primaryRole in order
+    PRIMARY_ROLE_ORDER.forEach(role => {
+      filteredTalents.forEach(talent => {
+        if (!seen.has(talent.id) && talent.primaryRole === role) {
+          grouped.push(talent)
+          seen.add(talent.id)
         }
+      })
+    })
+    
+    // Add any remaining talents (shouldn't happen if primaryRole is set correctly)
+    filteredTalents.forEach(talent => {
+      if (!seen.has(talent.id)) {
+        grouped.push(talent)
+        seen.add(talent.id)
       }
     })
     
-    // Build rail items with dividers
-    GROUP_ORDER.forEach(group => {
-      const groupTalents = groupedTalents[group.key]
-      if (groupTalents.length > 0) {
-        // Add divider
-        items.push({
-          type: 'divider',
-          groupKey: group.key,
-          description: group.description,
-        })
-        
-        // Sort talents in group by name
-        const sorted = [...groupTalents].sort((a, b) => a.name.localeCompare(b.name))
-        
-        // Add talents
-        sorted.forEach(talent => {
-          items.push({
-            type: 'talent',
-            talent,
-          })
-        })
+    return grouped
+  }, [filteredTalents])
+
+  // Insert subtle gaps between groups
+  const railItems = useMemo(() => {
+    const items: (CuratedTalent | 'gap')[] = []
+    let lastPrimaryRole: TalentCategoryTag | null = null
+    
+    groupedTalents.forEach((talent, index) => {
+      // Insert gap if primaryRole changed
+      if (lastPrimaryRole && lastPrimaryRole !== talent.primaryRole && index > 0) {
+        items.push('gap')
       }
+      
+      items.push(talent)
+      lastPrimaryRole = talent.primaryRole
     })
     
     return items
-  }, [filteredTalents])
+  }, [groupedTalents])
+
+  // Check scroll position for arrows
+  const checkScroll = () => {
+    if (!scrollContainerRef.current) return
+    const container = scrollContainerRef.current
+    setCanScrollLeft(container.scrollLeft > 0)
+    setCanScrollRight(
+      container.scrollLeft < container.scrollWidth - container.clientWidth - 10
+    )
+  }
 
   // Convert CuratedTalent to PodTalent format
   const convertToPodTalent = (talent: CuratedTalent): PodTalent => ({
@@ -150,14 +148,47 @@ export function TalentCarousel({
     }
   }
 
-  const handleCardClick = (talent: PodTalent) => {
-    if (onSelectTalent) {
-      onSelectTalent(talent.id === activeTalentId ? null : talent.id)
+  const handleBook = (talent: PodTalent) => {
+    if (onBook) {
+      onBook(talent)
+    } else if (onTalentClick) {
+      onTalentClick(talent.id)
+    }
+  }
+
+  const scrollLeft = () => {
+    if (scrollContainerRef.current) {
+      const container = scrollContainerRef.current
+      const cardWidth = 400 // w-[400px]
+      const gap = 16 // gap-4
+      const scrollAmount = (cardWidth + gap) * 2
+      container.scrollBy({ left: -scrollAmount, behavior: 'smooth' })
+      setTimeout(checkScroll, 300)
+    }
+  }
+
+  const scrollRight = () => {
+    if (scrollContainerRef.current) {
+      const container = scrollContainerRef.current
+      const cardWidth = 400
+      const gap = 16
+      const scrollAmount = (cardWidth + gap) * 2
+      container.scrollBy({ left: scrollAmount, behavior: 'smooth' })
+      setTimeout(checkScroll, 300)
     }
   }
 
   return (
     <section className="relative py-16 md:py-24">
+      {/* Deep purple Fey gradient background */}
+      <div 
+        className="pointer-events-none absolute inset-0 bg-hive-radial opacity-70"
+        style={{
+          maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 100%)',
+        }}
+      />
+      
       <div className="relative z-10 mx-auto max-w-7xl px-6">
         {/* Header */}
         <div className="text-center mb-12 md:mb-16">
@@ -169,39 +200,80 @@ export function TalentCarousel({
           </p>
         </div>
 
-        {/* Single Horizontal Rail */}
+        {/* Single Horizontal Carousel */}
         {railItems.length === 0 ? (
           <div className="text-center py-16 text-white/50">
             <p className="text-[15px]">No perfect matches yet. Try adjusting your roles or using a more general brief.</p>
           </div>
         ) : (
-          <div className="w-full">
-            <div className="overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide pb-4 -mx-6 px-6">
+          <div 
+            className="relative w-full"
+            onMouseEnter={() => setShowArrows(true)}
+            onMouseLeave={() => setShowArrows(false)}
+            onScroll={checkScroll}
+          >
+            {/* Left vignette fade */}
+            <div className="absolute left-0 top-0 h-full w-24 pointer-events-none bg-gradient-to-r from-[#0B0F14] via-[#0B0F14]/80 to-transparent z-10" />
+            
+            {/* Right vignette fade */}
+            <div className="absolute right-0 top-0 h-full w-24 pointer-events-none bg-gradient-to-l from-[#0B0F14] via-[#0B0F14]/80 to-transparent z-10" />
+            
+            {/* Left arrow */}
+            {canScrollLeft && (
+              <button
+                onClick={scrollLeft}
+                className={cn(
+                  "absolute left-4 top-1/2 -translate-y-1/2 z-20",
+                  "w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm",
+                  "ring-1 ring-white/20 hover:ring-white/40 hover:bg-white/15",
+                  "flex items-center justify-center text-white/80 hover:text-white",
+                  "transition-all duration-200",
+                  showArrows ? "opacity-100" : "opacity-0 pointer-events-none"
+                )}
+                title="Scroll left"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            )}
+            
+            {/* Right arrow */}
+            {canScrollRight && (
+              <button
+                onClick={scrollRight}
+                className={cn(
+                  "absolute right-4 top-1/2 -translate-y-1/2 z-20",
+                  "w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm",
+                  "ring-1 ring-white/20 hover:ring-white/40 hover:bg-white/15",
+                  "flex items-center justify-center text-white/80 hover:text-white",
+                  "transition-all duration-200",
+                  showArrows ? "opacity-100" : "opacity-0 pointer-events-none"
+                )}
+                title="Scroll right"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            )}
+
+            <div 
+              ref={scrollContainerRef}
+              className="overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide pb-4 -mx-6 px-6"
+              onScroll={checkScroll}
+            >
               <div className="flex gap-4 min-w-max">
                 {railItems.map((item, index) => {
-                  if (item.type === 'divider') {
+                  if (item === 'gap') {
                     return (
-                      <div key={`divider-${item.groupKey}`} className="flex-shrink-0 snap-start">
-                        <motion.div
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.03, duration: 0.3 }}
-                        >
-                          <GroupDividerCard
-                            groupKey={item.groupKey}
-                            description={item.description}
-                          />
-                        </motion.div>
+                      <div key={`gap-${index}`} className="w-10 shrink-0 flex items-center justify-center">
+                        <div className="w-px h-[70%] bg-white/5 blur-[0.5px]" />
                       </div>
                     )
                   }
                   
-                  const podTalent = convertToPodTalent(item.talent)
-                  const isAdded = selectedPodIds.includes(item.talent.id)
-                  const isSelected = activeTalentId === item.talent.id
+                  const podTalent = convertToPodTalent(item)
+                  const isAdded = selectedPodIds.includes(item.id)
                   
                   return (
-                    <div key={item.talent.id} className="flex-shrink-0 snap-start">
+                    <div key={item.id} className="flex-shrink-0 snap-start">
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -211,8 +283,8 @@ export function TalentCarousel({
                           talent={podTalent}
                           isAdded={isAdded}
                           onAdd={handleAddToPod}
-                          onOpenProfile={handleCardClick}
-                          isSelected={isSelected}
+                          onBook={handleBook}
+                          curatedTalent={item}
                         />
                       </motion.div>
                     </div>

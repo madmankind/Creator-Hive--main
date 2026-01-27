@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { HeroBar } from "@/components/HeroBar";
 import { TalentCarousel } from "@/components/marketing/TalentCarousel";
-import { LandingTalentDetailPanel } from "@/components/marketing/LandingTalentDetailPanel";
 import { CampaignPodPanel } from "@/components/talent/CampaignPodPanel";
 import { BookingModal } from "@/components/booking/BookingModal";
 import { ClientAuthDialog } from "@/components/auth/ClientAuthDialog";
@@ -223,9 +222,32 @@ export default function HomePage() {
             query={searchQuery} 
             selectedRoles={selectedRoles}
             selectedPodIds={selectedPodIds}
-            activeTalentId={activeTalentId}
-            onSelectTalent={setActiveTalentId}
             onAddToPod={addToPod}
+            onBook={(talent) => {
+              // Convert to PodTalent and open booking modal
+              // If pod is empty, add talent then open booking; otherwise just open with this talent
+              const curated = curatedTalent.find(t => t.id === talent.id);
+              if (curated) {
+                const podTalent: PodTalent = {
+                  id: talent.id,
+                  name: talent.name,
+                  headline: talent.headline || curated.displayTitle,
+                  avatarUrl: talent.avatarUrl,
+                  roles: talent.roles,
+                  platforms: talent.platforms,
+                  availabilityTags: talent.availabilityTags,
+                  bio: talent.bio,
+                };
+                
+                // If pod is empty, add this talent first
+                if (selectedPodIds.length === 0) {
+                  addToPod(podTalent);
+                }
+                
+                setBookingTalents([podTalent]);
+                setBookingOpen(true);
+              }
+            }}
             onTalentClick={(talentId) => {
               // Find the talent and open booking modal
               const talent = curatedTalent.find(t => t.id === talentId);
@@ -244,12 +266,6 @@ export default function HomePage() {
                 setBookingOpen(true);
               }
             }}
-          />
-          
-          {/* Detail Panel */}
-          <LandingTalentDetailPanel
-            talent={activeTalentId ? curatedTalent.find(t => t.id === activeTalentId) || null : null}
-            onClose={() => setActiveTalentId(null)}
           />
         </section>
       )}

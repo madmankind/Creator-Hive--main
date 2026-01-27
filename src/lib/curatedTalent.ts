@@ -32,6 +32,7 @@ export interface CuratedTalent {
   tiktokUrl?: string;           // "https://tiktok.com/@..."
   tiktokHandle?: string;        // "@username"
   avatarUrl: string;            // for now, static placeholder or /avatars/...
+  primaryRole: TalentCategoryTag; // Primary role for grouping (must exist in roleTags)
   roleTags: TalentCategoryTag[];   // max 4
   platformTags: PlatformTag[];     // e.g. ["Instagram", "TikTok", "Snapchat"]
   shortBio: string;             // 1 sentence, marketing-grade
@@ -60,6 +61,7 @@ export const curatedTalent: CuratedTalent[] = [
     tiktokUrl: "https://tiktok.com/@sarahalmansoori",
     tiktokHandle: "@sarahalmansoori",
     avatarUrl: "/avatars/sarah.jpg",
+    primaryRole: "UGC Creator",
     roleTags: ["UGC Creator", "Content Creator", "Influencer"],
     platformTags: ["Instagram", "TikTok", "Snapchat"],
     shortBio: "Dubai-based UGC specialist creating authentic product showcases for luxury and lifestyle brands across GCC markets.",
@@ -82,6 +84,7 @@ export const curatedTalent: CuratedTalent[] = [
     instagramHandle: "ahmedhassanfilms",
     instagramUrl: "https://instagram.com/ahmedhassanfilms",
     avatarUrl: "/avatars/ahmed.jpg",
+    primaryRole: "Videographer",
     roleTags: ["Videographer", "Editor", "Producer"],
     platformTags: ["YouTube", "Instagram", "TikTok"],
     shortBio: "Award-winning videographer producing cinematic brand films and social content for tech startups and enterprise clients.",
@@ -109,6 +112,7 @@ export const curatedTalent: CuratedTalent[] = [
     instagramHandle: "laylakhoury",
     instagramUrl: "https://instagram.com/laylakhoury",
     avatarUrl: "/avatars/layla.jpg",
+    primaryRole: "Photographer",
     roleTags: ["Photographer", "Content Creator", "Designer"],
     platformTags: ["Instagram", "LinkedIn"],
     shortBio: "Luxury lifestyle photographer capturing brand aesthetics for hospitality, real estate, and fashion sectors in the GCC.",
@@ -136,6 +140,7 @@ export const curatedTalent: CuratedTalent[] = [
     instagramHandle: "omaralrashid",
     instagramUrl: "https://instagram.com/omaralrashid",
     avatarUrl: "/avatars/omar.jpg",
+    primaryRole: "Copywriter",
     roleTags: ["Copywriter", "Strategist", "Content Creator"],
     platformTags: ["LinkedIn", "Twitter/X", "Instagram"],
     shortBio: "B2B marketing strategist and copywriter crafting compelling narratives for fintech, healthcare, and enterprise SaaS brands.",
@@ -162,6 +167,7 @@ export const curatedTalent: CuratedTalent[] = [
     instagramHandle: "mayapatelsocial",
     instagramUrl: "https://instagram.com/mayapatelsocial",
     avatarUrl: "/avatars/maya.jpg",
+    primaryRole: "Social Media Manager",
     roleTags: ["Social Media Manager", "Strategist", "Content Creator"],
     platformTags: ["Instagram", "TikTok", "LinkedIn", "Twitter/X"],
     shortBio: "Growth-focused social media strategist managing multi-platform campaigns for e-commerce and D2C brands scaling in MENA.",
@@ -191,6 +197,7 @@ export const curatedTalent: CuratedTalent[] = [
     tiktokUrl: "https://tiktok.com/@zainmalik",
     tiktokHandle: "@zainmalik",
     avatarUrl: "/avatars/zain.jpg",
+    primaryRole: "Videographer",
     roleTags: ["Videographer", "UGC Creator", "Editor"],
     platformTags: ["TikTok", "Instagram", "YouTube"],
     shortBio: "Fast-paced UGC videographer creating viral-ready content for consumer brands, food & beverage, and mobile apps.",
@@ -218,6 +225,7 @@ export const curatedTalent: CuratedTalent[] = [
     instagramHandle: "nooralzahra",
     instagramUrl: "https://instagram.com/nooralzahra",
     avatarUrl: "/avatars/noor.jpg",
+    primaryRole: "Designer",
     roleTags: ["Designer", "Content Creator", "Social Media Manager"],
     platformTags: ["Instagram", "LinkedIn"],
     shortBio: "Visual designer and content creator specializing in brand identity, social media graphics, and digital marketing assets.",
@@ -244,6 +252,7 @@ export const curatedTalent: CuratedTalent[] = [
     instagramHandle: "ramifakhoury",
     instagramUrl: "https://instagram.com/ramifakhoury",
     avatarUrl: "/avatars/rami.jpg",
+    primaryRole: "Producer",
     roleTags: ["Producer", "Videographer", "Editor"],
     platformTags: ["YouTube", "Instagram"],
     shortBio: "Full-service video production specialist handling end-to-end campaigns from concept to delivery for corporate and commercial clients.",
@@ -265,3 +274,21 @@ export const curatedTalent: CuratedTalent[] = [
     ],
   },
 ];
+
+// Runtime guard: validate primaryRole consistency (dev-only, non-throwing)
+if (typeof window === 'undefined' || process.env.NODE_ENV === 'development') {
+  curatedTalent.forEach((talent, index) => {
+    if (!talent.roleTags.includes(talent.primaryRole)) {
+      console.warn(
+        `[curatedTalent] Talent "${talent.name}" (index ${index}): primaryRole "${talent.primaryRole}" not found in roleTags:`,
+        talent.roleTags
+      );
+    }
+    if (talent.roleTags.length > 4) {
+      console.warn(
+        `[curatedTalent] Talent "${talent.name}" (index ${index}): roleTags length ${talent.roleTags.length} exceeds max 4:`,
+        talent.roleTags
+      );
+    }
+  });
+}
