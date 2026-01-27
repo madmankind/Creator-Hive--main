@@ -23,11 +23,92 @@ export default function HomePage() {
   const [clientAuthOpen, setClientAuthOpen] = useState(false);
   const [talentAuthOpen, setTalentAuthOpen] = useState(false);
   const [pendingDiscover, setPendingDiscover] = useState(false);
+  
+  // Landing pod state (localStorage-backed)
+  const [selectedPodIds, setSelectedPodIds] = useState<string[]>([]);
+  
   const { selectedTalents } = useCampaignPodStore();
   const { openPodSetup } = usePodConfigStore();
   const { data: session } = useSession();
   const role = (session?.user as { role?: string | null } | undefined)?.role ?? null;
   const isClient = role === "AGENCY";
+
+  // Load landing pod from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("ch_landing_pod_ids");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setSelectedPodIds(parsed);
+        }
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, []);
+
+  // Persist landing pod to localStorage
+  useEffect(() => {
+    if (selectedPodIds.length > 0) {
+      localStorage.setItem("ch_landing_pod_ids", JSON.stringify(selectedPodIds));
+    } else {
+      localStorage.removeItem("ch_landing_pod_ids");
+    }
+  }, [selectedPodIds]);
+
+  // Landing pod handlers
+  const addToPod = (talentId: string) => {
+    setSelectedPodIds((prev) => {
+      if (prev.includes(talentId)) return prev;
+      return [...prev, talentId];
+    });
+  };
+
+  const removeFromPod = (talentId: string) => {
+    setSelectedPodIds((prev) => prev.filter((id) => id !== talentId));
+  };
+
+  const clearPod = () => {
+    setSelectedPodIds([]);
+  };
+
+  // Handle "Set up pod" click - check auth, then open booking modal
+  const handleSetUpPod = () => {
+    if (selectedPodIds.length === 0) return; // Disabled if empty
+    
+    // Check if client session exists
+    const hasSession = typeof window !== 'undefined' && localStorage.getItem('ch_client_session');
+    
+    if (!hasSession) {
+      // Open auth dialog first
+      setClientAuthOpen(true);
+      setPendingDiscover(true); // Flag to open booking after auth
+      return;
+    }
+    
+    // Convert selectedPodIds to PodTalent[] and open booking modal
+    const podTalents: PodTalent[] = selectedPodIds
+      .map((id) => {
+        const talent = curatedTalent.find((t) => t.id === id);
+        if (!talent) return null;
+        return {
+          id: talent.id,
+          name: talent.name,
+          headline: talent.displayTitle,
+          avatarUrl: talent.avatarUrl,
+          roles: talent.roleTags,
+          platforms: talent.platformTags,
+          availabilityTags: talent.availability,
+          bio: talent.shortBio,
+        };
+      })
+      .filter((t): t is PodTalent => t !== null);
+    
+    setBookingTalents(podTalents);
+    setBookingOpen(true);
+  };
+
   useEffect(() => {
     if (isClient && pendingDiscover) {
       setShowTalentGallery(true);
@@ -138,6 +219,8 @@ export default function HomePage() {
             talents={curatedTalent} 
             query={searchQuery} 
             selectedRoles={selectedRoles}
+            selectedPodIds={selectedPodIds}
+            onAddToPod={addToPod}
             onTalentClick={(talentId) => {
               // Find the talent and open booking modal
               const talent = curatedTalent.find(t => t.id === talentId);
@@ -163,11 +246,10 @@ export default function HomePage() {
       {/* Campaign Pod Panel */}
       {mode === 'client' && (
         <CampaignPodPanel
-          onOpenBrief={() => {
-            if (selectedTalents.length > 0) {
-              openPodSetup(selectedTalents);
-            }
-          }}
+          selectedPodIds={selectedPodIds}
+          onRemove={removeFromPod}
+          onClear={clearPod}
+          onOpenBrief={handleSetUpPod}
           onOpenProfile={(talentId) => {
             // Scroll to talent or expand detail view
             const talent = curatedTalent.find(t => t.id === talentId);
@@ -204,11 +286,37 @@ export default function HomePage() {
         }}
         onSuccess={() => {
           if (pendingDiscover) {
-            setTimeout(() => {
-              setShowTalentGallery(true);
-              document.getElementById("talent-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }, 200);
-            setPendingDiscover(false);
+            // Check if we should open booking modal (after "Set up pod" auth)
+            const hasPodIds = selectedPodIds.length > 0;
+            if (hasPodIds) {
+              // Open booking modal with selected talents
+              const podTalents: PodTalent[] = selectedPodIds
+                .map((id) => {
+                  const talent = curatedTalent.find((t) => t.id === id);
+                  if (!talent) return null;
+                  return {
+                    id: talent.id,
+                    name: talent.name,
+                    headline: talent.displayTitle,
+                    avatarUrl: talent.avatarUrl,
+                    roles: talent.roleTags,
+                    platforms: talent.platformTags,
+                    availabilityTags: talent.availability,
+                    bio: talent.shortBio,
+                  };
+                })
+                .filter((t): t is PodTalent => t !== null);
+              setBookingTalents(podTalents);
+              setBookingOpen(true);
+              setPendingDiscover(false);
+            } else {
+              // Original behavior: scroll to gallery
+              setTimeout(() => {
+                setShowTalentGallery(true);
+                document.getElementById("talent-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }, 200);
+              setPendingDiscover(false);
+            }
           }
         }}
       />

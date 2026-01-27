@@ -2,28 +2,42 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { CuratedTalent } from '@/lib/curatedTalent'
-import { TalentCard } from '@/components/talent/TalentCard'
+import { LandingTalentCard } from '@/components/marketing/LandingTalentCard'
 import { useCampaignPodStore, type Talent as PodTalent } from '@/store/useCampaignPodStore'
 import { useFavoritesStore } from '@/store/useFavoritesStore'
 import { cn } from '@/lib/utils'
 import { InstagramEmbed } from '@/components/social/InstagramEmbed'
 import { TikTokEmbed } from '@/components/social/TikTokEmbed'
 
+// Ordered role lanes for landing discovery
+const LANDING_ROLE_LANES = [
+  "UGC Creator",
+  "Content Creator",
+  "Videographer",
+  "Photographer",
+  "Editor",
+  "Motion Designer",
+  "Brand Designer",
+  "Content Strategist",
+] as const;
+
 interface TalentCarouselProps {
   talents: CuratedTalent[]
   query?: string
   selectedRoles?: string[]
   onTalentClick?: (talentId: string) => void
+  onAddToPod?: (talentId: string) => void
+  selectedPodIds?: string[]
 }
 
-export function TalentCarousel({ talents, query, selectedRoles, onTalentClick }: TalentCarouselProps) {
+export function TalentCarousel({ talents, query, selectedRoles, onTalentClick, onAddToPod, selectedPodIds = [] }: TalentCarouselProps) {
   const [activeTalentId, setActiveTalentId] = useState<string | null>(null)
   const [activeProfileTab, setActiveProfileTab] = useState<'profile' | 'instagram' | 'tiktok'>('profile')
   const { addToPod } = useCampaignPodStore()
   const { toggleFavorite, isFavorite } = useFavoritesStore()
 
-  // Filter talents based on query and selected roles
-  const filteredTalents = useMemo(() => {
+  // Filter talents based on query and selected roles (for search)
+  const baseFilteredTalents = useMemo(() => {
     let filtered = talents
 
     // Filter by selected roles
@@ -47,6 +61,23 @@ export function TalentCarousel({ talents, query, selectedRoles, onTalentClick }:
 
     return filtered
   }, [talents, query, selectedRoles])
+
+  // Group talents by role lanes
+  const roleLanes = useMemo(() => {
+    return LANDING_ROLE_LANES.map((role) => {
+      // Filter talents that have this role tag AND pass base filters
+      const laneTalents = baseFilteredTalents.filter((talent) =>
+        talent.roleTags.includes(role as any)
+      )
+      return {
+        role,
+        talents: laneTalents,
+      }
+    }).filter((lane) => lane.talents.length > 0) // Only show lanes with results
+  }, [baseFilteredTalents])
+
+  // Legacy filteredTalents for detail panel (keep existing behavior)
+  const filteredTalents = baseFilteredTalents
 
   // Convert CuratedTalent to PodTalent format
   const convertToPodTalent = (talent: CuratedTalent): PodTalent => ({
@@ -78,7 +109,12 @@ export function TalentCarousel({ talents, query, selectedRoles, onTalentClick }:
   }
 
   const handleAddToPod = (talent: PodTalent) => {
-    addToPod(talent)
+    if (onAddToPod) {
+      onAddToPod(talent.id)
+    } else {
+      // Fallback to store if prop not provided (backward compatibility)
+      addToPod(talent)
+    }
   }
 
   const handleOpenProfile = (talent: PodTalent) => {
@@ -117,36 +153,55 @@ export function TalentCarousel({ talents, query, selectedRoles, onTalentClick }:
             </p>
           </div>
 
-          {/* Carousel */}
-          {filteredTalents.length === 0 ? (
+          {/* Role Lane Carousels */}
+          {roleLanes.length === 0 ? (
             <div className="text-center py-16 text-white/50">
               <p className="text-[15px]">No perfect matches yet. Try adjusting your roles or using a more general brief.</p>
             </div>
           ) : (
-            <div className="w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4 -mx-6 px-6">
-              <div className="flex gap-4 md:gap-6 min-w-max">
-                {filteredTalents.map((talent, index) => {
-                  const podTalent = convertToPodTalent(talent)
-                  return (
-                    <motion.div
-                      key={talent.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05, duration: 0.3 }}
-                      className="flex-shrink-0 snap-start"
-                    >
-                      <TalentCard
-                        talent={podTalent}
-                        isFavorite={isFavorite(talent.id)}
-                        onToggleFavorite={toggleFavorite}
-                        onBook={handleBook}
-                        onAddToPod={handleAddToPod}
-                        onOpenProfile={handleOpenProfile}
-                      />
-                    </motion.div>
-                  )
-                })}
-              </div>
+            <div className="w-full space-y-8 md:space-y-10">
+              {roleLanes.map((lane, laneIndex) => {
+                const laneId = `lane-${lane.role.toLowerCase().replace(/\s+/g, '-')}`
+                return (
+                  <div key={lane.role} id={laneId} className="scroll-mt-20">
+                    {/* Lane Header */}
+                    <div className="flex items-center justify-between mb-4 px-2">
+                      <h3 className="text-lg font-semibold text-white/90">
+                        {lane.role}
+                        <span className="ml-2 text-sm font-normal text-white/50">
+                          ({lane.talents.length})
+                        </span>
+                      </h3>
+                    </div>
+
+                    {/* Lane Carousel */}
+                    <div className="w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4 -mx-6 px-6">
+                      <div className="flex gap-4 md:gap-6 min-w-max">
+                        {lane.talents.map((talent, cardIndex) => {
+                          const podTalent = convertToPodTalent(talent)
+                          const isAdded = selectedPodIds.includes(talent.id)
+                          return (
+                            <motion.div
+                              key={talent.id}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: (laneIndex * 0.1) + (cardIndex * 0.05), duration: 0.3 }}
+                              className="flex-shrink-0 snap-start"
+                            >
+                              <LandingTalentCard
+                                talent={podTalent}
+                                isAdded={isAdded}
+                                onAdd={handleAddToPod}
+                                onOpenProfile={handleOpenProfile}
+                              />
+                            </motion.div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>

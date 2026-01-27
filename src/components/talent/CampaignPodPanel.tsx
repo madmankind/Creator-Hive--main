@@ -5,10 +5,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCampaignPodStore, type Talent as PodTalent } from "@/store/useCampaignPodStore";
 import { X } from "lucide-react";
 import { curatedTalent } from "@/lib/curatedTalent";
+import { cn } from "@/lib/utils";
 
 type Props = {
   onOpenBrief: () => void;
   onOpenProfile?: (id: string) => void;
+  // Landing mode props (when provided, skip API/store, use curatedTalent lookup)
+  selectedPodIds?: string[];
+  onRemove?: (id: string) => void;
+  onClear?: () => void;
 };
 
 const curatedLookup = new Map(curatedTalent.map((talent) => [talent.id, talent]));
@@ -28,12 +33,24 @@ function toPodTalent(id: string): PodTalent | null {
   };
 }
 
-export function CampaignPodPanel({ onOpenBrief, onOpenProfile }: Props) {
+export function CampaignPodPanel({ onOpenBrief, onOpenProfile, selectedPodIds, onRemove, onClear }: Props) {
   const { selectedTalents, removeFromPod, clearPod, setTalents } = useCampaignPodStore();
   const [syncing, setSyncing] = useState(false);
   const hydrated = useRef(false);
 
+  // Landing mode: use selectedPodIds prop, skip API/store
+  const isLandingMode = selectedPodIds !== undefined;
+  const displayTalents = isLandingMode
+    ? selectedPodIds.map((id) => toPodTalent(id)).filter(Boolean) as PodTalent[]
+    : selectedTalents;
+
+  const handleRemove = isLandingMode && onRemove ? onRemove : removeFromPod;
+  const handleClear = isLandingMode && onClear ? onClear : clearPod;
+
+  // Only sync to API if NOT in landing mode
   useEffect(() => {
+    if (isLandingMode) return; // Skip API calls in landing mode
+    
     let cancelled = false;
     async function load() {
       try {
@@ -53,9 +70,11 @@ export function CampaignPodPanel({ onOpenBrief, onOpenProfile }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [setTalents]);
+  }, [setTalents, isLandingMode]);
 
   useEffect(() => {
+    if (isLandingMode) return; // Skip API sync in landing mode
+    
     if (!hydrated.current) {
       hydrated.current = true;
       return;
@@ -71,11 +90,11 @@ export function CampaignPodPanel({ onOpenBrief, onOpenProfile }: Props) {
       .catch(() => null)
       .finally(() => setSyncing(false));
     return () => controller.abort();
-  }, [selectedTalents]);
+  }, [selectedTalents, isLandingMode]);
 
   return (
     <AnimatePresence>
-      {selectedTalents.length > 0 && (
+      {displayTalents.length > 0 && (
         <motion.section
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
@@ -89,11 +108,11 @@ export function CampaignPodPanel({ onOpenBrief, onOpenProfile }: Props) {
                 Set up your campaign pod
               </h3>
               <p className="text-[11px] text-white/60">
-                You&apos;ve added {selectedTalents.length}{" "}
-                {selectedTalents.length === 1 ? "talent" : "talents"}. Refine
+                You&apos;ve added {displayTalents.length}{" "}
+                {displayTalents.length === 1 ? "talent" : "talents"}. Refine
                 your team, then share your brief.
               </p>
-              {syncing && (
+              {syncing && !isLandingMode && (
                 <p className="text-[10px] text-white/40 mt-1">Syncing pod…</p>
               )}
             </div>
@@ -101,7 +120,7 @@ export function CampaignPodPanel({ onOpenBrief, onOpenProfile }: Props) {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={clearPod}
+                onClick={handleClear}
                 className="rounded-full px-3 py-1.5 text-[11px] text-white/60 hover:bg-white/5"
               >
                 Clear pod
@@ -109,7 +128,13 @@ export function CampaignPodPanel({ onOpenBrief, onOpenProfile }: Props) {
               <button
                 type="button"
                 onClick={onOpenBrief}
-                className="rounded-full bg-white px-4 py-1.5 text-[11px] font-semibold text-black hover:bg-white/90"
+                disabled={displayTalents.length === 0}
+                className={cn(
+                  "rounded-full px-4 py-1.5 text-[11px] font-semibold transition",
+                  displayTalents.length === 0
+                    ? "bg-white/20 text-white/40 cursor-not-allowed"
+                    : "bg-white text-black hover:bg-white/90"
+                )}
               >
                 Set up pod
               </button>
@@ -117,7 +142,7 @@ export function CampaignPodPanel({ onOpenBrief, onOpenProfile }: Props) {
           </div>
 
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-            {selectedTalents.map((t) => (
+            {displayTalents.map((t) => (
               <div
                 key={t.id}
                 role="button"
@@ -148,7 +173,7 @@ export function CampaignPodPanel({ onOpenBrief, onOpenProfile }: Props) {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    removeFromPod(t.id);
+                    handleRemove(t.id);
                   }}
                   className="flex h-6 w-6 items-center justify-center rounded-full bg-white/5 text-white/60 hover:bg-white/10"
                 >
