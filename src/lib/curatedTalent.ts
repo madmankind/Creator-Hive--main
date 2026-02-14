@@ -23,27 +23,48 @@ export type PortfolioItem = {
   title?: string;
 };
 
+export type PrismArchetypeName = 
+  | "The Maverick"
+  | "The Conductor"
+  | "The Pathfinder"
+  | "The Translator"
+  | "The Architect"
+  | "The Alchemist"
+  | "The Auteur"
+  | "The Amplifier";
+
 export interface CuratedTalent {
   id: string;
   name: string;                 // e.g. "Lachy Groom"
   displayTitle: string;         // e.g. "UGC Creator · Photographer"
   instagramHandle: string;      // "lachygroom"
-  instagramUrl: string;         // "https://instagram.com/..."
-  tiktokUrl?: string;           // "https://tiktok.com/@..."
-  tiktokHandle?: string;        // "@username"
-  avatarUrl: string;            // for now, static placeholder or /avatars/...
-  primaryRole: TalentCategoryTag; // Primary role for grouping (must exist in roleTags)
+  instagramUrl: string;         // "https://instagram.com/..." (deprecated, use links.instagram)
+  tiktokUrl?: string;           // "https://tiktok.com/@..." (deprecated, use links.tiktok)
+  tiktokHandle?: string;        // "@username" (deprecated)
+  avatarUrl: string;            // Legacy fallback (deprecated, use profileImageUrl)
+  profileImageUrl?: string;     // Preferred: uploaded avatar (admin + talent-side)
+  primaryRole: TalentCategoryTag; // Required: Primary role for grouping (must exist in roleTags)
   roleTags: TalentCategoryTag[];   // max 4
   platformTags: PlatformTag[];     // e.g. ["Instagram", "TikTok", "Snapchat"]
   shortBio: string;             // 1 sentence, marketing-grade
   nicheSummary: string;         // short description of clients + niche specialization
   availability: AvailabilityTag[]; // e.g. ["Hourly", "Monthly"]
+  tier?: "Tier 1" | "Tier 2";    // Optional: pricing tier (deprecated, removed from UI)
+  prismArchetype: PrismArchetypeName; // Required: Prism archetype (full name)
   location?: string;
   timezone?: string;
   languages?: string[];         // optional
   featuredVideoUrl?: string;    // e.g. a portfolio reel (YouTube/Vimeo/MP4)
   portfolioImages?: string[];   // optional, for future gallery (deprecated, use portfolio)
-  portfolio?: PortfolioItem[]; // Portfolio items (images/videos)
+  portfolio?: PortfolioItem[]; // Portfolio items (images/videos) - at least 3 items
+  links?: {
+    instagram?: string;
+    tiktok?: string;
+    youtube?: string;
+    behance?: string;
+    twitch?: string;
+    website?: string;
+  };
   followers?: number;           // Numeric follower count for discovery view
   engagementRate?: number;      // Decimal (0.045 = 4.5%)
   avgEngagement?: number;       // Average engagements per post
@@ -76,6 +97,18 @@ export const curatedTalent: CuratedTalent[] = [
     avgEngagement: 7030,
     interests: ["Luxury Fashion", "Beauty", "Lifestyle"],
     brandPartners: ["Chalhoub Group", "Faces", "Ounass"],
+    portfolio: [
+      { type: "image", src: "/portfolio/work-1.svg", title: "Luxury Product Showcase" },
+      { type: "image", src: "/portfolio/work-2.svg", title: "Beauty Brand Campaign" },
+      { type: "video", src: "/portfolio/work-3.svg", poster: "/portfolio/work-3.svg", title: "Lifestyle UGC" },
+    ],
+    tier: "Tier 1",
+    prismArchetype: "The Amplifier",
+    profileImageUrl: "/avatars/sarah.jpg",
+    links: {
+      instagram: "https://instagram.com/sarahalmansoori",
+      tiktok: "https://tiktok.com/@sarahalmansoori",
+    },
   },
   {
     id: "talent-2",
@@ -104,6 +137,13 @@ export const curatedTalent: CuratedTalent[] = [
       { type: "image", src: "/portfolio/work-2.svg", title: "Product Launch Video" },
       { type: "image", src: "/portfolio/work-3.svg", title: "Corporate Campaign" },
     ],
+    tier: "Tier 1",
+    prismArchetype: "The Architect",
+    profileImageUrl: "/avatars/ahmed.jpg",
+    links: {
+      instagram: "https://instagram.com/ahmedhassanfilms",
+      youtube: "https://youtube.com/@ahmedhassanfilms",
+    },
   },
   {
     id: "talent-3",
@@ -132,6 +172,12 @@ export const curatedTalent: CuratedTalent[] = [
       { type: "image", src: "/portfolio/work-2.svg", title: "Real Estate Shoot" },
       { type: "image", src: "/portfolio/work-3.svg", title: "Fashion Editorial" },
     ],
+    tier: "Tier 1",
+    prismArchetype: "The Auteur",
+    profileImageUrl: "/avatars/layla.jpg",
+    links: {
+      instagram: "https://instagram.com/laylakhoury",
+    },
   },
   {
     id: "talent-4",
@@ -159,6 +205,12 @@ export const curatedTalent: CuratedTalent[] = [
       { type: "image", src: "/portfolio/work-2.svg", title: "Thought Leadership" },
       { type: "image", src: "/portfolio/work-3.svg", title: "Brand Voice Development" },
     ],
+    tier: "Tier 2",
+    prismArchetype: "The Translator",
+    profileImageUrl: "/avatars/omar.jpg",
+    links: {
+      instagram: "https://instagram.com/omaralrashid",
+    },
   },
   {
     id: "talent-5",
@@ -187,6 +239,12 @@ export const curatedTalent: CuratedTalent[] = [
       { type: "image", src: "/portfolio/work-2.svg", title: "Growth Strategy" },
       { type: "image", src: "/portfolio/work-3.svg", title: "Community Management" },
     ],
+    tier: "Tier 1",
+    prismArchetype: "The Conductor",
+    profileImageUrl: "/avatars/maya.jpg",
+    links: {
+      instagram: "https://instagram.com/mayapatelsocial",
+    },
   },
   {
     id: "talent-6",
@@ -217,6 +275,13 @@ export const curatedTalent: CuratedTalent[] = [
       { type: "image", src: "/portfolio/work-2.svg", title: "Food Delivery Campaign" },
       { type: "image", src: "/portfolio/work-3.svg", title: "Product Demo" },
     ],
+    tier: "Tier 1",
+    prismArchetype: "The Maverick",
+    profileImageUrl: "/avatars/zain.jpg",
+    links: {
+      instagram: "https://instagram.com/zainmalik",
+      tiktok: "https://tiktok.com/@zainmalik",
+    },
   },
   {
     id: "talent-7",
@@ -244,6 +309,13 @@ export const curatedTalent: CuratedTalent[] = [
       { type: "image", src: "/portfolio/work-2.svg", title: "Social Media Templates" },
       { type: "image", src: "/portfolio/work-3.svg", title: "Logo Design" },
     ],
+    tier: "Tier 2",
+    prismArchetype: "The Alchemist",
+    profileImageUrl: "/avatars/noor.jpg",
+    links: {
+      instagram: "https://instagram.com/nooralzahra",
+      behance: "https://behance.net/nooralzahra",
+    },
   },
   {
     id: "talent-8",
@@ -272,6 +344,13 @@ export const curatedTalent: CuratedTalent[] = [
       { type: "image", src: "/portfolio/work-2.svg", title: "Event Coverage" },
       { type: "image", src: "/portfolio/work-3.svg", title: "Commercial Campaign" },
     ],
+    tier: "Tier 1",
+    prismArchetype: "The Pathfinder",
+    profileImageUrl: "/avatars/rami.jpg",
+    links: {
+      instagram: "https://instagram.com/ramifakhoury",
+      youtube: "https://youtube.com/@ramifakhoury",
+    },
   },
 ];
 
