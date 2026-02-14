@@ -14,6 +14,8 @@ pnpm install
 cp .env.example .env.local
 # Edit .env.local with your Supabase credentials
 
+> **Note:** Changes to `.env.local` require a **server restart** to take effect. Stop the dev server (Ctrl+C) and run `pnpm dev` or `pnpm dev:local` again.
+
 # Set up database
 pnpm db:generate
 pnpm db:push

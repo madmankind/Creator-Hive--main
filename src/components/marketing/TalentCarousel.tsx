@@ -1,11 +1,17 @@
 'use client'
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import type { CuratedTalent, TalentCategoryTag } from '@/lib/curatedTalent'
 import { LandingTalentCard } from '@/components/marketing/LandingTalentCard'
 import { useCampaignPodStore, type Talent as PodTalent } from '@/store/useCampaignPodStore'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+const CARD_WIDTH = 380
+const CARD_GAP = 24
+const PEEK = 64
+const SNAP_STEP = CARD_WIDTH + CARD_GAP
+// Inner viewport = 3*380 + 2*24 + PEEK = 1252; outer = 1252 + 96 = 1348
 
 // Ordered list of primary roles for grouping
 const PRIMARY_ROLE_ORDER: TalentCategoryTag[] = [
@@ -42,6 +48,8 @@ export function TalentCarousel({
   onBook,
   selectedPodIds = [],
 }: TalentCarouselProps) {
+  const DEBUG_BOUNDS = false; // Set to true to visualize container bounds
+  
   const { addToPod } = useCampaignPodStore()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [showArrows, setShowArrows] = useState(false)
@@ -100,32 +108,35 @@ export function TalentCarousel({
     return grouped
   }, [filteredTalents])
 
-  // Insert subtle gaps between groups
-  const railItems = useMemo(() => {
-    const items: (CuratedTalent | 'gap')[] = []
-    let lastPrimaryRole: TalentCategoryTag | null = null
-    
-    groupedTalents.forEach((talent, index) => {
-      // Insert gap if primaryRole changed
-      if (lastPrimaryRole && lastPrimaryRole !== talent.primaryRole && index > 0) {
-        items.push('gap')
+  // Rest carousel to start when talents/filter change; then update arrow state
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      const el = scrollContainerRef.current
+      if (el) {
+        el.scrollTo({ left: 0, behavior: 'auto' })
+        checkScroll()
       }
-      
-      items.push(talent)
-      lastPrimaryRole = talent.primaryRole
     })
-    
-    return items
+    return () => cancelAnimationFrame(id)
   }, [groupedTalents])
 
-  // Check scroll position for arrows
+  // ResizeObserver to update arrows/vignette when viewport or talent list changes
+  useEffect(() => {
+    const el = scrollContainerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => checkScroll())
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [groupedTalents])
+
+  // Check scroll position for arrows; use threshold so tiny scrollLeft doesn't show left arrow
+  const SCROLL_THRESHOLD = 4
   const checkScroll = () => {
     if (!scrollContainerRef.current) return
-    const container = scrollContainerRef.current
-    setCanScrollLeft(container.scrollLeft > 0)
-    setCanScrollRight(
-      container.scrollLeft < container.scrollWidth - container.clientWidth - 10
-    )
+    const el = scrollContainerRef.current
+    const maxScroll = el.scrollWidth - el.clientWidth
+    setCanScrollLeft(el.scrollLeft > SCROLL_THRESHOLD)
+    setCanScrollRight(el.scrollLeft < maxScroll - SCROLL_THRESHOLD)
   }
 
   // Convert CuratedTalent to PodTalent format
@@ -157,39 +168,34 @@ export function TalentCarousel({
   }
 
   const scrollLeft = () => {
-    if (scrollContainerRef.current) {
-      const container = scrollContainerRef.current
-      const cardWidth = 400 // w-[400px]
-      const gap = 16 // gap-4
-      const scrollAmount = (cardWidth + gap) * 2
-      container.scrollBy({ left: -scrollAmount, behavior: 'smooth' })
-      setTimeout(checkScroll, 300)
-    }
+    const container = scrollContainerRef.current
+    if (!container) return
+    const currentIndex = Math.round(container.scrollLeft / SNAP_STEP)
+    const targetIndex = Math.max(0, currentIndex - 2)
+    container.scrollTo({ left: targetIndex * SNAP_STEP, behavior: 'smooth' })
+    setTimeout(checkScroll, 350)
   }
 
   const scrollRight = () => {
-    if (scrollContainerRef.current) {
-      const container = scrollContainerRef.current
-      const cardWidth = 400
-      const gap = 16
-      const scrollAmount = (cardWidth + gap) * 2
-      container.scrollBy({ left: scrollAmount, behavior: 'smooth' })
-      setTimeout(checkScroll, 300)
-    }
+    const container = scrollContainerRef.current
+    if (!container) return
+    const currentIndex = Math.round(container.scrollLeft / SNAP_STEP)
+    const maxScroll = container.scrollWidth - container.clientWidth
+    const maxIndex = Math.round(maxScroll / SNAP_STEP)
+    const targetIndex = Math.min(maxIndex, currentIndex + 2)
+    container.scrollTo({ left: targetIndex * SNAP_STEP, behavior: 'smooth' })
+    setTimeout(checkScroll, 350)
   }
 
   return (
-    <section className="relative py-16 md:py-24">
-      {/* Deep purple Fey gradient background */}
-      <div 
-        className="pointer-events-none absolute inset-0 bg-hive-radial opacity-70"
-        style={{
-          maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 100%)',
-          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 100%)',
-        }}
+    <section className={cn("relative py-16 md:py-24", DEBUG_BOUNDS && "outline outline-1 outline-red-500/40")}>
+      {/* Top-concentrated purple glow — no band edge, fades into dark */}
+      <div
+        className="pointer-events-none absolute inset-x-0 -top-40 h-[520px] blur-3xl opacity-100 bg-[radial-gradient(60%_55%_at_50%_0%,rgba(139,92,246,0.22),transparent_70%)]"
+        aria-hidden
       />
-      
-      <div className="relative z-10 mx-auto max-w-7xl px-6">
+
+      <div className={cn("relative z-10 mx-auto max-w-[1348px] px-12", DEBUG_BOUNDS && "outline outline-1 outline-red-500/40")}>
         {/* Header */}
         <div className="text-center mb-12 md:mb-16">
           <h2 className="text-[24px] md:text-[28px] font-semibold tracking-tight text-white/90 mb-3">
@@ -201,79 +207,38 @@ export function TalentCarousel({
         </div>
 
         {/* Single Horizontal Carousel */}
-        {railItems.length === 0 ? (
+        {groupedTalents.length === 0 ? (
           <div className="text-center py-16 text-white/50">
             <p className="text-[15px]">No perfect matches yet. Try adjusting your roles or using a more general brief.</p>
           </div>
         ) : (
-          <div 
-            className="relative w-full"
+          <div
+            className={cn("relative w-full", DEBUG_BOUNDS && "outline outline-1 outline-red-500/40")}
             onMouseEnter={() => setShowArrows(true)}
             onMouseLeave={() => setShowArrows(false)}
             onScroll={checkScroll}
           >
-            {/* Left vignette fade */}
-            <div className="absolute left-0 top-0 h-full w-24 pointer-events-none bg-gradient-to-r from-[#0B0F14] via-[#0B0F14]/80 to-transparent z-10" />
-            
-            {/* Right vignette fade */}
-            <div className="absolute right-0 top-0 h-full w-24 pointer-events-none bg-gradient-to-l from-[#0B0F14] via-[#0B0F14]/80 to-transparent z-10" />
-            
-            {/* Left arrow */}
-            {canScrollLeft && (
-              <button
-                onClick={scrollLeft}
-                className={cn(
-                  "absolute left-4 top-1/2 -translate-y-1/2 z-20",
-                  "w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm",
-                  "ring-1 ring-white/20 hover:ring-white/40 hover:bg-white/15",
-                  "flex items-center justify-center text-white/80 hover:text-white",
-                  "transition-all duration-200",
-                  showArrows ? "opacity-100" : "opacity-0 pointer-events-none"
-                )}
-                title="Scroll left"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-            )}
-            
-            {/* Right arrow */}
-            {canScrollRight && (
-              <button
-                onClick={scrollRight}
-                className={cn(
-                  "absolute right-4 top-1/2 -translate-y-1/2 z-20",
-                  "w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm",
-                  "ring-1 ring-white/20 hover:ring-white/40 hover:bg-white/15",
-                  "flex items-center justify-center text-white/80 hover:text-white",
-                  "transition-all duration-200",
-                  showArrows ? "opacity-100" : "opacity-0 pointer-events-none"
-                )}
-                title="Scroll right"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            )}
-
-            <div 
+            <div
               ref={scrollContainerRef}
-              className="overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide pb-4 -mx-6 px-6"
+              className="overflow-x-auto overflow-y-visible snap-x snap-mandatory scroll-smooth scrollbar-hide pb-4 pr-0"
               onScroll={checkScroll}
             >
-              <div className="flex gap-4 min-w-max">
-                {railItems.map((item, index) => {
-                  if (item === 'gap') {
-                    return (
-                      <div key={`gap-${index}`} className="w-10 shrink-0 flex items-center justify-center">
-                        <div className="w-px h-[70%] bg-white/5 blur-[0.5px]" />
-                      </div>
-                    )
-                  }
-                  
+              <div className={cn("flex gap-6 min-w-max", DEBUG_BOUNDS && "outline outline-1 outline-red-500/40")}>
+                {groupedTalents.map((item, index) => {
+                  const prevRole = index > 0 ? groupedTalents[index - 1].primaryRole : null
+                  const showGroupSeparator = prevRole !== null && prevRole !== item.primaryRole
+
                   const podTalent = convertToPodTalent(item)
                   const isAdded = selectedPodIds.includes(item.id)
-                  
+
                   return (
-                    <div key={item.id} className="flex-shrink-0 snap-start">
+                    <div
+                      key={item.id}
+                      className={cn(
+                        "flex-shrink-0 snap-start py-2 relative",
+                        showGroupSeparator && "before:content-[''] before:absolute before:left-[-12px] before:top-[15%] before:bottom-[15%] before:w-px before:bg-white/5 before:pointer-events-none"
+                      )}
+                    >
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -290,8 +255,49 @@ export function TalentCarousel({
                     </div>
                   )
                 })}
-              </div>
+                </div>
             </div>
+
+            {/* Right vignette — w-16 (PEEK), lighter gradient, only when 4+ talents and canScrollRight */}
+            {canScrollRight && groupedTalents.length >= 4 && (
+              <div className="absolute right-0 inset-y-0 w-16 pointer-events-none z-10 bg-gradient-to-l from-[#0B0F14]/60 via-[#0B0F14]/25 to-transparent" />
+            )}
+
+            {/* Arrows in gutters (relative to max-w container), show on hover md+ */}
+            {canScrollLeft && (
+              <div className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-20">
+                <button
+                  onClick={scrollLeft}
+                  className={cn(
+                    "w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm",
+                    "ring-1 ring-white/20 hover:ring-white/40 hover:bg-white/15",
+                    "flex items-center justify-center text-white/80 hover:text-white",
+                    "transition-all duration-200",
+                    showArrows ? "opacity-100" : "opacity-0 pointer-events-none"
+                  )}
+                  title="Scroll left"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+            {canScrollRight && (
+              <div className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-20">
+                <button
+                  onClick={scrollRight}
+                  className={cn(
+                    "w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm",
+                    "ring-1 ring-white/20 hover:ring-white/40 hover:bg-white/15",
+                    "flex items-center justify-center text-white/80 hover:text-white",
+                    "transition-all duration-200",
+                    showArrows ? "opacity-100" : "opacity-0 pointer-events-none"
+                  )}
+                  title="Scroll right"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

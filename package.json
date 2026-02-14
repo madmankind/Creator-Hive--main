@@ -3,8 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "echo '→ Next.js dev (default: localhost:3000)'",
+    "predev:local": "echo '→ Next.js dev:local | host 127.0.0.1 | port 3000'",
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "dev:local": "next dev --webpack -H 127.0.0.1 -p 3000",
+    "build": "prisma generate && next build --webpack",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
@@ -35,11 +38,11 @@
     "framer-motion": "^12.23.12",
     "fuse.js": "^7.1.0",
     "lucide-react": "^0.539.0",
-    "next": "15.4.6",
+    "next": "16.1.4",
     "next-auth": "5.0.0-beta.30",
     "next-seo": "^6.8.0",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-hook-form": "^7.62.0",
     "recharts": "^3.1.2",
     "stripe": "^17.7.0",
@@ -70,7 +73,8 @@
     "prisma": "^6.19.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "webpack-filter-warnings-plugin": "^1.2.1"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,css,md}": [

@@ -6,6 +6,20 @@ import type { CuratedTalent } from "@/lib/curatedTalent";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 
+const FILLER = /\b(creating|specialist|specializing|focused on|focus on|experts? in|expertise in)\b/gi;
+
+function getPremiumSummary(text: string, maxChars: number): string {
+  let s = text.trim().replace(/\s+/g, " ");
+  s = s.replace(FILLER, "").replace(/\s+/g, " ").trim();
+  const first = s.split(/[.!?]+/)[0]?.trim();
+  const use = first && first.length <= maxChars ? first : s;
+  if (use.length <= maxChars) return use;
+  const cut = use.slice(0, maxChars - 1).trim();
+  const lastSpace = cut.lastIndexOf(" ");
+  const out = lastSpace > maxChars * 0.6 ? cut.slice(0, lastSpace) : cut;
+  return out + "…";
+}
+
 type LandingTalentDetailPanelProps = {
   talent: CuratedTalent | null;
   onClose?: () => void;
@@ -68,9 +82,17 @@ export function LandingTalentDetailPanel({ talent, onClose }: LandingTalentDetai
                 {/* Left: Bio + Socials */}
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-white/10 ring-2 ring-white/20 flex items-center justify-center text-white/60 text-2xl font-medium flex-shrink-0">
-                      {talent.name.charAt(0)}
-                    </div>
+                    {(talent.profileImageUrl || talent.avatarUrl) ? (
+                      <img
+                        src={talent.profileImageUrl || talent.avatarUrl}
+                        alt={talent.name}
+                        className="w-16 h-16 rounded-full object-cover ring-2 ring-white/20 flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-full bg-white/10 ring-2 ring-white/20 flex items-center justify-center text-white/60 text-2xl font-medium flex-shrink-0">
+                        {talent.name.charAt(0)}
+                      </div>
+                    )}
                     <div>
                       <h3 className="text-lg font-semibold text-white/90 mb-1">
                         {talent.name}
@@ -79,18 +101,18 @@ export function LandingTalentDetailPanel({ talent, onClose }: LandingTalentDetai
                     </div>
                   </div>
 
-                  {/* Full Bio */}
-                  {talent.shortBio && (
-                    <p className="text-sm leading-relaxed text-white/70">
-                      {talent.shortBio}
+                  {/* Premium summary — 1–2 sentences, max 220 chars */}
+                  {(talent.nicheSummary || talent.shortBio) && (
+                    <p className="text-[13px] leading-relaxed text-white/70">
+                      {getPremiumSummary(talent.nicheSummary?.trim() || talent.shortBio || "", 220)}
                     </p>
                   )}
 
-                  {/* Social Pills */}
+                  {/* Social Pills — prefer links.*, fallback to legacy. No fabricated URLs. */}
                   <div className="flex flex-wrap gap-2">
-                    {talent.instagramUrl && (
+                    {(talent.links?.instagram || talent.instagramUrl) && (
                       <a
-                        href={talent.instagramUrl}
+                        href={talent.links?.instagram || talent.instagramUrl}
                         target="_blank"
                         rel="noreferrer"
                         className="rounded-full bg-white/5 px-3 py-1.5 text-xs text-white/70 ring-1 ring-white/10 hover:bg-white/10 transition"
@@ -98,9 +120,9 @@ export function LandingTalentDetailPanel({ talent, onClose }: LandingTalentDetai
                         Instagram
                       </a>
                     )}
-                    {talent.tiktokUrl && (
+                    {(talent.links?.tiktok || talent.tiktokUrl) && (
                       <a
-                        href={talent.tiktokUrl}
+                        href={talent.links?.tiktok || talent.tiktokUrl}
                         target="_blank"
                         rel="noreferrer"
                         className="rounded-full bg-white/5 px-3 py-1.5 text-xs text-white/70 ring-1 ring-white/10 hover:bg-white/10 transition"
@@ -108,9 +130,9 @@ export function LandingTalentDetailPanel({ talent, onClose }: LandingTalentDetai
                         TikTok
                       </a>
                     )}
-                    {talent.platformTags.includes("YouTube") && (
+                    {talent.links?.youtube && (
                       <a
-                        href={`https://youtube.com/@${talent.instagramHandle}`}
+                        href={talent.links.youtube}
                         target="_blank"
                         rel="noreferrer"
                         className="rounded-full bg-white/5 px-3 py-1.5 text-xs text-white/70 ring-1 ring-white/10 hover:bg-white/10 transition"
@@ -118,23 +140,33 @@ export function LandingTalentDetailPanel({ talent, onClose }: LandingTalentDetai
                         YouTube
                       </a>
                     )}
-                    {talent.platformTags.includes("LinkedIn") && (
+                    {talent.links?.behance && (
                       <a
-                        href={`https://linkedin.com/in/${talent.instagramHandle}`}
+                        href={talent.links.behance}
                         target="_blank"
                         rel="noreferrer"
                         className="rounded-full bg-white/5 px-3 py-1.5 text-xs text-white/70 ring-1 ring-white/10 hover:bg-white/10 transition"
                       >
-                        LinkedIn
+                        Behance
+                      </a>
+                    )}
+                    {talent.links?.website && (
+                      <a
+                        href={talent.links.website}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-full bg-white/5 px-3 py-1.5 text-xs text-white/70 ring-1 ring-white/10 hover:bg-white/10 transition"
+                      >
+                        Website
                       </a>
                     )}
                   </div>
                 </div>
 
-                {/* Right: Tags */}
+                {/* Right: Tags — cap at 10 */}
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-wrap gap-2">
-                    {talent.roleTags.map((tag) => (
+                    {talent.roleTags.slice(0, 10).map((tag) => (
                       <span
                         key={tag}
                         className="rounded-full bg-white/8 px-3 py-1 text-xs text-white/80 ring-1 ring-white/10"
