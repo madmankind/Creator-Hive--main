@@ -543,6 +543,7 @@ export function CampaignSetupBoard({
     return {
       campaignName: "",
       objective: selectedPkg?.defaultObjective ?? null,
+      bookingType: selectedPkg?.bookingType ?? "campaign",
       startDate: "",
       endDate: "",
       totalBudget: "",

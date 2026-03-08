@@ -29,7 +29,7 @@ type SendRequestSheetProps = {
   onClose: () => void;
   brief: BriefLite;
   pod: Talent[];
-  onSubmit: (data: Omit<BookingRequestCreate, "briefId" | "podId">) => Promise<void>;
+  onSubmit: (data: Omit<BookingRequestCreate, "brief" | "talentIds">) => Promise<void>;
   embedded?: boolean; // When true, renders as inline content (no backdrop/slide animation)
 };
 
@@ -54,11 +54,11 @@ export function SendRequestSheet({
     setErrors({});
 
     // Validate
-    const result = BookingRequestCreateSchema.omit({ briefId: true, podId: true }).safeParse({
+    const result = BookingRequestCreateSchema.omit({ brief: true, talentIds: true }).safeParse({
       companyName: companyName.trim(),
-      contactEmail: email.trim(),
-      contactPhone: phone.trim() || undefined,
-      requestNote: note.trim() || undefined,
+      email: email.trim(),
+      phone: phone.trim() || undefined,
+      note: note.trim() || undefined,
     });
 
     if (!result.success) {

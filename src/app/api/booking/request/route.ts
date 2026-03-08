@@ -1,55 +1,33 @@
 /**
  * API Route: /api/booking/request
  * Create and manage booking requests
+ * Uses real Prisma schema: BookingRequest with talentIds[]
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { BookingRequestCreateSchema } from "@/lib/schemas/booking";
 import { prisma } from "@/server/db";
-
 import { auth } from "@/auth";
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     const body = await req.json();
-    
-    // Validate
-    const result = BookingRequestCreateSchema.safeParse(body);
-    if (!result.success) {
-      return NextResponse.json({ error: "Invalid request data", details: result.error.issues }, { status: 400 });
+
+    const { companyName, email, phone, note, talentIds, brief } = body;
+
+    if (!companyName || !email || !talentIds?.length) {
+      return NextResponse.json({ error: "companyName, email, and talentIds are required" }, { status: 400 });
     }
 
-    // Verify brief and pod exist
-    const brief = await prisma.brief.findUnique({ where: { id: result.data.briefId } });
-    const pod = await prisma.pod.findUnique({ where: { id: result.data.podId }, include: { items: true } });
-
-    if (!brief) {
-      return NextResponse.json({ error: "Brief not found" }, { status: 404 });
-    }
-    if (!pod || pod.items.length === 0) {
-      return NextResponse.json({ error: "Pod not found or empty" }, { status: 404 });
-    }
-
-    // Create booking request
     const bookingRequest = await prisma.bookingRequest.create({
       data: {
-        briefId: result.data.briefId,
-        podId: result.data.podId,
-        companyName: result.data.companyName,
-        contactEmail: result.data.contactEmail,
-        contactPhone: result.data.contactPhone || null,
-        requestNote: result.data.requestNote || null,
-        userId: session?.user?.id || null,
-        status: "SUBMITTED",
-      },
-      include: {
-        brief: true,
-        pod: {
-          include: {
-            items: true,
-          },
-        },
+        userId: session?.user?.id ?? "anonymous",
+        contactEmail: email,
+        description: note ?? "",
+        talentIds: talentIds,
+        budgetRange: brief?.pricingTier ?? null,
+        bookingType: "SHORT",
+        status: "PENDING",
       },
     });
 
@@ -67,38 +45,19 @@ export async function GET(req: NextRequest) {
     const id = searchParams.get("id");
 
     if (id) {
-      const bookingRequest = await prisma.bookingRequest.findUnique({
-        where: { id },
-        include: {
-          brief: true,
-          pod: {
-            include: {
-              items: true,
-            },
-          },
-        },
-      });
+      const bookingRequest = await prisma.bookingRequest.findUnique({ where: { id } });
       if (!bookingRequest) {
         return NextResponse.json({ error: "Booking request not found" }, { status: 404 });
       }
       return NextResponse.json({ bookingRequest });
     }
 
-    // List user's booking requests
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const bookingRequests = await prisma.bookingRequest.findMany({
       where: { userId: session.user.id },
-      include: {
-        brief: true,
-        pod: {
-          include: {
-            items: true,
-          },
-        },
-      },
       orderBy: { createdAt: "desc" },
     });
 

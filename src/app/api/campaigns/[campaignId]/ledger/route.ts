@@ -1,6 +1,22 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db } from "@/server/db";
 import type { Invoice, Payout } from "@/components/campaigns/types";
+
+type DbInvoice = {
+  id: string;
+  invoiceNumber: string;
+  amount: number;
+  status: string;
+  dueDate: Date | null;
+  createdAt: Date;
+};
+
+type DbPayment = {
+  id: string;
+  amount: unknown;
+  status: string;
+  dueDate: Date;
+};
 
 export async function GET(
   _req: Request,
@@ -20,7 +36,7 @@ export async function GET(
     }),
   ]);
 
-  const invoices: Invoice[] = dbInvoices.map((inv) => ({
+  const invoices: Invoice[] = dbInvoices.map((inv: DbInvoice) => ({
     id: inv.id,
     campaignId: campaignId,
     invoiceNumber: inv.invoiceNumber,
@@ -30,7 +46,7 @@ export async function GET(
     dueDate: inv.dueDate ?? inv.createdAt,
   }));
 
-  const payouts: Payout[] = dbPayments.map((p) => ({
+  const payouts: Payout[] = dbPayments.map((p: DbPayment) => ({
     id: p.id,
     campaignId: campaignId,
     creator: "—",

@@ -43,7 +43,6 @@ export function BookingOSResults({
           talents={sortedTalents}
           selectedPodIds={selectedPodIds}
           onAddToPod={onAddToPod}
-          mode="results"
         />
       </div>
     </div>

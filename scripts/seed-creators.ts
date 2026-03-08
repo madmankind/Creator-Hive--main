@@ -10,43 +10,33 @@ async function main() {
   for (const t of curatedTalent) {
     const instagram = t.instagramHandle?.replace(/^@/, "") || null;
 
-    // Need a stable unique key — use instagram handle if present, else name
-    const whereClause = instagram
-      ? { instagram }
-      : undefined;
-
-    if (!whereClause) {
+    if (!instagram) {
       console.warn(`Skipping ${t.name} — no instagram handle`);
       skipped++;
       continue;
     }
 
-    await prisma.creatorProfile.upsert({
-      where: whereClause,
-      update: {
-        name: t.name,
-        bio: t.shortBio,
-        skills: t.roleTags as string[],
-        niches: t.interests ?? [],
-        location: t.location ?? null,
-        avatarUrl: t.profileImageUrl ?? t.avatarUrl ?? null,
-        portfolioUrl: t.links?.website ?? t.links?.behance ?? null,
-        isVerified: true,
-        isActive: true,
-      },
-      create: {
-        name: t.name,
-        instagram,
-        bio: t.shortBio,
-        skills: t.roleTags as string[],
-        niches: t.interests ?? [],
-        location: t.location ?? null,
-        avatarUrl: t.profileImageUrl ?? t.avatarUrl ?? null,
-        portfolioUrl: t.links?.website ?? t.links?.behance ?? null,
-        isVerified: true,
-        isActive: true,
-      },
-    });
+    // Find existing record by instagram handle (not unique in schema, use findFirst)
+    const existing = await prisma.creatorProfile.findFirst({ where: { instagram } });
+
+    const data = {
+      name: t.name,
+      instagram,
+      bio: t.shortBio,
+      skills: t.roleTags as string[],
+      niches: t.interests ?? [],
+      location: t.location ?? null,
+      avatarUrl: t.profileImageUrl ?? t.avatarUrl ?? null,
+      portfolioUrl: t.links?.website ?? t.links?.behance ?? null,
+      isVerified: true,
+      isActive: true,
+    };
+
+    if (existing) {
+      await prisma.creatorProfile.update({ where: { id: existing.id }, data });
+    } else {
+      await prisma.creatorProfile.create({ data });
+    }
     seeded++;
   }
 

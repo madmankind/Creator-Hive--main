@@ -74,6 +74,8 @@ export async function requireUser(
         id: session.user.id || `mock-${session.user.email?.replace(/[@.]/g, "-")}`,
         email: session.user.email!,
         name: session.user.name || session.user.email?.split("@")[0] || "User",
+        emailVerified: null,
+        image: null,
         role: (session.user.role as UserRole) || "AGENCY",
         createdAt: new Date(),
         updatedAt: new Date(),
