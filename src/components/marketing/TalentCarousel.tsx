@@ -8,8 +8,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { PackageConfig } from '@/lib/packages'
 
-const CARD_WIDTH = 280
-const CARD_GAP = 16
+const CARD_WIDTH = 380
+const CARD_GAP = 20
 const SNAP_STEP = CARD_WIDTH + CARD_GAP
 
 // Ordered list of primary roles for grouping

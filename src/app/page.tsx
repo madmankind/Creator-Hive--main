@@ -1,7 +1,6 @@
-// src/app/page.tsx — Welcome → Talent Gallery → Campaign Board (seamless flow)
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HeroBar } from "@/components/HeroBar";
 import { TalentCarousel } from "@/components/marketing/TalentCarousel";
@@ -19,6 +18,10 @@ import { ChevronDown, Sparkles } from "lucide-react";
 
 const curatedLookup = new Map(curatedTalent.map((t) => [t.id, t]));
 
+function scrollToRef(ref: React.RefObject<HTMLElement | null>, block: ScrollLogicalPosition = "start") {
+  ref.current?.scrollIntoView({ behavior: "smooth", block });
+}
+
 function HomePageContent() {
   const [mode, setMode] = useState<"client" | "talent">("client");
   const [showTalentGallery, setShowTalentGallery] = useState(false);
@@ -29,17 +32,18 @@ function HomePageContent() {
   const [talentAuthOpen, setTalentAuthOpen] = useState(false);
   const [pendingDiscover, setPendingDiscover] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<PackageConfig | null>(null);
-
-  // Pod state — session-only
   const [selectedPodIds, setSelectedPodIds] = useState<string[]>([]);
   const [showCampaignBoard, setShowCampaignBoard] = useState(false);
+
+  const packageRef = useRef<HTMLElement>(null);
+  const galleryRef = useRef<HTMLElement>(null);
+  const campaignRef = useRef<HTMLElement>(null);
 
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const role = (session?.user as { role?: string | null } | undefined)?.role ?? null;
   const isClient = role === "AGENCY";
 
-  // Auto-select package from URL param
   useEffect(() => {
     const pkgId = searchParams.get("package");
     if (pkgId) {
@@ -49,9 +53,7 @@ function HomePageContent() {
         setSelectedRoles(pkg.roles.filter((v, i, a) => a.indexOf(v) === i));
         setShowTalentGallery(true);
         setShowPackages(true);
-        setTimeout(() => {
-          document.getElementById("talent-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 300);
+        setTimeout(() => scrollToRef(galleryRef), 400);
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -74,9 +76,7 @@ function HomePageContent() {
   useEffect(() => {
     if (isClient && pendingDiscover) {
       setShowTalentGallery(true);
-      setTimeout(() => {
-        document.getElementById("talent-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 150);
+      setTimeout(() => scrollToRef(galleryRef), 200);
       setPendingDiscover(false);
     }
   }, [isClient, pendingDiscover]);
@@ -87,15 +87,8 @@ function HomePageContent() {
       setClientAuthOpen(true);
       return;
     }
-    if (!isClient) {
-      setPendingDiscover(true);
-      setClientAuthOpen(true);
-      return;
-    }
     setShowTalentGallery(true);
-    setTimeout(() => {
-      document.getElementById("talent-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 150);
+    setTimeout(() => scrollToRef(galleryRef), 200);
   };
 
   const handlePackageSelect = (pkg: PackageConfig) => {
@@ -111,63 +104,63 @@ function HomePageContent() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0B0F14] text-slate-200">
-      {/* Ambient glow */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80vw] max-w-[1000px] h-[50vh] blur-[100px] opacity-[0.12] bg-gradient-to-b from-white/40 via-white/10 to-transparent rounded-full" />
-        <div className="absolute top-[10vh] left-[20%] w-[40vw] h-[30vh] blur-[120px] opacity-[0.04] bg-violet-500 rounded-full" />
-        <div className="absolute top-[10vh] right-[15%] w-[35vw] h-[25vh] blur-[120px] opacity-[0.04] bg-blue-500 rounded-full" />
+    <main className="bg-[#0B0F14] text-slate-200">
+      {/* Ambient glow fixed across all sections */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60vw] max-w-[800px] h-[40vh] blur-[120px] opacity-[0.09] bg-gradient-to-b from-white/50 via-white/10 to-transparent rounded-full" />
       </div>
 
-      {/* ── HERO ── */}
-      <div className="relative pt-16 pb-10 px-6">
-        <div className="w-full max-w-[1160px] mx-auto">
+      {/* SECTION 1: HERO */}
+      <section className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6">
+        <div className="w-full max-w-[760px] mx-auto text-center space-y-6">
 
-          {/* Mode toggle + headline */}
-          <div className="text-center space-y-4 mb-10">
-            <div className="inline-flex items-center gap-1 rounded-full bg-white/[0.05] p-1 ring-1 ring-white/[0.09]">
-              {(["client", "talent"] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setMode(m)}
-                  className={cn(
-                    "px-4 py-1.5 rounded-full text-[11px] font-medium transition-all duration-200",
-                    mode === m
-                      ? "bg-white/[0.12] text-white ring-1 ring-white/[0.18]"
-                      : "text-white/45 hover:text-white/75"
-                  )}
-                >
-                  {m === "client" ? "I'm a client" : "I'm a creator"}
-                </button>
-              ))}
-            </div>
-
-            <h1 className="text-[36px] md:text-[46px] font-semibold tracking-[-0.025em] text-white/92 leading-[1.15]">
-              {mode === "client" ? (
-                <>Book creative talent<br className="hidden md:block" /> for any campaign</>
-              ) : (
-                <>Join the Hive —<br className="hidden md:block" /> get discovered</>
-              )}
-            </h1>
-            <p className="text-[15px] text-white/40 font-light max-w-[520px] mx-auto leading-relaxed">
-              {mode === "client"
-                ? "Pre-vetted creators, ready to deploy. Start searching or explore curated team packages."
-                : "Showcase your work to top brands across the Gulf region."}
-            </p>
+          <div className="inline-flex items-center gap-1 rounded-full bg-white/[0.05] p-1 ring-1 ring-white/[0.09]">
+            {(["client", "talent"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={cn(
+                  "px-4 py-1.5 rounded-full text-[11px] font-medium transition-all duration-200",
+                  mode === m
+                    ? "bg-white/[0.12] text-white ring-1 ring-white/[0.18]"
+                    : "text-white/45 hover:text-white/75"
+                )}
+              >
+                {m === "client" ? "Client" : "Talent"}
+              </button>
+            ))}
           </div>
 
-          {/* ── CLIENT: HERO SEARCH BAR ── */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={mode}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1.0] }}
+              className="space-y-3"
+            >
+              <h1 className="text-[30px] md:text-[36px] font-medium tracking-[-0.025em] text-white leading-[1.12]">
+                {mode === "client" ? "Welcome to Creator Hive" : "Join Creator Hive"}
+              </h1>
+              <p className="text-[14px] text-white/38 font-light max-w-[420px] mx-auto leading-relaxed">
+                {mode === "client"
+                  ? "Book Top 1% talent seamlessly"
+                  : "Showcase your work to top brands across the Gulf."}
+              </p>
+            </motion.div>
+          </AnimatePresence>
+
           <AnimatePresence mode="wait">
             {mode === "client" && (
               <motion.div
-                key="client-hero"
-                initial={{ opacity: 0, y: 16 }}
+                key="client-bar"
+                initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1.0] }}
-                className="max-w-[680px] mx-auto space-y-5"
+                className="space-y-4"
               >
-                {/* Search bar */}
                 <HeroBar
                   mode={mode}
                   onQueryChange={(q) => { setSearchQuery(q); if (q) openGallery(); }}
@@ -175,36 +168,16 @@ function HomePageContent() {
                   onDiscover={openGallery}
                 />
 
-                {/* Discover button */}
-                <div className="flex justify-center">
+                <div className="pt-1 flex justify-center">
                   <button
                     type="button"
-                    onClick={openGallery}
-                    className="px-8 py-3 bg-white text-[#0B0F14] rounded-xl text-[13px] font-medium hover:bg-white/90 transition-all shadow-[0_4px_28px_rgba(255,255,255,0.10)]"
-                  >
-                    Discover talent →
-                  </button>
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-4 mt-4 text-center">
-                  {[
-                    { value: "500+", label: "Active brands" },
-                    { value: "AED 50K+", label: "Avg campaign value" },
-                    { value: "48hr", label: "Brief to kickoff" },
-                  ].map(({ value, label }) => (
-                    <div key={label}>
-                      <p className="text-[20px] font-semibold text-white/80 tracking-[-0.02em]">{value}</p>
-                      <p className="text-[11px] text-white/30 mt-0.5">{label}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Packages CTA — subtle, secondary */}
-                <div className="pt-2 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowPackages((p) => !p)}
+                    onClick={() => {
+                      const next = !showPackages;
+                      setShowPackages(next);
+                      if (next) {
+                        setTimeout(() => scrollToRef(packageRef, "start"), 120);
+                      }
+                    }}
                     className={cn(
                       "group flex items-center gap-2 px-4 py-2.5 rounded-full ring-1 transition-all duration-200 text-[12px]",
                       showPackages
@@ -217,39 +190,17 @@ function HomePageContent() {
                     <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", showPackages && "rotate-180")} />
                   </button>
                 </div>
-
-                {/* Package selector — expandable */}
-                <AnimatePresence>
-                  {showPackages && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1.0] }}
-                      className="overflow-hidden"
-                    >
-                      <div className="pt-4">
-                        <PackageSelector
-                          onSelect={handlePackageSelect}
-                          onSkip={handlePackageSkip}
-                          selectedPackageId={selectedPackage?.id ?? null}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </motion.div>
             )}
 
-            {/* ── TALENT MODE ── */}
             {mode === "talent" && (
               <motion.div
-                key="talent-mode"
-                initial={{ opacity: 0, y: 16 }}
+                key="talent-bar"
+                initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1.0] }}
-                className="max-w-[640px] mx-auto space-y-4"
+                className="space-y-4"
               >
                 <HeroBar
                   mode={mode}
@@ -257,65 +208,84 @@ function HomePageContent() {
                   onRolesChange={(roles) => setSelectedRoles(roles)}
                   onDiscover={() => setTalentAuthOpen(true)}
                 />
-                <div className="text-center">
-                  <button
-                    type="button"
-                    onClick={() => setTalentAuthOpen(true)}
-                    className="px-8 py-3 bg-white text-[#0B0F14] rounded-xl text-[13px] font-medium hover:bg-white/90 transition-all shadow-[0_4px_28px_rgba(255,255,255,0.10)]"
-                  >
-                    Apply to join the Hive →
-                  </button>
-                </div>
-                <div className="grid grid-cols-3 gap-4 mt-8 text-center">
-                  {[
-                    { value: "500+", label: "Active brands" },
-                    { value: "AED 50K+", label: "Avg campaign value" },
-                    { value: "48hr", label: "Brief to kickoff" },
-                  ].map(({ value, label }) => (
-                    <div key={label}>
-                      <p className="text-[20px] font-semibold text-white/80 tracking-[-0.02em]">{value}</p>
-                      <p className="text-[11px] text-white/30 mt-0.5">{label}</p>
-                    </div>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setTalentAuthOpen(true)}
+                  className="px-8 py-3 bg-white text-[#0B0F14] rounded-xl text-[13px] font-medium hover:bg-white/90 transition-all shadow-[0_4px_28px_rgba(255,255,255,0.10)]"
+                >
+                  Apply to join the Hive →
+                </button>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
-      </div>
 
-      {/* ── TALENT GALLERY — flows seamlessly from hero ── */}
-      {mode === "client" && showTalentGallery && (
-        <div className="relative">
-          {/* Seamless fade-in separator — no hard border, just ambient depth */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
+        {/* Disclaimer pinned to bottom of hero screen */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
+          <p className="text-[11px] text-white/18 tracking-wide whitespace-nowrap">
+            Creator Hive is human-first. Please clearly label any AI-generated media.
+          </p>
+        </div>
+      </section>
 
-          {/* Active package badge */}
-          {selectedPackage && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="max-w-7xl mx-auto px-6 pt-4 flex items-center gap-3"
-            >
-              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.06] ring-1 ring-white/[0.10] text-[12px] text-white/60">
-                <span>{selectedPackage.emoji}</span>
-                <span>{selectedPackage.name}</span>
-                <span className="text-white/25">·</span>
-                <span className="text-white/35">Showing matched talent</span>
-                <button
-                  onClick={() => { setSelectedPackage(null); setSelectedRoles([]); }}
-                  className="ml-1 text-white/25 hover:text-white/55 transition-colors text-[11px]"
+      {/* SECTION 2: PACKAGES — full screen */}
+      <AnimatePresence>
+        {mode === "client" && showPackages && (
+          <motion.section
+            ref={packageRef}
+            key="packages-section"
+            initial={{ opacity: 0, y: 60 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 30 }}
+            transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+            className="relative z-10 min-h-screen flex flex-col justify-center px-6 py-16"
+          >
+            <div className="w-full max-w-[1120px] mx-auto">
+              <PackageSelector
+                onSelect={handlePackageSelect}
+                onSkip={handlePackageSkip}
+                selectedPackageId={selectedPackage?.id ?? null}
+              />
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
+
+      {/* SECTION 3: TALENT GALLERY — full screen */}
+      <AnimatePresence>
+        {mode === "client" && showTalentGallery && (
+          <motion.section
+            ref={galleryRef}
+            key="gallery-section"
+            id="talent-gallery"
+            initial={{ opacity: 0, y: 60 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 30 }}
+            transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+            className="relative z-10 min-h-screen flex flex-col justify-center px-6 py-16"
+          >
+            <div className="w-full max-w-7xl mx-auto">
+              {selectedPackage && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-5 flex items-center gap-3"
                 >
-                  ×
-                </button>
-              </div>
-            </motion.div>
-          )}
+                  <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.06] ring-1 ring-white/[0.10] text-[12px] text-white/60">
+                    <span>{selectedPackage.emoji}</span>
+                    <span>{selectedPackage.name}</span>
+                    <span className="text-white/25">·</span>
+                    <span className="text-white/35">Showing matched talent</span>
+                    <button
+                      onClick={() => { setSelectedPackage(null); setSelectedRoles([]); }}
+                      className="ml-1 text-white/25 hover:text-white/55 transition-colors text-[11px]"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </motion.div>
+              )}
 
-          {/* Search bar refinement — hidden, hero bar above already handles this */}
-
-          <div className="max-w-7xl mx-auto px-6 pb-4">
-            <section id="talent-gallery" className="mt-6">
               <TalentCarousel
                 talents={curatedTalent}
                 query={searchQuery}
@@ -331,36 +301,40 @@ function HomePageContent() {
                   else addToPod(talentId);
                 }}
               />
-            </section>
-          </div>
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
 
-          {/* ── CAMPAIGN SETUP BOARD — blended, no hard border ── */}
-          <AnimatePresence>
-            {showCampaignBoard && (
-              <motion.div
-                id="campaign-board"
-                initial={{ opacity: 0, y: 32 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 16 }}
-                transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1.0] }}
-                className="w-full pb-24"
-                style={{
-                  background: "linear-gradient(to bottom, transparent 0%, rgba(11,15,20,0.98) 80px)",
-                }}
-              >
-                <CampaignSetupBoard
-                  talents={selectedTalents}
-                  selectedPkg={selectedPackage}
-                  onClose={() => setShowCampaignBoard(false)}
-                  onClear={clearPod}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      )}
+      {/* SECTION 4: CAMPAIGN BOARD */}
+      <AnimatePresence>
+        {showCampaignBoard && (
+          <motion.section
+            ref={campaignRef}
+            key="campaign-section"
+            id="campaign-board"
+            initial={{ opacity: 0, y: 60 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 30 }}
+            transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+            className="relative z-10 min-h-screen flex flex-col justify-center pb-24"
+            style={{ background: "linear-gradient(to bottom, rgba(11,15,20,0) 0%, rgba(11,15,20,1) 80px)" }}
+          >
+            <CampaignSetupBoard
+              talents={selectedTalents}
+              selectedPkg={selectedPackage}
+              onClose={() => setShowCampaignBoard(false)}
+              onClear={clearPod}
+              onRequestAuth={() => {
+                setPendingDiscover(true);
+                setClientAuthOpen(true);
+              }}
+            />
+          </motion.section>
+        )}
+      </AnimatePresence>
 
-      {/* ── SLIM POD TRAY ── */}
+      {/* POD TRAY — fixed bottom */}
       <AnimatePresence>
         {showTalentGallery && selectedPodIds.length > 0 && !showCampaignBoard && (
           <motion.div
@@ -371,7 +345,6 @@ function HomePageContent() {
             transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1.0] }}
           >
             <div className="flex items-center gap-3 px-4 py-3 bg-[rgba(15,18,24,0.94)] backdrop-blur-2xl border border-white/[0.10] rounded-2xl shadow-[0_8px_48px_rgba(0,0,0,0.7)]">
-              {/* Avatars */}
               <div className="flex items-center shrink-0">
                 {selectedTalents.slice(0, 5).map((t, i) => (
                   <div
@@ -392,7 +365,6 @@ function HomePageContent() {
                 )}
               </div>
 
-              {/* Label */}
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-light text-white/82 leading-none">
                   {selectedTalents.length} talent{selectedTalents.length !== 1 ? "s" : ""} in pod
@@ -404,7 +376,6 @@ function HomePageContent() {
                 )}
               </div>
 
-              {/* Package completion indicator */}
               {selectedPackage && (() => {
                 const requiredRoles = [...new Set(selectedPackage.roles)];
                 const filledRoles = selectedTalents.map((t) => t.primaryRole || "");
@@ -424,7 +395,6 @@ function HomePageContent() {
                 );
               })()}
 
-              {/* Actions */}
               <div className="flex items-center gap-1 shrink-0">
                 <button
                   type="button"
@@ -437,9 +407,7 @@ function HomePageContent() {
                   type="button"
                   onClick={() => {
                     setShowCampaignBoard(true);
-                    setTimeout(() => {
-                      document.getElementById("campaign-board")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }, 100);
+                    setTimeout(() => scrollToRef(campaignRef), 120);
                   }}
                   className="px-4 py-2 bg-white text-[#0B0F14] rounded-xl text-[13px] font-medium hover:bg-white/90 transition-colors"
                 >
@@ -459,19 +427,13 @@ function HomePageContent() {
         onSuccess={() => {
           if (pendingDiscover) {
             setShowTalentGallery(true);
-            setTimeout(() => {
-              document.getElementById("talent-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }, 150);
+            setTimeout(() => scrollToRef(galleryRef), 200);
             setPendingDiscover(false);
           }
         }}
       />
 
       <TalentOnboardingDialogFey open={talentAuthOpen} onClose={() => setTalentAuthOpen(false)} onSuccess={() => {}} />
-
-      <footer className="mt-20 border-t border-white/[0.06] pt-5 pb-8 text-center">
-        <p className="text-[11px] text-white/25">Creator Hive is human-first. Please clearly label any AI-generated media.</p>
-      </footer>
     </main>
   );
 }

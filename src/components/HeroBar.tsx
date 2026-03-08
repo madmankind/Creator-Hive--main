@@ -263,13 +263,6 @@ export function HeroBar({
               )}
               <button
                 type="button"
-                onClick={onOpenBriefBuilder}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 ring-1 ring-white/15 hover:bg-white/10 transition"
-              >
-                <span className="text-white/80 text-lg leading-none">+</span>
-              </button>
-              <button
-                type="button"
                 onClick={handleClientSubmit}
                 className="rounded-full bg-white px-5 py-2 text-xs font-semibold text-black hover:bg-white/90 transition"
               >
