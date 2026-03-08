@@ -9,8 +9,26 @@ import clsx from 'clsx'
 const inter = Inter({ subsets: ['latin'], display: 'swap', variable: '--font-inter' })
 
 export const metadata: Metadata = {
-  title: 'Creator Hive',
-  description: 'Book Top 1% talent seamlessly.',
+  title: {
+    default: 'Creator Hive — UAE Creative Talent Marketplace',
+    template: '%s — Creator Hive',
+  },
+  description: 'Book pre-vetted creative talent across the UAE and GCC. Campaign teams, deliverable tracking, and payments in one platform.',
+  keywords: ['influencer marketing', 'UAE creators', 'GCC talent', 'content creators Dubai', 'influencer platform'],
+  openGraph: {
+    title: 'Creator Hive — UAE Creative Talent Marketplace',
+    description: 'Book pre-vetted creative talent across the UAE and GCC.',
+    url: 'https://creatorhive.ae',
+    siteName: 'Creator Hive',
+    locale: 'en_AE',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Creator Hive',
+    description: 'Book pre-vetted creative talent across the UAE and GCC.',
+  },
+  metadataBase: new URL('https://creatorhive.ae'),
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

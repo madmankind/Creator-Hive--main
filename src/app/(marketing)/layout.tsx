@@ -14,13 +14,11 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
             <Logo />
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm text-[color:var(--color-muted-foreground)]">
-            <Link href="/">Product</Link>
-            <Link href="/for-creators">For Creators</Link>
             <Link href="/for-brands">For Brands</Link>
-            <Link href="/docs">Docs</Link>
-            <Link href="/talent">Talent</Link>
-            <Link className="rounded-xl px-4 py-2 hover:bg-[color:var(--grey-800)]" href="/app">Sign in</Link>
-            <Link href="/signup" className={`${buttonVariants({ variant: "gradient" })} ml-2`}>
+            <Link href="/for-creators">For Creators</Link>
+            <Link href="/pricing">Pricing</Link>
+            <Link className="rounded-xl px-4 py-2 hover:bg-[color:var(--grey-800)]" href="/">Sign in</Link>
+            <Link href="/" className={`${buttonVariants({ variant: "gradient" })} ml-2`}>
               Get Started
             </Link>
           </nav>

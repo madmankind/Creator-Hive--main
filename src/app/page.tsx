@@ -312,19 +312,7 @@ function HomePageContent() {
             </motion.div>
           )}
 
-          {/* Search bar refinement */}
-          {!selectedPackage && (
-            <div className="max-w-7xl mx-auto px-6 pt-4">
-              <div className="max-w-[600px]">
-                <HeroBar
-                  mode="client"
-                  onQueryChange={(q) => setSearchQuery(q)}
-                  onRolesChange={(roles) => setSelectedRoles(roles)}
-                  onDiscover={() => {}}
-                />
-              </div>
-            </div>
-          )}
+          {/* Search bar refinement — hidden, hero bar above already handles this */}
 
           <div className="max-w-7xl mx-auto px-6 pb-4">
             <section id="talent-gallery" className="mt-6">

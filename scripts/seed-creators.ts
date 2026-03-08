@@ -16,11 +16,11 @@ async function main() {
       continue;
     }
 
-    // Find existing record by instagram handle (not unique in schema, use findFirst)
     const existing = await prisma.creatorProfile.findFirst({ where: { instagram } });
 
     const data = {
       name: t.name,
+      displayName: t.name.split(" ")[0],
       instagram,
       bio: t.shortBio,
       skills: t.roleTags as string[],
@@ -30,6 +30,8 @@ async function main() {
       portfolioUrl: t.links?.website ?? t.links?.behance ?? null,
       isVerified: true,
       isActive: true,
+      talentStatus: "active",
+      source: "manual",
     };
 
     if (existing) {

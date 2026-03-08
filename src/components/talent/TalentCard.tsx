@@ -52,11 +52,22 @@ export function TalentCard({
       <div className="flex flex-col flex-1 min-h-0">
         {/* Top row: avatar + name + (heart | Add/Added) */}
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-sm font-medium text-white/80 flex-shrink-0">
-            {talent.name.charAt(0) || "C"}
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-sm font-medium text-white/80 flex-shrink-0 overflow-hidden">
+            {talent.avatarUrl && !talent.avatarUrl.startsWith("/") ? (
+              <img
+                src={talent.avatarUrl}
+                alt={talent.name}
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            ) : (
+              <span>{talent.name.charAt(0) || "C"}</span>
+            )}
           </div>
           <div className="flex flex-1 flex-col min-w-0">
-            <span className="text-sm font-medium text-white/90 truncate">
+            <span className="text-sm font-medium text-white/90 leading-tight">
               {talent.name}
             </span>
             {talent.headline && (

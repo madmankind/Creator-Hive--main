@@ -279,6 +279,9 @@ export function ClientAuthDialog({ open, onClose, onSuccess }: ClientAuthDialogP
                     By signing up, you agree to our{' '}
                     <a href="/terms" className="underline hover:text-white/70">
                       Terms of Service
+                    </a>{' '}and{' '}
+                    <a href="/privacy" className="underline hover:text-white/70">
+                      Privacy Policy
                     </a>
                     .
                   </p>

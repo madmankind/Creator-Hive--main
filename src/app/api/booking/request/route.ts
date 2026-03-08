@@ -19,9 +19,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "companyName, email, and talentIds are required" }, { status: 400 });
     }
 
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const bookingRequest = await prisma.bookingRequest.create({
       data: {
-        userId: session?.user?.id ?? "anonymous",
+        userId: session.user.id,
         contactEmail: email,
         description: note ?? "",
         talentIds: talentIds,

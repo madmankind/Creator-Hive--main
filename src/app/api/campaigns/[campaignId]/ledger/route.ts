@@ -20,9 +20,9 @@ type DbPayment = {
 
 export async function GET(
   _req: Request,
-  { params }: { params: { campaignId: string } }
+  { params }: { params: Promise<{ campaignId: string }> }
 ) {
-  const { campaignId } = params;
+  const { campaignId } = await params;
 
   const [dbInvoices, dbPayments] = await Promise.all([
     db.invoice.findMany({

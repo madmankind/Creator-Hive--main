@@ -175,6 +175,10 @@ model CreatorProfile {
   location               String?
   avatarUrl              String?
   portfolioUrl           String?
+  displayName            String?               // Public alias shown to clients (privacy layer)
+  qualityScore           Int?                  // 0–15 vetting score
+  talentStatus           String                @default("pending") // "pending" | "active" | "paused" | "rejected"
+  source                 String?               // "form" | "manual" | "scraped"
   isVerified             Boolean                @default(false)
   isActive               Boolean                @default(true)
   stripeAccountId        String?                @unique

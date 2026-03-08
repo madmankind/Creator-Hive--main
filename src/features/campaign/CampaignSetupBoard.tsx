@@ -931,7 +931,7 @@ export function CampaignSetupBoard({
                     Campaign Setup
                   </h2>
                   <p className="text-[13px] text-white/35 mt-1.5 font-light">
-                    Configure brief, deliverables, and terms for your pod
+                    Configure brief, deliverables, and terms for your campaign
                   </p>
                 </div>
                 <button

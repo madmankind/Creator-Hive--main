@@ -145,7 +145,7 @@ export function TalentCarousel({
     id: talent.id,
     name: talent.name,
     headline: talent.displayTitle,
-    avatarUrl: talent.avatarUrl,
+    avatarUrl: talent.profileImageUrl ?? talent.avatarUrl,
     roles: talent.roleTags,
     platforms: talent.platformTags,
     availabilityTags: talent.availability,
