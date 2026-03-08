@@ -8,7 +8,7 @@ type RouteRule = {
 };
 
 const rules: RouteRule[] = [
-  { prefix: "/dashboard", roles: ["AGENCY", "CREATOR", "ADMIN"] },
+  // /dashboard auth is handled by DashboardLayout (server-side) — not middleware
   { prefix: "/discovery", roles: ["AGENCY", "ADMIN"] },
   { prefix: "/onboarding", roles: ["AGENCY", "CREATOR", "ADMIN"] },
   { prefix: "/creator", roles: ["CREATOR", "ADMIN"] },
@@ -63,7 +63,6 @@ export default auth((req: RequestWithAuth) => {
 
 export const config = {
   matcher: [
-    "/dashboard/:path*",
     "/discovery/:path*",
     "/onboarding/:path*",
     "/creator/:path*",
