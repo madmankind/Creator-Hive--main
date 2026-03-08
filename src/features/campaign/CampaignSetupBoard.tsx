@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Check, Download, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -458,12 +458,13 @@ export function CampaignSetupBoard({
               <button type="button" onClick={handleDownloadSOW} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/[0.07] ring-1 ring-white/[0.10] text-[13px] text-white/60 hover:bg-white/[0.12] hover:text-white/85 transition-all">
                 <Download className="w-3.5 h-3.5" />Download SOW
               </button>
-              <Link
-                href="/dashboard/campaigns?mode=track"
+              <button
+                type="button"
+                onClick={() => { window.location.href = "/api/goto-dashboard"; }}
                 className="px-6 py-2.5 rounded-xl bg-white text-[#0B0F14] text-[13px] font-semibold hover:bg-white/90 transition-colors shadow-[0_4px_28px_rgba(255,255,255,0.12)]"
               >
                 Go to dashboard →
-              </Link>
+              </button>
             </div>
           </motion.div>
         </div>

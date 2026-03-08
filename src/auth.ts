@@ -210,16 +210,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, user }: { token: JWT; user?: User | null }) {
+      // On initial sign-in, persist role into the token
       if (user?.role) {
         token.role = user.role;
+      }
+      // Fallback: if token has no role but has a sub, default to AGENCY
+      // This covers edge cases where the JWT was created without a role
+      if (!token.role && token.sub) {
+        token.role = "AGENCY";
       }
       return token;
     },
     async session({ session, token }: { session: Session; token: JWT }) {
       if (session.user) {
-        session.user.id = token.sub ?? session.user.id;
+        // Cast to extend with our custom fields
+        const u = session.user as typeof session.user & { id: string; role?: string };
+        u.id = token.sub ?? (session.user as { id?: string }).id ?? "";
         if (typeof token.role === "string") {
-          session.user.role = token.role;
+          u.role = token.role;
         }
       }
       return session;
