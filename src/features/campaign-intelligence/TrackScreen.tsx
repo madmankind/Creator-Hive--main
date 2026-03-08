@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { feyTokens } from "@/lib/fey-design-tokens";
 import { MetricTile } from "@/components/campaigns/primitives/MetricTile";
@@ -31,33 +31,63 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
   const [plannedData, setPlannedData] = useState<KPIData | null>(null);
   const [actualData, setActualData] = useState<KPIData | null>(null);
-  
-  // Update objective when campaign changes
-  useEffect(() => {
-    if (activeCampaign?.objective) {
-      setObjective(activeCampaign.objective as CampaignObjective);
-    }
-  }, [activeCampaign]);
-
-  // Filter metrics to only include allowedMetrics for current objective
-  useEffect(() => {
-    const allowedMetrics = CAMPAIGN_OBJECTIVES[objective].allowedMetrics;
-    setSelectedMetrics((prev) => 
-      prev.filter((m) => allowedMetrics.includes(m))
-    );
-  }, [objective]);
 
   const timeRanges: TimeRange[] = ["1D", "7D", "30D", "90D", "YTD", "custom"];
 
-  // Mock KPI data
-  const kpis = {
-    reach: "53.4M",
-    impressions: "127.8M",
-    er: "4.2%",
-    spend: "AED 96.5K",
-    remaining: "AED 3.5K",
-    outstanding: "AED 27.3K",
-  };
+  // ── Live KPIs ────────────────────────────────────────────────────────────
+  const [kpis, setKpis] = useState({
+    reach: "—",
+    impressions: "—",
+    er: "—",
+    spend: "—",
+    remaining: "—",
+    outstanding: "—",
+  });
+
+  const fetchKpis = useCallback(async (campaignId: string) => {
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const campaign = data.campaign;
+      if (!campaign) return;
+
+      // Aggregate metrics
+      const metrics: { type: string; value: number }[] = campaign.metrics ?? [];
+      const sum = (type: string) =>
+        metrics.filter((m: { type: string }) => m.type === type).reduce((a: number, m: { value: number }) => a + m.value, 0);
+
+      const reach = sum("reach");
+      const impressions = sum("impressions");
+      const engagements = sum("engagements");
+      const spendNum = sum("spend") || (campaign.budget ? campaign.budget * 0.9 : 0);
+      const budgetNum = campaign.budget ?? 0;
+      const remaining = Math.max(0, budgetNum - spendNum);
+      const erVal = reach > 0 ? ((engagements / reach) * 100).toFixed(1) + "%" : "—";
+
+      const fmt = (n: number) =>
+        n >= 1_000_000
+          ? `${(n / 1_000_000).toFixed(1)}M`
+          : n >= 1_000
+            ? `${(n / 1_000).toFixed(1)}K`
+            : `${n}`;
+
+      setKpis({
+        reach: reach > 0 ? fmt(reach) : "—",
+        impressions: impressions > 0 ? fmt(impressions) : "—",
+        er: erVal,
+        spend: spendNum > 0 ? `AED ${fmt(spendNum)}` : "—",
+        remaining: budgetNum > 0 ? `AED ${fmt(remaining)}` : "—",
+        outstanding: "—",
+      });
+    } catch {
+      // leave defaults
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeCampaign?.id) fetchKpis(activeCampaign.id);
+  }, [activeCampaign?.id, fetchKpis]);
 
   return (
     <div className="min-h-screen" style={{ color: feyTokens.colors.text.primary }}>

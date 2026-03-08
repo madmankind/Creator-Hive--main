@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { feyTokens } from "@/lib/fey-design-tokens";
 import { PillSegment } from "@/components/campaigns/primitives/PillSegment";
@@ -10,7 +10,6 @@ import { Download, FileText, CreditCard, Info } from "lucide-react";
 import { PaymentMethodsPanel } from "@/components/campaigns/PaymentMethodsPanel";
 import { BottomDock } from "@/components/nav/BottomDock";
 import { useCampaign } from "@/contexts/CampaignContext";
-import { mockContracts, mockEarnings, mockInvoices, mockPayouts } from "@/mock/ledger";
 import type { Invoice, Payout, TalentContract, TalentEarning } from "@/components/campaigns/types";
 
 interface PayScreenProps {
@@ -30,21 +29,32 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
 
   const currentCampaignId = selectedCampaignIds[0] || activeCampaign?.id || null;
 
-  const invoices = useMemo<Invoice[]>(() => {
-    return mockInvoices.filter((inv) => (currentCampaignId ? inv.campaignId === currentCampaignId : true));
-  }, [currentCampaignId]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [payouts, setPayouts] = useState<Payout[]>([]);
+  const [earnings] = useState<TalentEarning[]>([]);
+  const [contracts] = useState<TalentContract[]>([]);
 
-  const payouts = useMemo<Payout[]>(() => {
-    return mockPayouts.filter((po) => (currentCampaignId ? po.campaignId === currentCampaignId : true));
-  }, [currentCampaignId]);
+  const fetchLedger = useCallback(async (campaignId: string) => {
+    const res = await fetch(`/api/campaigns/${campaignId}/ledger`);
+    if (!res.ok) return;
+    const data = await res.json();
+    setInvoices(
+      (data.invoices ?? []).map((inv: Invoice) => ({
+        ...inv,
+        dueDate: new Date(inv.dueDate),
+      }))
+    );
+    setPayouts(
+      (data.payouts ?? []).map((po: Payout) => ({
+        ...po,
+        scheduledDate: new Date(po.scheduledDate),
+      }))
+    );
+  }, []);
 
-  const earnings = useMemo<TalentEarning[]>(() => {
-    return mockEarnings.filter((earn) => (currentCampaignId ? earn.campaignId === currentCampaignId : true));
-  }, [currentCampaignId]);
-
-  const contracts = useMemo<TalentContract[]>(() => {
-    return mockContracts.filter((contract) => (currentCampaignId ? contract.campaignId === currentCampaignId : true));
-  }, [currentCampaignId]);
+  useEffect(() => {
+    if (currentCampaignId) fetchLedger(currentCampaignId);
+  }, [currentCampaignId, fetchLedger]);
 
   useEffect(() => {
     if (payFace === "client" && (activeTab === "earnings" || activeTab === "contracts")) {
@@ -55,7 +65,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
     }
   }, [payFace, activeTab]);
 
-  const clientTotals = useMemo(() => {
+  const clientTotals = (() => {
     const paid = invoices.filter((inv) => inv.status === "Paid").reduce((sum, inv) => sum + inv.amount, 0);
     const outstanding = invoices
       .filter((inv) => inv.status === "Sent" || inv.status === "Overdue" || inv.status === "Draft")
@@ -63,28 +73,26 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
     const upcomingPayouts = payouts
       .filter((po) => po.status !== "Paid")
       .reduce((sum, po) => sum + po.amount, 0);
-
     return {
       totalSpend: `AED ${(paid + outstanding).toLocaleString()}`,
       outstanding: `AED ${outstanding.toLocaleString()}`,
       paidToDate: `AED ${paid.toLocaleString()}`,
       upcomingPayouts: `AED ${upcomingPayouts.toLocaleString()}`,
     };
-  }, [invoices, payouts]);
+  })();
 
-  const talentTotals = useMemo(() => {
+  const talentTotals = (() => {
     const total = earnings.reduce((sum, earn) => sum + earn.amount, 0);
     const pending = earnings.filter((e) => e.status !== "Released").reduce((sum, e) => sum + e.amount, 0);
     const scheduled = payouts.filter((po) => po.status === "Scheduled").reduce((sum, po) => sum + po.amount, 0);
     const paidOut = payouts.filter((po) => po.status === "Paid").reduce((sum, po) => sum + po.amount, 0);
-
     return {
       earnings: `AED ${total.toLocaleString()}`,
       pending: `AED ${pending.toLocaleString()}`,
       scheduled: `AED ${scheduled.toLocaleString()}`,
       paidOut: `AED ${paidOut.toLocaleString()}`,
     };
-  }, [earnings, payouts]);
+  })();
 
 
   return (

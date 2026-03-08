@@ -21,7 +21,8 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "prisma migrate reset"
+    "db:reset": "prisma migrate reset",
+    "seed:creators": "tsx scripts/seed-creators.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
