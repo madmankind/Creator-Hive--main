@@ -1,0 +1,283 @@
+// src/app/page.tsx
+"use client";
+import { useState, useEffect } from "react";
+import { HeroBar } from "@/components/HeroBar";
+import { TalentCarousel } from "@/components/marketing/TalentCarousel";
+import { CampaignPodPanel } from "@/components/talent/CampaignPodPanel";
+import { ClientAuthDialog } from "@/components/auth/ClientAuthDialog";
+import { TalentOnboardingDialogFey } from "@/components/auth/TalentOnboardingDialogFey";
+import { PodSetupOverlay } from "@/features/pod-setup/PodSetupOverlay";
+import { curatedTalent } from "@/lib/curatedTalent";
+import { useSession } from "next-auth/react";
+
+export default function HomePage() {
+  const [mode, setMode] = useState<'client' | 'talent'>('client');
+  const [showTalentGallery, setShowTalentGallery] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [clientAuthOpen, setClientAuthOpen] = useState(false);
+  const [talentAuthOpen, setTalentAuthOpen] = useState(false);
+  const [pendingDiscover, setPendingDiscover] = useState(false);
+  const [podExpanded, setPodExpanded] = useState(false);
+
+  // Landing pod state (localStorage-backed)
+  const [selectedPodIds, setSelectedPodIds] = useState<string[]>([]);
+
+  const { data: session } = useSession();
+  const role = (session?.user as { role?: string | null } | undefined)?.role ?? null;
+  const isClient = role === "AGENCY";
+
+  // Load landing pod from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("ch_landing_pod_ids");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) setSelectedPodIds(parsed);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // Persist landing pod to localStorage
+  useEffect(() => {
+    if (selectedPodIds.length > 0) {
+      localStorage.setItem("ch_landing_pod_ids", JSON.stringify(selectedPodIds));
+    } else {
+      localStorage.removeItem("ch_landing_pod_ids");
+    }
+  }, [selectedPodIds]);
+
+  // Pod handlers
+  const addToPod = (talentId: string) => {
+    setSelectedPodIds((prev) => prev.includes(talentId) ? prev : [...prev, talentId]);
+  };
+  const removeFromPod = (talentId: string) => {
+    setSelectedPodIds((prev) => prev.filter((id) => id !== talentId));
+  };
+  const clearPod = () => {
+    setSelectedPodIds([]);
+    setPodExpanded(false);
+  };
+
+  // Handle "Set up pod" → auth check → expand
+  const handleExpand = () => {
+    if (selectedPodIds.length === 0) return;
+    const hasSession = typeof window !== 'undefined' && localStorage.getItem('ch_client_session');
+    if (!hasSession) {
+      setClientAuthOpen(true);
+      setPendingDiscover(true);
+      return;
+    }
+    setPodExpanded(true);
+  };
+
+  // Handle campaign request submission
+  const handleSubmitRequest = async (data: any) => {
+    console.log("Campaign request submitted:", data);
+    setPodExpanded(false);
+    clearPod();
+  };
+
+  // Auto-scroll to gallery after auth
+  useEffect(() => {
+    if (isClient && pendingDiscover) {
+      setShowTalentGallery(true);
+      setTimeout(() => {
+        document.getElementById("talent-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 150);
+      setPendingDiscover(false);
+    }
+  }, [isClient, pendingDiscover]);
+
+  // When briefing expands, show discovery space so inline brief has a home
+  useEffect(() => {
+    if (podExpanded) setShowTalentGallery(true);
+  }, [podExpanded]);
+
+  return (
+    <main className="min-h-screen bg-[#0B0F14] text-slate-200">
+      {/* Subtle vertical glow */}
+      <div className="pointer-events-none fixed inset-0 flex items-start justify-center">
+        <div className="mt-8 h-[40vh] w-[60vw] max-w-[900px] blur-3xl opacity-[0.16] bg-gradient-to-b from-white/25 via-white/10 to-transparent rounded-full" />
+      </div>
+
+      {/* Centered content container */}
+      <div className="relative flex items-center justify-center min-h-screen px-6">
+        <div className="w-full max-w-[1100px]">
+          {/* Header */}
+          <div className="text-center space-y-6 mb-12">
+            <h1 className="text-[32px] md:text-[40px] font-semibold tracking-[-0.02em] text-white/90">
+              Welcome to Creator Hive
+            </h1>
+
+            {/* Toggle */}
+            <div className="inline-flex items-center gap-1 rounded-full bg-white/5 p-1 ring-1 ring-white/10">
+              <button
+                onClick={() => setMode('client')}
+                className={`px-3.5 py-1.5 rounded-full text-[12px] font-medium transition ${
+                  mode === 'client'
+                    ? 'bg-white/10 text-white ring-1 ring-white/15'
+                    : 'text-white/60 hover:text-white'
+                }`}
+              >
+                Client
+              </button>
+              <button
+                onClick={() => setMode('talent')}
+                className={`px-3.5 py-1.5 rounded-full text-[12px] font-medium transition ${
+                  mode === 'talent'
+                    ? 'bg-white/10 text-white ring-1 ring-white/15'
+                    : 'text-white/60 hover:text-white'
+                }`}
+              >
+                Talent
+              </button>
+            </div>
+
+            <p className="text-[14px] text-white/60">
+              {mode === 'client'
+                ? 'Book Top 1% talent seamlessly'
+                : 'Join the Hive to showcase your work and get discovered.'}
+            </p>
+            {mode === 'client' && (
+              <p className="text-[13px] text-white/50 mt-2">
+                Describe your campaign and choose the roles you need – we&apos;ll surface curated talent that fits.
+              </p>
+            )}
+          </div>
+
+          {/* Hero Bar */}
+          <div className="flex justify-center">
+            <div className="w-full max-w-[860px]">
+              <HeroBar
+                mode={mode}
+                onQueryChange={(q) => setSearchQuery(q)}
+                onRolesChange={(roles) => setSelectedRoles(roles)}
+                onDiscover={() => {
+                  if (!session?.user) {
+                    if (mode === 'client') {
+                      setPendingDiscover(true);
+                      setClientAuthOpen(true);
+                    } else {
+                      setTalentAuthOpen(true);
+                    }
+                    return;
+                  }
+                  if (mode === 'client' && !isClient) {
+                    setPendingDiscover(true);
+                    setClientAuthOpen(true);
+                    return;
+                  }
+                  setShowTalentGallery(true);
+                  setTimeout(() => {
+                    document.getElementById("talent-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 100);
+                }}
+                onOpenBriefBuilder={() => {
+                  if (mode === 'client' && !isClient) {
+                    setClientAuthOpen(true);
+                    return;
+                  }
+                  setPodExpanded(true);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Talent Gallery + Inline Brief (same space, no panel) */}
+      {mode === 'client' && showTalentGallery && (
+        <section id="talent-gallery" className="mt-20 md:mt-28">
+          <div
+            className={
+              podExpanded
+                ? "flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10"
+                : ""
+            }
+          >
+            <div className={podExpanded ? "min-w-0 flex-1" : ""}>
+              <TalentCarousel
+                talents={curatedTalent}
+                query={searchQuery}
+                selectedRoles={selectedRoles}
+                selectedPodIds={selectedPodIds}
+                onAddToPod={addToPod}
+                onBook={(talent) => {
+                  if (!selectedPodIds.includes(talent.id)) addToPod(talent.id);
+                  setPodExpanded(true);
+                }}
+                onTalentClick={(talentId) => {
+                  if (selectedPodIds.includes(talentId)) {
+                    removeFromPod(talentId);
+                  } else {
+                    addToPod(talentId);
+                  }
+                }}
+              />
+            </div>
+            {podExpanded && (
+              <div
+                id="brief-inline-root"
+                className="w-full lg:w-[min(400px,38vw)] lg:flex-shrink-0 lg:sticky lg:top-6"
+              />
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Campaign Pod Panel — self-contained Fey-inspired expansion */}
+      {mode === 'client' && (
+        <CampaignPodPanel
+          selectedPodIds={selectedPodIds}
+          onRemove={removeFromPod}
+          onClear={clearPod}
+          isExpanded={podExpanded}
+          onExpand={handleExpand}
+          onCollapse={() => setPodExpanded(false)}
+          onSubmitRequest={handleSubmitRequest}
+        />
+      )}
+
+      {/* Pod Setup Overlay */}
+      <PodSetupOverlay />
+
+      {/* Client Auth Dialog */}
+      <ClientAuthDialog
+        open={clientAuthOpen}
+        onClose={() => {
+          setClientAuthOpen(false);
+          setPendingDiscover(false);
+        }}
+        onSuccess={() => {
+          if (pendingDiscover) {
+            const hasPodIds = selectedPodIds.length > 0;
+            if (hasPodIds) {
+              setPodExpanded(true);
+            } else {
+              setShowTalentGallery(true);
+              setTimeout(() => {
+                document.getElementById("talent-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }, 150);
+            }
+            setPendingDiscover(false);
+          }
+        }}
+      />
+
+      {/* Talent Onboarding Dialog */}
+      <TalentOnboardingDialogFey
+        open={talentAuthOpen}
+        onClose={() => setTalentAuthOpen(false)}
+        onSuccess={() => {}}
+      />
+
+      {/* Footer */}
+      <footer className="mt-16 border-t border-white/10 pt-4 pb-6 text-center">
+        <p className="text-[11px] text-white/45">
+          Creator Hive is human-first. Please clearly label any AI-generated media.
+        </p>
+      </footer>
+    </main>
+  );
+}

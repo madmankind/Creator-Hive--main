@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { BarChart3, Users, CreditCard, Search, Inbox, Home } from "lucide-react";
+import { BarChart3, Users, CreditCard, Search, Home } from "lucide-react";
 import { feyTokens } from "@/lib/fey-design-tokens";
 
 interface DockItem {
@@ -9,14 +9,15 @@ interface DockItem {
   label: string;
   icon: React.ComponentType<{ className?: string; size?: number }>;
   route: string;
+  isExternal?: boolean;
 }
 
 const dockItems: DockItem[] = [
-  { id: "track", label: "Track", icon: BarChart3, route: "/dashboard/campaigns?mode=track" },
-  { id: "manage", label: "Manage", icon: Users, route: "/dashboard/campaigns?mode=manage" },
-  { id: "pay", label: "Pay", icon: CreditCard, route: "/dashboard/campaigns?mode=pay" },
-  { id: "discover", label: "Discover", icon: Search, route: "/dashboard/campaigns?mode=discover" },
-  { id: "inbox", label: "Inbox", icon: Inbox, route: "/dashboard/inbox" },
+  { id: "home",    label: "Home",    icon: Home,      route: "/",                                   isExternal: true },
+  { id: "track",   label: "Track",   icon: BarChart3, route: "/dashboard/campaigns?mode=track" },
+  { id: "manage",  label: "Manage",  icon: Users,     route: "/dashboard/campaigns?mode=manage" },
+  { id: "pay",     label: "Pay",     icon: CreditCard,route: "/dashboard/campaigns?mode=pay" },
+  { id: "discover",label: "Discover",icon: Search,    route: "/dashboard/campaigns?mode=discover" },
 ];
 
 export function BottomDock() {
@@ -26,8 +27,9 @@ export function BottomDock() {
   const currentMode = searchParams.get("mode") || "track";
 
   const isActive = (item: DockItem) => {
-    if (item.id === "manage" || item.id === "track" || item.id === "pay" || item.id === "discover") {
-      return currentMode === item.id;
+    if (item.id === "home") return pathname === "/";
+    if (["track", "manage", "pay", "discover"].includes(item.id)) {
+      return pathname === "/dashboard/campaigns" && currentMode === item.id;
     }
     return pathname === item.route;
   };
@@ -87,4 +89,3 @@ export function BottomDock() {
     </div>
   );
 }
-

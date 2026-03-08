@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, RotateCcw, Maximize2, ChevronLeft, ChevronRight, ExternalLink, X } from "lucide-react";
 import { Talent } from "@/store/useCampaignPodStore";
 import type { CuratedTalent } from "@/lib/curatedTalent";
+import type { MatchScore } from "@/lib/schemas/booking";
+import { PRICING_TIER_DESCRIPTIONS } from "@/lib/schemas/booking";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { Tooltip, TooltipProvider } from "@/components/ui/tooltip";
@@ -16,6 +18,30 @@ type LandingTalentCardProps = {
   onAdd?: (talent: Talent) => void;
   onBook?: (talent: Talent) => void;
   curatedTalent: CuratedTalent;
+  matchScore?: MatchScore; // Optional match score for display on back
+  packageMatch?: { packageName: string; packageEmoji: string }; // Shows "Best for [package]" badge
+};
+
+/** Determine tier based on talent attributes */
+function getTalentTier(talent: CuratedTalent): "HIVE_SELECT" | "HIVE_SIGNATURE" {
+  const followers = talent.followers || 0;
+  // Hive Signature: 50k+ followers (proven social influence)
+  return followers >= 50000 ? "HIVE_SIGNATURE" : "HIVE_SELECT";
+}
+
+const TIER_STYLES = {
+  HIVE_SELECT: {
+    bg: "bg-white/5",
+    text: "text-white/70",
+    ring: "ring-white/20",
+    label: "Hive Select",
+  },
+  HIVE_SIGNATURE: {
+    bg: "bg-purple-500/10",
+    text: "text-purple-300",
+    ring: "ring-purple-400/40",
+    label: "Hive Signature",
+  },
 };
 
 type BackTab = "about" | "portfolio" | "links";
@@ -36,10 +62,10 @@ function getPremiumSummary(text: string, maxChars: number): string {
   return out + "…"
 }
 
-/** Front: premium blurb, max 105 chars, 2 lines. Prefer nicheSummary, else shortBio. */
+/** Front: premium blurb, standardized 90 chars for consistent 2-line display. Prefer nicheSummary, else shortBio. */
 function getFrontSummary(t: CuratedTalent): string {
   const raw = t.nicheSummary?.trim() || t.shortBio?.trim() || ""
-  return getPremiumSummary(raw, 105)
+  return getPremiumSummary(raw, 90)
 }
 
 /** Back About: concise, max 180 chars, 4 lines. */
@@ -106,6 +132,8 @@ export function LandingTalentCard({
   onAdd,
   onBook,
   curatedTalent,
+  matchScore,
+  packageMatch,
 }: LandingTalentCardProps) {
   const DEBUG_CARD_BOUNDS = false; // Set true to show card root / front / back outlines
 
@@ -166,14 +194,27 @@ export function LandingTalentCard({
       <motion.article
         className={cn(
           "group relative flex flex-col overflow-hidden rounded-2xl",
-          "bg-white/5 p-6 ring-1 ring-white/10",
-          "w-[380px] h-[260px] flex-shrink-0",
+          "bg-white/5 p-5 ring-1 ring-white/10",
+          "w-[280px] h-[260px] flex-shrink-0",
           "cursor-pointer select-none",
           "transition-all duration-300",
-          "hover:ring-white/20 hover:shadow-lg hover:shadow-white/5",
+          packageMatch
+            ? "hover:ring-white/25 hover:shadow-[0_0_28px_rgba(255,255,255,0.06)] ring-white/[0.16]"
+            : "hover:ring-white/20 hover:shadow-lg hover:shadow-white/5",
           DEBUG_CARD_BOUNDS && "outline outline-1 outline-red-500/40"
         )}
       >
+        {/* Package match top-edge shimmer */}
+        {packageMatch && (
+          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none z-10" />
+        )}
+        {/* Package match badge — inset in top edge, very subtle */}
+        {packageMatch && (
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 px-2.5 py-0.5 rounded-b-lg bg-white/[0.06] ring-1 ring-t-0 ring-white/[0.12] text-[9px] text-white/45 pointer-events-none tracking-[0.03em]">
+            <span className="leading-none text-[10px]">{packageMatch.packageEmoji}</span>
+            <span>{packageMatch.packageName}</span>
+          </div>
+        )}
         {/* 3D Flip Container - parent defines height so absolute inset-0 children have a containing block */}
         <div className="relative w-full h-full" style={{ perspective: prefersReducedMotion ? 'none' : '1000px' }}>
           {prefersReducedMotion ? (
@@ -231,7 +272,7 @@ export function LandingTalentCard({
                     <button
                       type="button"
                       onClick={handleFlip}
-                      className="w-8 h-8 rounded-full bg-white/5 ring-1 ring-white/10 flex items-center justify-center hover:bg-white/10 transition text-white/60 hover:text-white/80"
+                      className="w-8 h-8 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] hover:ring-white/[0.18] transition-all duration-150 text-white/40 hover:text-white/90"
                     >
                       <RotateCcw className="w-4 h-4" />
                     </button>
@@ -242,7 +283,7 @@ export function LandingTalentCard({
                     <button
                       type="button"
                       onClick={handleExpand}
-                      className="w-8 h-8 rounded-full bg-white/5 ring-1 ring-white/10 flex items-center justify-center hover:bg-white/10 transition text-white/60 hover:text-white/80"
+                      className="w-8 h-8 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] hover:ring-white/[0.18] transition-all duration-150 text-white/40 hover:text-white/90"
                     >
                       <Maximize2 className="w-4 h-4" />
                     </button>
@@ -257,12 +298,12 @@ export function LandingTalentCard({
                 </p>
               )}
 
-              {/* Tags */}
-              <div className="mb-2 flex flex-wrap gap-1.5 max-h-[48px] overflow-hidden">
-                {talent.roles.slice(0, 4).map((r) => (
+              {/* Tags — roles, platforms, tier */}
+              <div className="mb-2 flex flex-wrap gap-x-1.5 gap-y-1 min-h-[32px]">
+                {talent.roles.slice(0, 3).map((r) => (
                   <span
                     key={r}
-                    className="rounded-full bg-white/5 px-2.5 py-0.5 text-[11px] text-white/70 ring-1 ring-white/10 select-none"
+                    className="rounded-full bg-white/5 px-2.5 py-0.5 text-[11px] text-white/70 ring-1 ring-white/10 select-none shrink-0"
                   >
                     {r}
                   </span>
@@ -270,19 +311,30 @@ export function LandingTalentCard({
                 {talent.platforms.slice(0, 2).map((p) => (
                   <span
                     key={p}
-                    className="rounded-full bg-white/5 px-2.5 py-0.5 text-[11px] text-white/60 ring-1 ring-white/10 select-none"
+                    className="rounded-full bg-white/5 px-2.5 py-0.5 text-[11px] text-white/60 ring-1 ring-white/10 select-none shrink-0"
                   >
                     {p}
                   </span>
                 ))}
-                {talent.availabilityTags?.slice(0, 1).map((a) => (
-                  <span
-                    key={a}
-                    className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] text-emerald-300 ring-1 ring-emerald-400/40 select-none"
-                  >
-                    {a}
-                  </span>
-                ))}
+                {/* Tier tag with tooltip */}
+                {(() => {
+                  const tier = getTalentTier(curatedTalent);
+                  const styles = TIER_STYLES[tier];
+                  return (
+                    <Tooltip content={PRICING_TIER_DESCRIPTIONS[tier]}>
+                      <span
+                        className={cn(
+                          "rounded-full px-2.5 py-0.5 text-[11px] ring-1 select-none shrink-0 cursor-help",
+                          styles.bg,
+                          styles.text,
+                          styles.ring
+                        )}
+                      >
+                        {styles.label}
+                      </span>
+                    </Tooltip>
+                  );
+                })()}
               </div>
 
               {/* Bottom actions (always visible) */}
@@ -299,8 +351,8 @@ export function LandingTalentCard({
                     className={cn(
                       "flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium transition flex-1 justify-center",
                       isAdded
-                        ? "bg-white/10 text-white/50 cursor-default"
-                        : "bg-white/10 text-white/80 hover:bg-white/15 ring-1 ring-white/10",
+                        ? "bg-white/20 text-white/70 cursor-default ring-1 ring-white/20"
+                        : "bg-white/10 text-white/80 hover:bg-white/20 hover:text-white ring-1 ring-white/10 hover:ring-white/20",
                     )}
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -315,7 +367,7 @@ export function LandingTalentCard({
                       e.stopPropagation();
                       onBook?.(talent);
                     }}
-                    className="flex-1 rounded-full bg-white/10 text-white/90 hover:bg-white/15 ring-1 ring-white/20 hover:ring-white/30 px-4 py-2 text-xs font-medium transition"
+                    className="flex-1 rounded-full bg-white/10 text-white/90 hover:bg-white/20 hover:text-white ring-1 ring-white/20 hover:ring-white/30 px-4 py-2 text-xs font-medium transition"
                   >
                     Book now
                   </button>
@@ -376,7 +428,7 @@ export function LandingTalentCard({
                       <button
                         type="button"
                         onClick={handleFlip}
-                        className="w-8 h-8 rounded-full bg-white/5 ring-1 ring-white/10 flex items-center justify-center hover:bg-white/10 transition text-white/60 hover:text-white/80"
+                        className="w-8 h-8 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] hover:ring-white/[0.18] transition-all duration-150 text-white/40 hover:text-white/90"
                       >
                         <RotateCcw className="w-4 h-4" />
                       </button>
@@ -427,6 +479,18 @@ export function LandingTalentCard({
                                     <span className="text-white/70 select-none">{(curatedTalent.engagementRate * 100).toFixed(1)}%</span>
                                   </div>
                                 )}
+                              </div>
+                            )}
+
+                            {/* Match Score */}
+                            {matchScore && (
+                              <div className="pt-2 border-t border-white/10">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 ring-1 ring-emerald-400/40 flex items-center justify-center shrink-0">
+                                    <span className="text-xs font-semibold text-emerald-300">{matchScore.score}</span>
+                                  </div>
+                                  <p className="text-[11px] text-white/60 line-clamp-1 select-none">{matchScore.rationale}</p>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -491,7 +555,7 @@ export function LandingTalentCard({
                                     <button
                                       type="button"
                                       onClick={(e) => { e.stopPropagation(); prevPortfolio(); }}
-                                      className="w-8 h-8 rounded-full bg-white/5 ring-1 ring-white/10 flex items-center justify-center hover:bg-white/10 transition text-white/60 hover:text-white/80"
+                                      className="w-8 h-8 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] hover:ring-white/[0.18] transition-all duration-150 text-white/40 hover:text-white/90"
                                     >
                                       <ChevronLeft className="w-4 h-4" />
                                     </button>
@@ -503,7 +567,7 @@ export function LandingTalentCard({
                                     <button
                                       type="button"
                                       onClick={(e) => { e.stopPropagation(); nextPortfolio(); }}
-                                      className="w-8 h-8 rounded-full bg-white/5 ring-1 ring-white/10 flex items-center justify-center hover:bg-white/10 transition text-white/60 hover:text-white/80"
+                                      className="w-8 h-8 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] hover:ring-white/[0.18] transition-all duration-150 text-white/40 hover:text-white/90"
                                     >
                                       <ChevronRight className="w-4 h-4" />
                                     </button>
@@ -609,7 +673,7 @@ export function LandingTalentCard({
                       <button
                         type="button"
                         onClick={handleFlip}
-                        className="w-8 h-8 rounded-full bg-white/5 ring-1 ring-white/10 flex items-center justify-center hover:bg-white/10 transition text-white/60 hover:text-white/80"
+                        className="w-8 h-8 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] hover:ring-white/[0.18] transition-all duration-150 text-white/40 hover:text-white/90"
                       >
                         <RotateCcw className="w-4 h-4" />
                       </button>
@@ -620,7 +684,7 @@ export function LandingTalentCard({
                       <button
                         type="button"
                         onClick={handleExpand}
-                        className="w-8 h-8 rounded-full bg-white/5 ring-1 ring-white/10 flex items-center justify-center hover:bg-white/10 transition text-white/60 hover:text-white/80"
+                        className="w-8 h-8 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] hover:ring-white/[0.18] transition-all duration-150 text-white/40 hover:text-white/90"
                       >
                         <Maximize2 className="w-4 h-4" />
                       </button>
@@ -635,12 +699,12 @@ export function LandingTalentCard({
                   </p>
                 )}
 
-                {/* Tags */}
-                <div className="mb-2 flex flex-wrap gap-1.5 max-h-[48px] overflow-hidden">
-                  {talent.roles.slice(0, 4).map((r) => (
+                {/* Tags — roles, platforms, tier */}
+                <div className="mb-2 flex flex-wrap gap-x-1.5 gap-y-1 min-h-[32px]">
+                  {talent.roles.slice(0, 3).map((r) => (
                     <span
                       key={r}
-                      className="rounded-full bg-white/5 px-2.5 py-0.5 text-[11px] text-white/70 ring-1 ring-white/10 select-none"
+                      className="rounded-full bg-white/5 px-2.5 py-0.5 text-[11px] text-white/70 ring-1 ring-white/10 select-none shrink-0"
                     >
                       {r}
                     </span>
@@ -648,19 +712,30 @@ export function LandingTalentCard({
                   {talent.platforms.slice(0, 2).map((p) => (
                     <span
                       key={p}
-                      className="rounded-full bg-white/5 px-2.5 py-0.5 text-[11px] text-white/60 ring-1 ring-white/10 select-none"
+                      className="rounded-full bg-white/5 px-2.5 py-0.5 text-[11px] text-white/60 ring-1 ring-white/10 select-none shrink-0"
                     >
                       {p}
                     </span>
                   ))}
-                  {talent.availabilityTags?.slice(0, 1).map((a) => (
-                    <span
-                      key={a}
-                      className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] text-emerald-300 ring-1 ring-emerald-400/40 select-none"
-                    >
-                      {a}
-                    </span>
-                  ))}
+                  {/* Tier tag with tooltip */}
+                  {(() => {
+                    const tier = getTalentTier(curatedTalent);
+                    const styles = TIER_STYLES[tier];
+                    return (
+                      <Tooltip content={PRICING_TIER_DESCRIPTIONS[tier]}>
+                        <span
+                          className={cn(
+                            "rounded-full px-2.5 py-0.5 text-[11px] ring-1 select-none shrink-0 cursor-help",
+                            styles.bg,
+                            styles.text,
+                            styles.ring
+                          )}
+                        >
+                          {styles.label}
+                        </span>
+                      </Tooltip>
+                    );
+                  })()}
                 </div>
 
                 {/* Bottom actions (always visible) */}
@@ -677,8 +752,8 @@ export function LandingTalentCard({
                       className={cn(
                         "flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium transition flex-1 justify-center",
                         isAdded
-                          ? "bg-white/10 text-white/50 cursor-default"
-                          : "bg-white/10 text-white/80 hover:bg-white/15 ring-1 ring-white/10",
+                          ? "bg-white/20 text-white/70 cursor-default ring-1 ring-white/20"
+                          : "bg-white/10 text-white/80 hover:bg-white/20 hover:text-white ring-1 ring-white/10 hover:ring-white/20",
                       )}
                     >
                       <Plus className="w-3.5 h-3.5" />
@@ -693,7 +768,7 @@ export function LandingTalentCard({
                         e.stopPropagation();
                         onBook?.(talent);
                       }}
-                      className="flex-1 rounded-full bg-white/10 text-white/90 hover:bg-white/15 ring-1 ring-white/20 hover:ring-white/30 px-4 py-2 text-xs font-medium transition"
+                      className="flex-1 rounded-full bg-white/10 text-white/90 hover:bg-white/20 hover:text-white ring-1 ring-white/20 hover:ring-white/30 px-4 py-2 text-xs font-medium transition"
                     >
                       Book now
                     </button>
@@ -751,7 +826,7 @@ export function LandingTalentCard({
                   <button
                     type="button"
                     onClick={handleFlip}
-                    className="w-8 h-8 rounded-full bg-white/5 ring-1 ring-white/10 flex items-center justify-center hover:bg-white/10 transition text-white/60 hover:text-white/80"
+                    className="w-8 h-8 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] hover:ring-white/[0.18] transition-all duration-150 text-white/40 hover:text-white/90"
                   >
                     <RotateCcw className="w-4 h-4" />
                   </button>
@@ -802,6 +877,18 @@ export function LandingTalentCard({
                                 <span className="text-white/70 select-none">{(curatedTalent.engagementRate * 100).toFixed(1)}%</span>
                               </div>
                             )}
+                          </div>
+                        )}
+
+                        {/* Match Score */}
+                        {matchScore && (
+                          <div className="pt-2 border-t border-white/10">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-emerald-500/20 ring-1 ring-emerald-400/40 flex items-center justify-center shrink-0">
+                                <span className="text-xs font-semibold text-emerald-300">{matchScore.score}</span>
+                              </div>
+                              <p className="text-[11px] text-white/60 line-clamp-1 select-none">{matchScore.rationale}</p>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -971,7 +1058,7 @@ export function LandingTalentCard({
                   <Tooltip content="Close">
                     <button
                       onClick={() => setShowExpandModal(false)}
-                      className="w-8 h-8 rounded-full bg-white/5 ring-1 ring-white/10 flex items-center justify-center hover:bg-white/10 transition text-white/60 hover:text-white/80"
+                      className="w-8 h-8 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] hover:ring-white/[0.18] transition-all duration-150 text-white/40 hover:text-white/90"
                     >
                       <X className="w-4 h-4" />
                     </button>

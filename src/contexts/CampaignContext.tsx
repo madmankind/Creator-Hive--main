@@ -1,13 +1,21 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from "react";
 
-interface Campaign {
+export interface Campaign {
   id: string;
   name: string;
   objective: "awareness" | "engagement" | "traffic" | "conversions";
   budget: number;
   spend: number;
+  status?: string;
   clientName?: string;
   startDate?: string | Date;
   endDate?: string | Date;
@@ -16,39 +24,77 @@ interface Campaign {
 interface CampaignContextType {
   activeCampaign: Campaign | null;
   campaigns: Campaign[];
+  loading: boolean;
+  error: string | null;
   setActiveCampaign: (campaign: Campaign | null) => void;
+  refreshCampaigns: () => void;
 }
 
 const CampaignContext = createContext<CampaignContextType | undefined>(undefined);
 
-const MOCK_CAMPAIGNS: Campaign[] = [
-  {
-    id: "winter-launch-uae",
-    name: "Winter Launch – UAE",
+function mapApiCampaign(c: {
+  id: string;
+  name?: string;
+  title?: string;
+  status?: string;
+  budget?: number | null;
+  startDate?: string | null;
+  dueDate?: string | null;
+}): Campaign {
+  return {
+    id: c.id,
+    name: c.name || c.title || "Untitled Campaign",
     objective: "awareness",
-    budget: 120000,
-    spend: 96500,
-  },
-  {
-    id: "ramadan-promo-ksa",
-    name: "Ramadan Promo – KSA",
-    objective: "traffic",
-    budget: 80000,
-    spend: 41200,
-  },
-];
+    budget: c.budget ?? 0,
+    spend: 0,
+    status: c.status,
+    startDate: c.startDate ?? undefined,
+    endDate: c.dueDate ?? undefined,
+  };
+}
 
 export function CampaignProvider({ children }: { children: ReactNode }) {
-  const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(
-    MOCK_CAMPAIGNS[0] || null
-  );
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCampaigns = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/campaigns");
+      if (!res.ok) throw new Error(`Failed to load campaigns: ${res.status}`);
+      const data = await res.json();
+      const mapped: Campaign[] = (data.campaigns ?? []).map(mapApiCampaign);
+      setCampaigns(mapped);
+      setActiveCampaign((prev) => {
+        if (prev) {
+          const still = mapped.find((c) => c.id === prev.id);
+          return still ?? mapped[0] ?? null;
+        }
+        return mapped[0] ?? null;
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCampaigns();
+  }, [fetchCampaigns]);
 
   return (
     <CampaignContext.Provider
       value={{
         activeCampaign,
-        campaigns: MOCK_CAMPAIGNS,
+        campaigns,
+        loading,
+        error,
         setActiveCampaign,
+        refreshCampaigns: fetchCampaigns,
       }}
     >
       {children}
@@ -63,8 +109,3 @@ export function useCampaign() {
   }
   return context;
 }
-
-
-
-
-

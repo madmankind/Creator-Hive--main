@@ -33,6 +33,18 @@ export type PrismArchetypeName =
   | "The Auteur"
   | "The Amplifier";
 
+/** Short descriptions for Prism persona tooltip on hover */
+export const PRISM_ARCHETYPE_DESCRIPTIONS: Record<PrismArchetypeName, string> = {
+  "The Maverick": "Independent, fast-paced creator who thrives on variety and quick turnarounds.",
+  "The Conductor": "Strategic orchestrator who coordinates multi-platform campaigns and team workflows.",
+  "The Pathfinder": "End-to-end producer who guides projects from concept to delivery.",
+  "The Translator": "B2B specialist who turns complex ideas into clear, compelling narratives.",
+  "The Architect": "Structured creator who builds high-production value, scalable content systems.",
+  "The Alchemist": "Visual designer who transforms brand briefs into cohesive identities and templates.",
+  "The Auteur": "Luxury-focused creator with a distinct aesthetic and editorial vision.",
+  "The Amplifier": "Authentic UGC creator who amplifies brand messages through relatable content.",
+};
+
 export interface CuratedTalent {
   id: string;
   name: string;                 // e.g. "Lachy Groom"

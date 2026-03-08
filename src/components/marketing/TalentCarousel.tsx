@@ -6,12 +6,11 @@ import { LandingTalentCard } from '@/components/marketing/LandingTalentCard'
 import { useCampaignPodStore, type Talent as PodTalent } from '@/store/useCampaignPodStore'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { PackageConfig } from '@/lib/packages'
 
-const CARD_WIDTH = 380
-const CARD_GAP = 24
-const PEEK = 64
+const CARD_WIDTH = 280
+const CARD_GAP = 16
 const SNAP_STEP = CARD_WIDTH + CARD_GAP
-// Inner viewport = 3*380 + 2*24 + PEEK = 1252; outer = 1252 + 96 = 1348
 
 // Ordered list of primary roles for grouping
 const PRIMARY_ROLE_ORDER: TalentCategoryTag[] = [
@@ -37,6 +36,7 @@ interface TalentCarouselProps {
   onAddToPod?: (talentId: string) => void
   onBook?: (talent: PodTalent) => void
   selectedPodIds?: string[]
+  selectedPackage?: PackageConfig | null
 }
 
 export function TalentCarousel({ 
@@ -47,6 +47,7 @@ export function TalentCarousel({
   onAddToPod,
   onBook,
   selectedPodIds = [],
+  selectedPackage = null,
 }: TalentCarouselProps) {
   const DEBUG_BOUNDS = false; // Set to true to visualize container bounds
   
@@ -188,28 +189,39 @@ export function TalentCarousel({
   }
 
   return (
-    <section className={cn("relative py-16 md:py-24", DEBUG_BOUNDS && "outline outline-1 outline-red-500/40")}>
-      {/* Top-concentrated purple glow — no band edge, fades into dark */}
-      <div
-        className="pointer-events-none absolute inset-x-0 -top-40 h-[520px] blur-3xl opacity-100 bg-[radial-gradient(60%_55%_at_50%_0%,rgba(139,92,246,0.22),transparent_70%)]"
-        aria-hidden
-      />
+    <section className={cn("relative", DEBUG_BOUNDS && "outline outline-1 outline-red-500/40")}>
 
-      <div className={cn("relative z-10 mx-auto max-w-[1348px] px-12", DEBUG_BOUNDS && "outline outline-1 outline-red-500/40")}>
+      <div className={cn("relative z-10 w-full", DEBUG_BOUNDS && "outline outline-1 outline-red-500/40")}>
         {/* Header */}
-        <div className="text-center mb-12 md:mb-16">
-          <h2 className="text-[24px] md:text-[28px] font-semibold tracking-tight text-white/90 mb-3">
-            Among the brightest minds
-          </h2>
-          <p className="text-[14px] md:text-[15px] text-white/70 max-w-2xl mx-auto">
-            From UGC specialists to full-stack creative teams, explore curated talent ready to plug into your campaigns.
-          </p>
+        <div className="mb-6">
+          {selectedPackage ? (
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] text-white/30">Matched for</span>
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.06] ring-1 ring-white/[0.10] text-[11px] text-white/65 font-medium">
+                  <span>{selectedPackage.emoji}</span>
+                  <span>{selectedPackage.name}</span>
+                </span>
+              </div>
+              <span className="text-[12px] text-white/25">·</span>
+              <span className="text-[12px] text-white/35">{selectedPackage.idealFor}</span>
+            </div>
+          ) : (
+            <div className="flex items-baseline gap-3">
+              <h2 className="text-[16px] font-medium tracking-tight text-white/80">
+                Creative talent
+              </h2>
+              <span className="text-[12px] text-white/30">
+                {groupedTalents.length} creators available
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Single Horizontal Carousel */}
         {groupedTalents.length === 0 ? (
-          <div className="text-center py-16 text-white/50">
-            <p className="text-[15px]">No perfect matches yet. Try adjusting your roles or using a more general brief.</p>
+          <div className="text-center py-12 text-white/50">
+            <p className="text-[14px]">No perfect matches yet. Try adjusting your roles.</p>
           </div>
         ) : (
           <div
@@ -220,16 +232,24 @@ export function TalentCarousel({
           >
             <div
               ref={scrollContainerRef}
-              className="overflow-x-auto overflow-y-visible snap-x snap-mandatory scroll-smooth scrollbar-hide pb-4 pr-0"
+              className="overflow-x-auto overflow-y-visible snap-x snap-mandatory scrollbar-hide pb-4"
               onScroll={checkScroll}
+              style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
             >
-              <div className={cn("flex gap-6 min-w-max", DEBUG_BOUNDS && "outline outline-1 outline-red-500/40")}>
+              <div className={cn("flex min-w-max", DEBUG_BOUNDS && "outline outline-1 outline-red-500/40")}
+                style={{ gap: `${CARD_GAP}px` }}
+              >
                 {groupedTalents.map((item, index) => {
                   const prevRole = index > 0 ? groupedTalents[index - 1].primaryRole : null
                   const showGroupSeparator = prevRole !== null && prevRole !== item.primaryRole
 
                   const podTalent = convertToPodTalent(item)
                   const isAdded = selectedPodIds.includes(item.id)
+                  
+                  // Determine if this talent matches the selected package
+                  const isPackageMatch = selectedPackage 
+                    ? selectedPackage.roles.includes(item.primaryRole as TalentCategoryTag)
+                    : false
 
                   return (
                     <div
@@ -250,6 +270,7 @@ export function TalentCarousel({
                           onAdd={handleAddToPod}
                           onBook={handleBook}
                           curatedTalent={item}
+                          packageMatch={isPackageMatch ? { packageName: selectedPackage!.name, packageEmoji: selectedPackage!.emoji } : undefined}
                         />
                       </motion.div>
                     </div>
@@ -258,9 +279,13 @@ export function TalentCarousel({
                 </div>
             </div>
 
-            {/* Right vignette — w-16 (PEEK), lighter gradient, only when 4+ talents and canScrollRight */}
+            {/* Right vignette */}
             {canScrollRight && groupedTalents.length >= 4 && (
-              <div className="absolute right-0 inset-y-0 w-16 pointer-events-none z-10 bg-gradient-to-l from-[#0B0F14]/60 via-[#0B0F14]/25 to-transparent" />
+              <div className="absolute right-0 inset-y-0 w-16 pointer-events-none z-10 bg-gradient-to-l from-[#0B0F14]/70 via-[#0B0F14]/30 to-transparent" />
+            )}
+            {/* Left vignette */}
+            {canScrollLeft && (
+              <div className="absolute left-0 inset-y-0 w-8 pointer-events-none z-10 bg-gradient-to-r from-[#0B0F14]/50 to-transparent" />
             )}
 
             {/* Arrows in gutters (relative to max-w container), show on hover md+ */}

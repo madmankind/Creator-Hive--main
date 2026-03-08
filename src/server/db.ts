@@ -23,6 +23,9 @@ export const db =
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
 
+/** Alias for `db` — some routes import `prisma` by convention */
+export const prisma = db
+
 /**
  * Helper function to safely handle database errors
  */

@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { feyTokens } from "@/lib/fey-design-tokens";
 import { Settings2, Share2, FileText } from "lucide-react";
 import type { TalentCampaignCard } from "@/components/campaigns/types";
-import { mockTalentCampaignCards } from "@/mock/campaigns";
 import { useCampaign } from "@/contexts/CampaignContext";
 import { CampaignSwitcher } from "@/components/campaigns/CampaignSwitcher";
 import { TalentCarousel } from "@/components/manage/TalentCarousel";
@@ -21,13 +20,8 @@ interface ManageScreenProps {
   selectedCampaignIds: string[];
 }
 
-const EXPIRY_MS = 48 * 60 * 60 * 1000;
-
 // Feature flag: enable V2 layout
-// Can be enabled via:
-// 1. Local constant: USE_MANAGE_V2 = true
-// 2. Query param: ?v2=1
-const USE_MANAGE_V2 = true; // Set to false to use old layout
+const USE_MANAGE_V2 = true;
 
 export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
   const router = useRouter();
@@ -39,43 +33,40 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
   const [highlightedCardId, setHighlightedCardId] = useState<string | null>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
 
-  // Check feature flag: query param ?v2=1 or local constant
   const useV2 = USE_MANAGE_V2 || searchParams.get("v2") === "1";
 
   const currentCampaignId = selectedCampaignIds[0] || activeCampaign?.id || null;
 
-  const cards = useMemo<TalentCampaignCard[]>(() => {
-    const now = Date.now();
-    const scoped = mockTalentCampaignCards.filter((card) =>
-      currentCampaignId ? card.campaignId === currentCampaignId : true
-    );
+  // ── Real talent cards ────────────────────────────────────────────────────
+  const [cards, setCards] = useState<TalentCampaignCard[]>([]);
+  const [cardsLoading, setCardsLoading] = useState(false);
 
-    return scoped.map((card) => {
-      const created = new Date(card.createdAt).getTime();
-      const shouldExpire = card.bookingState === "PENDING" && now - created > EXPIRY_MS;
-      if (shouldExpire) {
-        const expiredCard: TalentCampaignCard = {
-          ...card,
-          status: "UNAVAILABLE",
-          bookingState: "EXPIRED",
-          unavailableReason: "EXPIRED",
-        };
-        return expiredCard;
-      }
-      return card;
-    });
-  }, [currentCampaignId]);
+  const fetchCards = useCallback(async (campaignId: string) => {
+    setCardsLoading(true);
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}/talents`);
+      if (!res.ok) throw new Error(`Failed to load talent (${res.status})`);
+      const data = await res.json();
+      setCards(data.cards ?? []);
+    } catch {
+      setCards([]);
+    } finally {
+      setCardsLoading(false);
+    }
+  }, []);
 
-  // Auto-select first card if none selected
-  const selectedCard = useMemo(() => {
-    if (selectedCardId) {
-      return cards.find((c) => c.id === selectedCardId) || null;
+  useEffect(() => {
+    if (!currentCampaignId) {
+      setCards([]);
+      return;
     }
-    if (cards.length > 0) {
-      return cards[0];
-    }
-    return null;
-  }, [cards, selectedCardId]);
+    fetchCards(currentCampaignId);
+  }, [currentCampaignId, fetchCards]);
+
+  // Derive selected card from state (no useMemo needed)
+  const selectedCard: TalentCampaignCard | null = selectedCardId
+    ? (cards.find((c) => c.id === selectedCardId) ?? null)
+    : cards[0] ?? null;
 
   // Auto-select first card on mount or when cards change
   useEffect(() => {

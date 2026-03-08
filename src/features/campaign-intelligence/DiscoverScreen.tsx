@@ -12,6 +12,7 @@ import { TalentCard } from "@/components/talent/TalentCard";
 import { Search, X } from "lucide-react";
 import { DEFAULT_ROLES } from "@/lib/roles";
 import type { Talent } from "@/store/useCampaignPodStore";
+import { QuickBookPanel } from "@/components/campaigns/QuickBookPanel";
 
 interface DiscoverScreenProps {
   selectedCampaignIds: string[];
@@ -179,11 +180,31 @@ export function DiscoverScreen({ selectedCampaignIds }: DiscoverScreenProps) {
         </div>
       </div>
 
-      {/* Main: Filters + Lanes */}
+      {/* Main: Quick Book + Filters + Lanes */}
       <div
         className="px-6 py-6 overflow-y-auto"
         style={{ maxHeight: "calc(100vh - 80px)", paddingBottom: mainPaddingBottom }}
       >
+        {/* ── Quick Book New Campaign ── */}
+        <div className="mb-10">
+          <div className="flex items-baseline justify-between mb-5">
+            <div>
+              <p className="text-[10px] font-medium tracking-[0.12em] uppercase text-white/25 mb-1">Quick Book</p>
+              <h2 className="text-[18px] font-light text-white/80 tracking-[-0.02em]">Book a New Campaign</h2>
+            </div>
+          </div>
+          <QuickBookPanel />
+        </div>
+
+        {/* ── Divider ── */}
+        <div className="border-t border-white/[0.06] mb-8" />
+
+        {/* ── Discover Talent ── */}
+        <div className="mb-5">
+          <p className="text-[10px] font-medium tracking-[0.12em] uppercase text-white/25 mb-1">Browse Talent</p>
+          <h2 className="text-[18px] font-light text-white/80 tracking-[-0.02em]">Discover Creators</h2>
+        </div>
+
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {/* Filters: role chips */}
           <div className="lg:col-span-1">

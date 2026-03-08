@@ -182,12 +182,16 @@ export function ClientAuthDialog({ open, onClose, onSuccess }: ClientAuthDialogP
     // If auth succeeded (either real or fallback), proceed
     if (authSucceeded) {
       setSubmitted(true)
-      onSuccess()
+      // Brief "Signed in" confirmation, then close and trigger success
       setTimeout(() => {
         setSubmitted(false)
         setEmail('')
         onClose()
-      }, 1500)
+        // Trigger success AFTER dialog closes so scroll/transition isn't blocked
+        requestAnimationFrame(() => {
+          onSuccess()
+        })
+      }, 800)
     }
   }
 
