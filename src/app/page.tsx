@@ -264,7 +264,11 @@ function HomePageContent() {
             transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
             className="relative z-10 min-h-screen flex flex-col justify-center px-6 py-16"
           >
-            <div className="w-full max-w-7xl mx-auto">
+            {/* Deep amethyst ambient */}
+            <div className="pointer-events-none absolute inset-0 overflow-hidden z-0">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[70vh] blur-[180px] opacity-[0.065] rounded-full" style={{ background: "radial-gradient(ellipse, #7c3aed 0%, #4c1d95 60%, transparent 100%)" }} />
+            </div>
+            <div className="relative z-10 w-full max-w-7xl mx-auto">
               {selectedPackage && (
                 <motion.div
                   initial={{ opacity: 0, y: -8 }}
@@ -317,9 +321,13 @@ function HomePageContent() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 30 }}
             transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
-            className="relative z-10 min-h-screen flex flex-col justify-center pb-24"
+            className="relative z-10 min-h-screen flex flex-col justify-start pt-20 pb-24"
             style={{ background: "linear-gradient(to bottom, rgba(11,15,20,0) 0%, rgba(11,15,20,1) 80px)" }}
           >
+            {/* Deep amethyst ambient */}
+            <div className="pointer-events-none absolute inset-0 overflow-hidden z-0">
+              <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[60vw] h-[50vh] blur-[160px] opacity-[0.055] rounded-full" style={{ background: "radial-gradient(ellipse, #6d28d9 0%, #3b0764 60%, transparent 100%)" }} />
+            </div>
             <CampaignSetupBoard
               talents={selectedTalents}
               selectedPkg={selectedPackage}

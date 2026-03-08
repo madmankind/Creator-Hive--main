@@ -209,6 +209,11 @@ export function CampaignSetupBoard({
   };
 
   const handleConfirm = async () => {
+    // Gate on session — dashboard nav requires auth
+    if (!session?.user) {
+      if (onRequestAuth) onRequestAuth();
+      return;
+    }
     setSubmitted(true);
     const userEmail = (session?.user as { email?: string } | undefined)?.email ?? "pending@creatorhive.ae";
     fetch("/api/bookings", {
@@ -226,63 +231,158 @@ export function CampaignSetupBoard({
   };
 
   // ── SOW download ──────────────────────────────────────────────────────────
-  const generateSOWText = () => {
+  const handleDownloadSOW = async () => {
+    const mod = await import("jspdf");
+    // jsPDF v4 exports named 'jsPDF'; v3 exports default — handle both
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const JsPDFClass = (mod as any).jsPDF ?? (mod as any).default;
+    const doc = new JsPDFClass({ orientation: "portrait", unit: "mm", format: "a4" });
+
     const now = new Date();
     const dateStr = now.toLocaleDateString("en-AE", { year: "numeric", month: "long", day: "numeric" });
-    const lines: string[] = [];
-    lines.push(`STATEMENT OF WORK`);
-    lines.push(`Creator Hive — Campaign Agreement`);
-    lines.push(`Generated: ${dateStr}`);
-    lines.push(``);
-    lines.push(`Campaign: ${state.campaignName || "Untitled Campaign"}`);
-    if (selectedPkg) lines.push(`Package: ${selectedPkg.name}`);
-    lines.push(`Objectives: ${state.objectives.map(o => o.charAt(0).toUpperCase() + o.slice(1)).join(", ") || "—"}`);
-    lines.push(`Booking Type: ${state.bookingType === "retainer" ? "Monthly Retainer" : "Per Campaign"}`);
-    if (state.startDate || state.endDate) {
-      lines.push(`Campaign Dates: ${state.startDate || "TBD"} → ${state.endDate || "TBD"}`);
-    }
-    lines.push(``);
-    if (state.totalBudget) {
-      const budget = parseInt(state.totalBudget.replace(/,/g, "")) || 0;
-      const vat = Math.round(budget * 0.05);
-      lines.push(`FINANCIALS`);
-      lines.push(`Campaign Budget: AED ${budget.toLocaleString()}`);
-      lines.push(`VAT (5%): AED ${vat.toLocaleString()}`);
-      lines.push(`Total: AED ${(budget + vat).toLocaleString()}`);
-      const payOpt = PAYMENT_SCHEDULE_OPTIONS.find(p => p.value === state.paymentSchedule);
-      lines.push(`Payment Schedule: ${payOpt?.label} — ${payOpt?.description}`);
-      lines.push(``);
-    }
-    lines.push(`TALENT`);
-    talents.forEach((t) => {
-      lines.push(`  • ${t.name}${t.primaryRole ? ` — ${t.primaryRole}` : ""}`);
-    });
-    lines.push(``);
-    if (state.notes) {
-      lines.push(`NOTES`);
-      lines.push(state.notes);
-      lines.push(``);
-    }
-    lines.push(`TERMS`);
-    lines.push(`Issued by Creator Hive FZE, Sharjah Research Technology & Innovation Park, UAE.`);
-    lines.push(`All work is subject to Creator Hive's Terms & Conditions and applicable UAE law.`);
-    lines.push(`Talent will confirm acceptance before work commences. Funds held in escrow.`);
-    lines.push(``);
-    lines.push(`[Deliverables, usage rights, and per-talent add-ons to be configured in dashboard]`);
-    return lines.join("\n");
-  };
+    const budget = parseInt(state.totalBudget.replace(/,/g, "")) || 0;
+    const vat = Math.round(budget * 0.05);
+    const total = budget + vat;
+    const payOpt = PAYMENT_SCHEDULE_OPTIONS.find(p => p.value === state.paymentSchedule);
 
-  const handleDownloadSOW = () => {
-    const text = generateSOWText();
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `CreatorHive_SOW_${(state.campaignName || "Campaign").replace(/\s+/g, "_")}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const W = 210; // A4 width mm
+    let y = 0;
+
+    // ── Header bar ────────────────────────────────────────────────────────
+    doc.setFillColor(11, 15, 20);
+    doc.rect(0, 0, W, 36, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text("Creator Hive", 14, 16);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(160, 160, 180);
+    doc.text("Statement of Work", 14, 23);
+    doc.text(`Generated: ${dateStr}`, 14, 29);
+    // Accent line
+    doc.setDrawColor(120, 80, 220);
+    doc.setLineWidth(0.6);
+    doc.line(0, 36, W, 36);
+
+    y = 50;
+
+    // ── Campaign name ─────────────────────────────────────────────────────
+    doc.setTextColor(20, 20, 35);
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text(state.campaignName || "Untitled Campaign", 14, y);
+    y += 7;
+
+    if (selectedPkg) {
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 80, 180);
+      doc.text(`${selectedPkg.name} Package`, 14, y);
+      y += 8;
+    }
+
+    // ── Section helper ────────────────────────────────────────────────────
+    const sectionHeader = (title: string) => {
+      y += 4;
+      doc.setFillColor(245, 244, 250);
+      doc.roundedRect(14, y - 4, W - 28, 8, 1.5, 1.5, "F");
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(100, 80, 160);
+      doc.text(title.toUpperCase(), 18, y + 1);
+      y += 10;
+      doc.setTextColor(30, 30, 40);
+    };
+
+    const row = (label: string, value: string) => {
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(80, 80, 100);
+      doc.text(label, 18, y);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(20, 20, 35);
+      doc.text(value, 70, y);
+      y += 6;
+    };
+
+    // ── Campaign details ──────────────────────────────────────────────────
+    sectionHeader("Campaign Details");
+    row("Objectives", state.objectives.map(o => o.charAt(0).toUpperCase() + o.slice(1)).join(", ") || "—");
+    row("Booking Type", state.bookingType === "retainer" ? "Monthly Retainer" : "Per Campaign");
+    if (state.startDate || state.endDate) {
+      row("Campaign Dates", `${state.startDate || "TBD"} → ${state.endDate || "TBD"}`);
+    }
+    if (state.notes) {
+      y += 2;
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(80, 80, 100);
+      doc.text("Brief Notes", 18, y);
+      y += 5;
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(40, 40, 55);
+      const noteLines = doc.splitTextToSize(state.notes, W - 40) as string[];
+      doc.text(noteLines, 18, y);
+      y += noteLines.length * 5 + 2;
+    }
+
+    // ── Talent pod ────────────────────────────────────────────────────────
+    sectionHeader("Talent Pod");
+    talents.forEach((t) => {
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(20, 20, 35);
+      doc.text(`• ${t.name}${t.primaryRole ? `  —  ${t.primaryRole}` : ""}`, 18, y);
+      y += 6;
+    });
+
+    // ── Financials ────────────────────────────────────────────────────────
+    if (budget > 0) {
+      sectionHeader("Financials");
+      row("Campaign Budget", `AED ${budget.toLocaleString()}`);
+      row("VAT (5%)", `AED ${vat.toLocaleString()}`);
+      // Total row with highlight
+      y += 1;
+      doc.setFillColor(11, 15, 20);
+      doc.roundedRect(14, y - 4, W - 28, 9, 1.5, 1.5, "F");
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(255, 255, 255);
+      doc.text("Total (incl. VAT)", 18, y + 1.5);
+      doc.text(`AED ${total.toLocaleString()}`, W - 30, y + 1.5, { align: "right" });
+      y += 12;
+      row("Payment Schedule", `${payOpt?.label} — ${payOpt?.description}`);
+    }
+
+    // ── Terms ─────────────────────────────────────────────────────────────
+    sectionHeader("Terms & Conditions");
+    const terms = [
+      "Issued by Creator Hive FZE, Sharjah Research Technology & Innovation Park, UAE.",
+      "All work is subject to Creator Hive's Terms & Conditions and applicable UAE law.",
+      "Talent will confirm acceptance before work commences. Funds are held in escrow until delivery.",
+      "Deliverables, usage rights, and per-talent add-ons to be configured in your dashboard.",
+    ];
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(60, 60, 80);
+    terms.forEach((t) => {
+      const lines = doc.splitTextToSize(`• ${t}`, W - 36) as string[];
+      doc.text(lines, 18, y);
+      y += lines.length * 5;
+    });
+
+    // ── Footer ────────────────────────────────────────────────────────────
+    const pageH = 297;
+    doc.setFillColor(245, 244, 250);
+    doc.rect(0, pageH - 14, W, 14, "F");
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(120, 100, 160);
+    doc.text("Creator Hive FZE · creatorhive.ae · Sharjah, UAE", W / 2, pageH - 6, { align: "center" });
+
+    const filename = `CreatorHive_SOW_${(state.campaignName || "Campaign").replace(/\s+/g, "_")}.pdf`;
+    doc.save(filename);
   };
 
   // ── Success screen ────────────────────────────────────────────────────────
@@ -359,9 +459,13 @@ export function CampaignSetupBoard({
               <button type="button" onClick={handleDownloadSOW} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/[0.07] ring-1 ring-white/[0.10] text-[13px] text-white/60 hover:bg-white/[0.12] hover:text-white/85 transition-all">
                 <Download className="w-3.5 h-3.5" />Download SOW
               </button>
-              <a href="/dashboard/campaigns?mode=track" className="px-6 py-2.5 rounded-xl bg-white text-[#0B0F14] text-[13px] font-semibold hover:bg-white/90 transition-colors shadow-[0_4px_28px_rgba(255,255,255,0.12)]" onClick={(e) => { e.preventDefault(); router.push('/dashboard/campaigns?mode=track'); }}>
+              <button
+                type="button"
+                onClick={() => { window.location.href = '/dashboard/campaigns?mode=track'; }}
+                className="px-6 py-2.5 rounded-xl bg-white text-[#0B0F14] text-[13px] font-semibold hover:bg-white/90 transition-colors shadow-[0_4px_28px_rgba(255,255,255,0.12)]"
+              >
                 Go to dashboard →
-              </a>
+              </button>
             </div>
           </motion.div>
         </div>
@@ -390,7 +494,7 @@ export function CampaignSetupBoard({
       {/* Seamless blend — no hard top edge, no color tint */}
       <div className="absolute inset-x-0 top-0 h-[320px] pointer-events-none z-0" style={{ background: "linear-gradient(to bottom, rgba(11,15,20,1) 0%, rgba(11,15,20,0.85) 60%, transparent 100%)" }} />
 
-      <div className="relative z-10 max-w-[1100px] mx-auto px-6 md:px-10 py-14">
+      <div className="relative z-10 max-w-[1100px] mx-auto px-6 md:px-10 pt-8 pb-16">
         <AnimatePresence mode="wait">
           {showReview ? (
             <motion.div key="review">

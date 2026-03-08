@@ -38,6 +38,7 @@
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.12",
     "fuse.js": "^7.1.0",
+    "jspdf": "^4.2.0",
     "lucide-react": "^0.539.0",
     "next": "16.1.4",
     "next-auth": "5.0.0-beta.30",
@@ -55,7 +56,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@playwright/test": "^1.54.2",
-    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/postcss": "^4.2.1",
     "@testing-library/jest-dom": "^6.6.4",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
@@ -72,8 +73,8 @@
     "lint-staged": "^16.1.5",
     "prettier": "^3.6.2",
     "prisma": "^6.19.0",
-    "tailwindcss": "^4",
-    "typescript": "^5",
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5.9.3",
     "vitest": "^3.2.4",
     "webpack-filter-warnings-plugin": "^1.2.1"
   },
