@@ -176,6 +176,7 @@ model CreatorProfile {
   avatarUrl              String?
   portfolioUrl           String?
   displayName            String?               // Public alias shown to clients (privacy layer)
+  fullName               String?               // Legal/real name (internal only)
   qualityScore           Int?                  // 0–15 vetting score
   talentStatus           String                @default("pending") // "pending" | "active" | "paused" | "rejected"
   source                 String?               // "form" | "manual" | "scraped"
