@@ -133,4 +133,10 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
+/* Force dark color scheme on all form inputs to prevent Firefox/Safari
+   from injecting light system backgrounds */
+input, textarea, select {
+  color-scheme: dark;
+}
+
 

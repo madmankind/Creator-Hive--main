@@ -639,7 +639,8 @@ export function CampaignSetupBoard({
                       value={state.notes}
                       onChange={(e) => update("notes", e.target.value)}
                       placeholder="e.g. Focus on Ramadan generosity theme, Arabic-first content preferred, avoid competitor references…"
-                      className={cn(inputCls, "resize-none text-[12px] leading-relaxed")}
+                      className={cn(inputCls, "resize-none text-[12px] leading-relaxed [color-scheme:dark] [appearance:none]")}
+                      style={{ background: "rgba(255,255,255,0.05)" }}
                     />
                   </div>
 
