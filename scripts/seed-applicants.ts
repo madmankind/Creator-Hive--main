@@ -28,7 +28,7 @@ async function main() {
         id: t.id,
         name: t.name,
         displayName: t.name,
-        bio: t.bio ?? null,
+        bio: t.shortBio ?? null,
         instagram: instagram,
         avatarUrl: t.profileImageUrl ?? t.avatarUrl ?? null,
         skills: t.roleTags ?? [],
@@ -42,7 +42,7 @@ async function main() {
       update: {
         name: t.name,
         displayName: t.name,
-        bio: t.bio ?? null,
+        bio: t.shortBio ?? null,
         instagram: instagram,
         avatarUrl: t.profileImageUrl ?? t.avatarUrl ?? null,
         skills: t.roleTags ?? [],

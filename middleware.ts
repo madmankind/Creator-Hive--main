@@ -43,12 +43,22 @@ export default auth((req: RequestWithAuth) => {
   const role = req.auth?.user?.role as UserRole | undefined;
 
   if (!role) {
-    if (isApiRoute) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // No session at all — unauthenticated
+    if (!req.auth?.user) {
+      if (isApiRoute) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      const url = new URL("/", req.nextUrl);
+      url.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(url);
     }
-    const url = new URL("/", req.nextUrl);
-    url.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(url);
+    // Authenticated but role missing from JWT (edge case in dev/mock mode) — treat as AGENCY
+    const resolvedRole: UserRole = "AGENCY";
+    if (!matched.roles.includes(resolvedRole)) {
+      if (isApiRoute) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.redirect(new URL("/", req.nextUrl));
+    }
+    return NextResponse.next();
   }
 
   if (!matched.roles.includes(role)) {

@@ -98,7 +98,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const email = emailInput.toLowerCase().trim();
           const userType = userTypeInput === "talent" ? "talent" : "client";
 
-          if (userType === "client" && !isCompanyEmail(email)) {
+          if (!isDev && userType === "client" && !isCompanyEmail(email)) {
             throw new Error("Please use a company email to sign in.");
           }
 
@@ -135,7 +135,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const email = emailInput.toLowerCase().trim();
           const userType = userTypeInput === "talent" ? "talent" : "client";
 
-          if (userType === "client" && !isCompanyEmail(email)) {
+          if (!isDev && userType === "client" && !isCompanyEmail(email)) {
             throw new Error("Please use a company email to sign in.");
           }
 
