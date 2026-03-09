@@ -10,10 +10,10 @@ import { ExecutionHubPanel } from "./ExecutionHubPanel";
 import { WeeklyCalendarPanel } from "./WeeklyCalendarPanel";
 import { Plus } from "lucide-react";
 
-// Shared glass panel style — replaces SectionFrame for a lighter, unified look
+// Shared glass panel style — borderless for immersive look
 const GLASS: React.CSSProperties = {
-  background: "rgba(255,255,255,0.03)",
-  border: "1px solid rgba(255,255,255,0.04)",
+  background: "rgba(255,255,255,0.025)",
+  border: "none",
   backdropFilter: "blur(16px)",
   WebkitBackdropFilter: "blur(16px)",
   borderRadius: "16px",
@@ -90,7 +90,6 @@ export function ManageLayoutV2({
       style={{
         height: "100dvh",
         width: "100vw",
-        overflow: "hidden",
         color: feyTokens.colors.text.primary,
         background: "#07070B",
         isolation: "isolate",
@@ -136,13 +135,16 @@ export function ManageLayoutV2({
             paddingBottom: BOTTOM_NAV_PADDING,
           }}
         >
-          {/* Header (fixed height) - Strict flex row with reserved widths */}
+          {/* Header (fixed height) - Strict flex row with reserved widths, overflow visible for dropdowns */}
           <div
             className="flex items-center"
             style={{
               flex: `0 0 ${HEADER_HEIGHT}px`,
               height: `${HEADER_HEIGHT}px`,
               gap: "24px",
+              position: "relative",
+              zIndex: 50,
+              overflow: "visible",
             }}
           >
             {/* Logo block — kept minimal, no redundant label */}

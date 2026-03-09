@@ -60,6 +60,9 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Subscribe to local store so booking-flow campaigns appear immediately
+  const localCampaigns = useLocalCampaignStore((state) => state.campaigns);
+
   const fetchCampaigns = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -84,10 +87,36 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
+      // Still load local campaigns on API failure
+      const local = useLocalCampaignStore.getState().campaigns;
+      if (local.length > 0) {
+        setCampaigns(local);
+        setActiveCampaign((prev) => prev ?? local[0] ?? null);
+      }
     } finally {
       setLoading(false);
     }
   }, []);
+
+  // Sync local campaigns into context whenever localCampaignStore changes
+  useEffect(() => {
+    if (localCampaigns.length === 0) return;
+    setCampaigns((prev) => {
+      const merged = [...prev];
+      let changed = false;
+      for (const lc of localCampaigns) {
+        if (!merged.some((c) => c.id === lc.id)) {
+          merged.push(lc);
+          changed = true;
+        }
+      }
+      return changed ? merged : prev;
+    });
+    setActiveCampaign((prev) => {
+      if (prev) return prev;
+      return localCampaigns[0] ?? null;
+    });
+  }, [localCampaigns]);
 
   useEffect(() => {
     fetchCampaigns();

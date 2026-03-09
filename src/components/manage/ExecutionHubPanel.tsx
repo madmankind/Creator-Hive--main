@@ -99,9 +99,9 @@ export function ExecutionHubPanel({ cards, campaignName, campaignId }: Execution
     <div
       className="rounded-none p-4 flex flex-col min-w-0"
       style={{
-        background: "rgba(0,0,0,0.30)",
-        border: "1px solid rgba(255,255,255,0.12)",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 8px rgba(0,0,0,0.3)",
+        background: "rgba(255,255,255,0.02)",
+        border: "none",
+        boxShadow: "none",
         overflow: "hidden",
       }}
     >
