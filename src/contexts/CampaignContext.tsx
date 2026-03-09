@@ -8,6 +8,7 @@ import {
   useCallback,
   ReactNode,
 } from "react";
+import { useLocalCampaignStore } from "@/store/useLocalCampaignStore";
 
 export interface Campaign {
   id: string;
@@ -67,13 +68,19 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       if (!res.ok) throw new Error(`Failed to load campaigns: ${res.status}`);
       const data = await res.json();
       const mapped: Campaign[] = (data.campaigns ?? []).map(mapApiCampaign);
-      setCampaigns(mapped);
+      // Merge with locally-persisted campaigns from booking flow
+      const local = useLocalCampaignStore.getState().campaigns;
+      const merged = [...mapped];
+      for (const lc of local) {
+        if (!merged.some((c) => c.id === lc.id)) merged.push(lc);
+      }
+      setCampaigns(merged);
       setActiveCampaign((prev) => {
         if (prev) {
-          const still = mapped.find((c) => c.id === prev.id);
-          return still ?? mapped[0] ?? null;
+          const still = merged.find((c) => c.id === prev.id);
+          return still ?? merged[0] ?? null;
         }
-        return mapped[0] ?? null;
+        return merged[0] ?? null;
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");

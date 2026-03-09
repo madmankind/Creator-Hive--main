@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { feyTokens } from "@/lib/fey-design-tokens";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
@@ -12,6 +13,8 @@ import { QuickBookPanel } from "@/components/campaigns/QuickBookPanel";
 import { Search, X, ArrowUpRight } from "lucide-react";
 import { DEFAULT_ROLES } from "@/lib/roles";
 import type { Talent } from "@/store/useCampaignPodStore";
+import { curatedTalent } from "@/lib/curatedTalent";
+import { useCampaign } from "@/contexts/CampaignContext";
 
 interface DiscoverScreenProps {
   selectedCampaignIds: string[];
@@ -45,8 +48,21 @@ function apiToTalent(it: {
     bio: it.bio,
   };
 }
+
+// Map curatedTalent to Talent shape for fallback
+const CURATED_FALLBACK: Talent[] = curatedTalent.map((t) => ({
+  id: t.id,
+  name: t.name,
+  headline: t.displayTitle,
+  avatarUrl: t.profileImageUrl ?? t.avatarUrl,
+  roles: t.roleTags as string[],
+  platforms: t.platformTags,
+  bio: t.shortBio,
+}));
 export function DiscoverScreen({ selectedCampaignIds }: DiscoverScreenProps) {
   const { data: session } = useSession();
+  const { activeCampaign } = useCampaign();
+  const router = useRouter();
   const isAuthenticated = Boolean(session?.user);
 
   // Fullscreen talent overlay state
@@ -76,7 +92,19 @@ export function DiscoverScreen({ selectedCampaignIds }: DiscoverScreenProps) {
     { revalidateOnFocus: false }
   );
 
-  const items: Talent[] = useMemo(() => (data?.data ?? data?.results ?? []).map(apiToTalent), [data]);
+  // Use API results when available, fall back to curated talent
+  const apiItems: Talent[] = useMemo(() => (data?.data ?? data?.results ?? []).map(apiToTalent), [data]);
+  const items: Talent[] = useMemo(() => {
+    if (!isLoading && apiItems.length === 0) {
+      // Filter curated by search/role when API is empty
+      return CURATED_FALLBACK.filter((t) => {
+        const matchesSearch = !searchQuery || t.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesRole = selectedRoles.length === 0 || t.roles.some((r) => selectedRoles.includes(r));
+        return matchesSearch && matchesRole;
+      });
+    }
+    return apiItems;
+  }, [apiItems, isLoading, searchQuery, selectedRoles]);
 
   const addTalent = useCallback((t: Talent) => {
     setSelectedTalents((prev) => prev.some((x) => x.id === t.id) ? prev : [...prev, t]);
@@ -120,14 +148,19 @@ export function DiscoverScreen({ selectedCampaignIds }: DiscoverScreenProps) {
         {/* Divider */}
         <div className="mb-8" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />
 
-        {/* Browse Talent CTA */}
+        {/* Browse Talent CTA — navigates to landing page to book additional talent */}
         <div
           className="flex items-center justify-between rounded-2xl p-6 cursor-pointer group transition-all"
           style={{
             background: "rgba(124,92,255,0.07)",
             border: "1px solid rgba(124,92,255,0.18)",
           }}
-          onClick={() => setOverlayOpen(true)}
+          onClick={() => {
+            const params = new URLSearchParams();
+            params.set("fromDashboard", "1");
+            if (activeCampaign?.id) params.set("campaignId", activeCampaign.id);
+            router.push(`/?${params.toString()}`);
+          }}
         >
           <div>
             <p
@@ -187,9 +220,7 @@ export function DiscoverScreen({ selectedCampaignIds }: DiscoverScreenProps) {
             className="relative z-10 flex-shrink-0 flex items-center gap-4 px-8"
             style={{
               height: "64px",
-              background: "rgba(7,7,11,0.85)",
-              backdropFilter: "blur(20px)",
-              borderBottom: "1px solid rgba(255,255,255,0.06)",
+              background: "transparent",
             }}
           >
             {/* Search */}
@@ -258,17 +289,12 @@ export function DiscoverScreen({ selectedCampaignIds }: DiscoverScreenProps) {
                 Loading creators…
               </p>
             )}
-            {error && (
-              <p className="text-[12px] py-8 text-center" style={{ color: feyTokens.colors.status.error }}>
-                Error loading results. Try again.
-              </p>
-            )}
-            {!isLoading && !error && items.length === 0 && (
+            {!isLoading && items.length === 0 && (
               <p className="text-[12px] py-8 text-center" style={{ color: feyTokens.colors.text.muted }}>
                 No creators found. Try a different search.
               </p>
             )}
-            {!isLoading && !error && items.length > 0 && (
+            {!isLoading && items.length > 0 && (
               <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
                 {items.map((t) => (
                   <TalentCard

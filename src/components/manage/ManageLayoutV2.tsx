@@ -12,8 +12,8 @@ import { Plus } from "lucide-react";
 
 // Shared glass panel style — replaces SectionFrame for a lighter, unified look
 const GLASS: React.CSSProperties = {
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.08)",
+  background: "rgba(255,255,255,0.03)",
+  border: "1px solid rgba(255,255,255,0.04)",
   backdropFilter: "blur(16px)",
   WebkitBackdropFilter: "blur(16px)",
   borderRadius: "16px",
@@ -145,11 +145,11 @@ export function ManageLayoutV2({
               gap: "24px",
             }}
           >
-            {/* Logo block (fixed width, truncate) */}
+            {/* Logo block — kept minimal, no redundant label */}
             <div className="flex items-center" style={{ flex: "0 0 auto", minWidth: 0, maxWidth: "200px" }}>
               <div
-                className="text-[14px] font-semibold truncate"
-                style={{ color: feyTokens.colors.text.primary }}
+                className="text-[13px] font-medium opacity-30 truncate"
+                style={{ color: feyTokens.colors.text.muted }}
               >
                 Creator Hive
               </div>

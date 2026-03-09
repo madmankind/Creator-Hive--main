@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { PackageConfig } from "@/lib/packages";
 import { formatAED, getPackagePriceLabel, PACKAGES } from "@/lib/packages";
 import { useSession } from "next-auth/react";
+import { useLocalCampaignStore } from "@/store/useLocalCampaignStore";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -215,6 +216,16 @@ export function CampaignSetupBoard({
     }
     setSubmitted(true);
     const userEmail = (session?.user as { email?: string } | undefined)?.email ?? "pending@creatorhive.ae";
+    // Persist campaign locally so dashboard screens see it immediately
+    const localId = `local-${Date.now()}`;
+    useLocalCampaignStore.getState().addCampaign({
+      id: localId,
+      name: state.campaignName || "Untitled Campaign",
+      objective: state.objectives[0] ?? "awareness",
+      budget: parseInt(state.totalBudget.replace(/,/g, "")) || 0,
+      spend: 0,
+      status: "active",
+    });
     fetch("/api/bookings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
