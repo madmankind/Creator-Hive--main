@@ -5,10 +5,20 @@ import { feyTokens } from "@/lib/fey-design-tokens";
 import { Settings2, Share2, FileText } from "lucide-react";
 import { CampaignSwitcher } from "@/components/campaigns/CampaignSwitcher";
 import { Tooltip } from "./Tooltip";
-import { SectionFrame } from "./SectionFrame";
 import { TalentCarousel } from "./TalentCarousel";
 import { ExecutionHubPanel } from "./ExecutionHubPanel";
 import { WeeklyCalendarPanel } from "./WeeklyCalendarPanel";
+import { Plus } from "lucide-react";
+
+// Shared glass panel style — replaces SectionFrame for a lighter, unified look
+const GLASS: React.CSSProperties = {
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(255,255,255,0.08)",
+  backdropFilter: "blur(16px)",
+  WebkitBackdropFilter: "blur(16px)",
+  borderRadius: "16px",
+  overflow: "hidden",
+};
 import type { TalentCampaignCard } from "@/components/campaigns/types";
 
 interface ManageLayoutV2Props {
@@ -272,29 +282,44 @@ export function ManageLayoutV2({
                 ...outlineStyle,
               }}
             >
-              <SectionFrame
-                fill={true}
-                radius={0}
-                contentPadding="14px 16px"
-                style={{
-                  height: "100%",
-                }}
-              >
-                <div
-                  style={{
-                    height: "100%",
-                    minHeight: 0,
-                    overflow: "hidden",
-                  }}
-                >
-                  <TalentCarousel
-                    cards={cards}
-                    selectedCardId={selectedCardId}
-                    onCardSelect={onCardSelect}
-                    highlightedCardId={highlightedCardId}
-                  />
-                </div>
-              </SectionFrame>
+              <div style={{ ...GLASS, height: "100%", padding: "14px 16px" }}>
+                {cards.length === 0 ? (
+                  <div
+                    className="h-full flex flex-col items-center justify-center gap-3"
+                    style={{ color: feyTokens.colors.text.muted }}
+                  >
+                    <div className="flex items-center gap-1 opacity-30 text-[36px]">
+                      {"👤👤👤".split("").map((c, i) => (
+                        <span key={i} style={{ opacity: 1 - i * 0.25 }}>{c}</span>
+                      ))}
+                    </div>
+                    <p className="text-[13px]" style={{ color: feyTokens.colors.text.muted }}>
+                      No creators added to this campaign yet
+                    </p>
+                    <a
+                      href="/dashboard/campaigns?mode=discover"
+                      className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-medium transition-colors"
+                      style={{
+                        background: "rgba(124,92,255,0.12)",
+                        border: "1px solid rgba(124,92,255,0.3)",
+                        color: "rgba(167,139,250,0.9)",
+                      }}
+                    >
+                      <Plus size={13} />
+                      Browse creators
+                    </a>
+                  </div>
+                ) : (
+                  <div style={{ height: "100%", minHeight: 0, overflow: "hidden" }}>
+                    <TalentCarousel
+                      cards={cards}
+                      selectedCardId={selectedCardId}
+                      onCardSelect={onCardSelect}
+                      highlightedCardId={highlightedCardId}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Two-Panel Row (fills remaining height via flex) */}
@@ -317,16 +342,9 @@ export function ManageLayoutV2({
                   ...outlineStyle,
                 }}
               >
-                <SectionFrame
-                  fill={true}
-                  radius={0}
-                  contentPadding="18px 20px"
-                  style={{
-                    height: "100%",
-                  }}
-                >
+                <div style={{ ...GLASS, height: "100%", padding: "18px 20px" }}>
                   <ExecutionHubPanel cards={cards} campaignName={campaignName} />
-                </SectionFrame>
+                </div>
               </div>
 
               {/* Right Panel: Weekly Calendar (spans 5 columns) */}
@@ -338,16 +356,9 @@ export function ManageLayoutV2({
                   ...outlineStyle,
                 }}
               >
-                <SectionFrame
-                  fill={true}
-                  radius={0}
-                  contentPadding="18px 20px"
-                  style={{
-                    height: "100%",
-                  }}
-                >
+                <div style={{ ...GLASS, height: "100%", padding: "18px 20px" }}>
                   <WeeklyCalendarPanel cards={cards} onSelectTalent={onSelectTalent} />
-                </SectionFrame>
+                </div>
               </div>
             </div>
           </div>
