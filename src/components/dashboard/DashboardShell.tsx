@@ -73,10 +73,12 @@ export function DashboardShell({
             >
               {/* Brand wordmark */}
               <span
-                className="flex-shrink-0 text-[13px] font-medium opacity-30 mr-5 select-none truncate"
+                className="flex-shrink-0 text-[13px] font-medium opacity-30 mr-0 select-none"
               >
                 Creator Hive
               </span>
+              {/* Divider */}
+              <div className="flex-shrink-0 w-px h-4 mx-4" style={{ background: "rgba(255,255,255,0.10)" }} />
               {headerFullWidth ? (
                 <div className="flex-1 min-w-0">{headerLeft}</div>
               ) : (

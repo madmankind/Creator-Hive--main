@@ -1,160 +1,213 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { ChevronDown, Copy } from "lucide-react";
+import { ChevronDown, Copy, Plus, Check } from "lucide-react";
 import { useCampaign } from "@/contexts/CampaignContext";
 import { useLocalCampaignStore } from "@/store/useLocalCampaignStore";
+import { cn } from "@/lib/utils";
+
+type DropdownView = "list" | "duplicate";
 
 export function CampaignSwitcher() {
   const { activeCampaign, campaigns, setActiveCampaign } = useCampaign();
   const [isOpen, setIsOpen] = useState(false);
-  const [duplicating, setDuplicating] = useState(false);
+  const [view, setView] = useState<DropdownView>("list");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const onDown = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setIsOpen(false);
-        setDuplicating(false);
+        setView("list");
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
   }, []);
 
+  const close = () => { setIsOpen(false); setView("list"); };
+
+  // Switch campaign
+  const handleSelect = (id: string) => {
+    const c = campaigns.find((x) => x.id === id);
+    if (c) setActiveCampaign(c);
+    close();
+  };
+
+  // New campaign — routes to booking flow (campaign creation IS the booking flow)
+  const handleNew = () => {
+    close();
+    window.location.href = "/?skip=gallery";
+  };
+
+  // Duplicate current team into another campaign
   const handleDuplicateTo = (targetId: string) => {
     const target = campaigns.find((c) => c.id === targetId);
     if (!target || !activeCampaign) return;
-    // Clone the active campaign's identity under the target campaign name
-    const cloned = {
-      ...activeCampaign,
-      id: targetId,
-      name: target.name,
-    };
+    const cloned = { ...activeCampaign, id: targetId, name: target.name };
     useLocalCampaignStore.getState().removeCampaign(targetId);
     useLocalCampaignStore.getState().addCampaign(cloned);
     setActiveCampaign(cloned);
-    setIsOpen(false);
-    setDuplicating(false);
+    close();
   };
 
   const otherCampaigns = campaigns.filter((c) => c.id !== activeCampaign?.id);
+  const label = activeCampaign?.name ?? "Select campaign";
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative flex-shrink-0" ref={dropdownRef}>
+
+      {/* ── Trigger — single row, perfectly center-aligned ── */}
       <button
         type="button"
-        onClick={() => { setIsOpen(!isOpen); setDuplicating(false); }}
-        className="flex flex-col items-start gap-0.5 transition-opacity hover:opacity-80"
-        style={{ cursor: "pointer" }}
+        onClick={() => { setIsOpen((v) => !v); setView("list"); }}
+        className="flex items-center gap-1.5 transition-opacity hover:opacity-70"
       >
-        <div className="text-xs font-medium" style={{ color: "#8B8B8B" }}>
-          Campaign
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm font-medium" style={{ color: activeCampaign ? "#EDEDED" : "#8B8B8B" }}>
-            {activeCampaign?.name || "Select campaign"}
-          </span>
-          <ChevronDown
-            className={`h-3.5 w-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`}
-            style={{ color: "#8B8B8B" }}
-          />
-        </div>
+        <span
+          className="text-[13px] font-medium max-w-[200px] truncate"
+          style={{ color: activeCampaign ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.35)" }}
+        >
+          {label}
+        </span>
+        <ChevronDown
+          size={13}
+          className={cn("flex-shrink-0 transition-transform duration-200", isOpen && "rotate-180")}
+          style={{ color: "rgba(255,255,255,0.35)" }}
+        />
       </button>
 
+      {/* ── Dropdown panel ── */}
       {isOpen && (
         <div
-          className="absolute left-0 mt-2 w-[280px] rounded-2xl shadow-2xl z-50 overflow-hidden"
+          className="absolute left-0 z-50 mt-2 overflow-hidden rounded-2xl"
           style={{
-            background: "rgba(10,10,14,0.97)",
-            border: "1px solid rgba(255,255,255,0.10)",
-            backdropFilter: "blur(24px)",
-            WebkitBackdropFilter: "blur(24px)",
-            boxShadow: "0 30px 60px rgba(0,0,0,0.70), inset 0 1px 0 rgba(255,255,255,0.04)",
+            width: "264px",
+            background: "rgba(10,10,16,0.97)",
+            border: "1px solid rgba(255,255,255,0.09)",
+            backdropFilter: "blur(28px)",
+            WebkitBackdropFilter: "blur(28px)",
+            boxShadow: "0 24px 56px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.04)",
           }}
         >
-          {/* Campaign list */}
-          {!duplicating && (
-            <div className="max-h-64 overflow-y-auto p-1.5">
-              {campaigns.length === 0 && (
-                <p className="px-3 py-3 text-[12px]" style={{ color: "rgba(255,255,255,0.35)" }}>
-                  No campaigns yet
-                </p>
-              )}
-              {campaigns.map((campaign) => (
+          {view === "list" && (
+            <>
+              {/* Campaign list */}
+              <div className="max-h-[220px] overflow-y-auto p-1.5">
+                {campaigns.length === 0 ? (
+                  <p className="px-3 py-3 text-[12px]" style={{ color: "rgba(255,255,255,0.30)" }}>
+                    No campaigns yet — start a new one below
+                  </p>
+                ) : (
+                  campaigns.map((c) => {
+                    const isActive = c.id === activeCampaign?.id;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => handleSelect(c.id)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-colors"
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                      >
+                        {/* Active dot / inactive placeholder */}
+                        <span
+                          className="flex-shrink-0 w-1.5 h-1.5 rounded-full"
+                          style={{ background: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.12)" }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className="text-[13px] truncate"
+                            style={{
+                              color: isActive ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.55)",
+                              fontWeight: isActive ? 500 : 400,
+                            }}
+                          >
+                            {c.name}
+                          </p>
+                          {c.clientName && (
+                            <p className="text-[11px] truncate mt-0.5" style={{ color: "rgba(255,255,255,0.28)" }}>
+                              {c.clientName}
+                            </p>
+                          )}
+                        </div>
+                        {isActive && <Check size={12} style={{ color: "rgba(255,255,255,0.45)", flexShrink: 0 }} />}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Divider + actions */}
+              <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} className="p-1.5 space-y-0.5">
                 <button
-                  key={campaign.id}
                   type="button"
-                  onClick={() => {
-                    setActiveCampaign(campaign);
-                    setIsOpen(false);
-                  }}
-                  className="w-full text-left px-3 py-2.5 rounded-xl text-sm transition-colors hover:bg-white/5"
-                  style={{
-                    color: activeCampaign?.id === campaign.id ? "#EDEDED" : "rgba(255,255,255,0.65)",
-                    fontWeight: activeCampaign?.id === campaign.id ? 500 : 400,
-                  }}
+                  onClick={handleNew}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] text-left transition-colors"
+                  style={{ color: "rgba(255,255,255,0.55)" }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.80)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.55)"; }}
                 >
-                  <div className="font-medium">{campaign.name}</div>
-                  {campaign.clientName && (
-                    <div className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.40)" }}>
-                      {campaign.clientName}
-                    </div>
-                  )}
+                  <Plus size={13} style={{ flexShrink: 0 }} />
+                  New campaign
                 </button>
-              ))}
-            </div>
+                {activeCampaign && (
+                  <button
+                    type="button"
+                    onClick={() => setView("duplicate")}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] text-left transition-colors"
+                    style={{ color: "rgba(255,255,255,0.38)" }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.65)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.38)"; }}
+                  >
+                    <Copy size={12} style={{ flexShrink: 0 }} />
+                    Duplicate team to…
+                  </button>
+                )}
+              </div>
+            </>
           )}
 
-          {/* Duplicate team sub-view */}
-          {duplicating && (
-            <div className="p-1.5">
-              <p
-                className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em]"
-                style={{ color: "rgba(255,255,255,0.30)" }}
-              >
-                Duplicate team to…
-              </p>
-              {otherCampaigns.length === 0 && (
-                <p className="px-3 pb-3 text-[12px]" style={{ color: "rgba(255,255,255,0.35)" }}>
-                  No other campaigns
+          {view === "duplicate" && (
+            <>
+              <div className="px-3 pt-3 pb-1">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "rgba(255,255,255,0.25)" }}>
+                  Duplicate team to
                 </p>
-              )}
-              {otherCampaigns.map((c) => (
+              </div>
+              <div className="p-1.5 max-h-[200px] overflow-y-auto">
+                {otherCampaigns.length === 0 ? (
+                  <p className="px-3 py-2 text-[12px]" style={{ color: "rgba(255,255,255,0.30)" }}>
+                    No other campaigns
+                  </p>
+                ) : (
+                  otherCampaigns.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => handleDuplicateTo(c.id)}
+                      className="w-full text-left px-3 py-2.5 rounded-xl text-[13px] transition-colors"
+                      style={{ color: "rgba(255,255,255,0.65)" }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                    >
+                      {c.name}
+                    </button>
+                  ))
+                )}
+              </div>
+              <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} className="p-1.5">
                 <button
-                  key={c.id}
                   type="button"
-                  onClick={() => handleDuplicateTo(c.id)}
-                  className="w-full text-left px-3 py-2.5 rounded-xl text-sm transition-colors hover:bg-white/5"
-                  style={{ color: "rgba(255,255,255,0.70)" }}
+                  onClick={() => setView("list")}
+                  className="w-full text-left px-3 py-2 rounded-xl text-[11px] transition-colors"
+                  style={{ color: "rgba(255,255,255,0.28)" }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                 >
-                  {c.name}
+                  ← Back
                 </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setDuplicating(false)}
-                className="w-full text-left px-3 py-2 rounded-xl text-[11px] transition-colors hover:bg-white/5 mt-1"
-                style={{ color: "rgba(255,255,255,0.30)" }}
-              >
-                ← Back
-              </button>
-            </div>
-          )}
-
-          {/* Divider + actions */}
-          {!duplicating && activeCampaign && (
-            <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} className="p-1.5">
-              <button
-                type="button"
-                onClick={() => setDuplicating(true)}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] transition-colors hover:bg-white/5"
-                style={{ color: "rgba(255,255,255,0.45)" }}
-              >
-                <Copy size={12} />
-                Duplicate team to another campaign
-              </button>
-            </div>
+              </div>
+            </>
           )}
         </div>
       )}

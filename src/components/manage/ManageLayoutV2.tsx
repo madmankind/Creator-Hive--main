@@ -157,12 +157,14 @@ export function ManageLayoutV2({
           >
             {/* Brand wordmark */}
             <span
-              className="flex-shrink-0 text-[13px] font-medium opacity-30 select-none truncate"
+              className="flex-shrink-0 text-[13px] font-medium opacity-30 select-none"
             >
               Creator Hive
             </span>
-            {/* Campaign selector block (fixed width, truncate) */}
-            <div className="flex items-center" style={{ flex: "0 0 auto", minWidth: 0, maxWidth: "280px" }}>
+            {/* Divider */}
+            <div className="flex-shrink-0 w-px h-4" style={{ background: "rgba(255,255,255,0.10)" }} />
+            {/* Campaign switcher — single-row trigger, perfectly center-aligned */}
+            <div className="flex items-center flex-shrink-0" style={{ minWidth: 0 }}>
               <CampaignSwitcher />
             </div>
 
