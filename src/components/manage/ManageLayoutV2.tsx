@@ -157,8 +157,7 @@ export function ManageLayoutV2({
           >
             {/* Brand wordmark */}
             <span
-              className="flex-shrink-0 text-[11px] font-semibold tracking-[0.08em] select-none"
-              style={{ color: "rgba(255,255,255,0.22)" }}
+              className="flex-shrink-0 text-[13px] font-medium opacity-30 select-none truncate"
             >
               Creator Hive
             </span>

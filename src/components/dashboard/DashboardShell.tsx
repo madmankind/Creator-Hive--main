@@ -73,8 +73,7 @@ export function DashboardShell({
             >
               {/* Brand wordmark */}
               <span
-                className="flex-shrink-0 text-[13px] font-light tracking-[-0.02em] mr-6 select-none"
-                style={{ color: "rgba(255,255,255,0.38)" }}
+                className="flex-shrink-0 text-[13px] font-medium opacity-30 mr-5 select-none truncate"
               >
                 Creator Hive
               </span>
