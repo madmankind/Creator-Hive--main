@@ -17,7 +17,7 @@ const dockItems: DockItem[] = [
   { id: "track",   label: "Track",    icon: BarChart3,  route: "/dashboard/campaigns?mode=track" },
   { id: "manage",  label: "Manage",   icon: Users,      route: "/dashboard/campaigns?mode=manage" },
   { id: "pay",     label: "Pay",      icon: CreditCard, route: "/dashboard/campaigns?mode=pay" },
-  { id: "discover",label: "Discover", icon: Search,     route: "/dashboard/campaigns?mode=discover" },
+  { id: "discover",label: "Pulse", icon: Search,     route: "/dashboard/campaigns?mode=discover" },
 ];
 
 export function BottomDock() {
