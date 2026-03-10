@@ -13,11 +13,11 @@ interface DockItem {
 }
 
 const dockItems: DockItem[] = [
-  { id: "home",    label: "Home",    icon: Home,      route: "/",                                   isExternal: true },
-  { id: "track",   label: "Track",   icon: BarChart3, route: "/dashboard/campaigns?mode=track" },
-  { id: "manage",  label: "Manage",  icon: Users,     route: "/dashboard/campaigns?mode=manage" },
-  { id: "pay",     label: "Pay",     icon: CreditCard,route: "/dashboard/campaigns?mode=pay" },
-  { id: "discover",label: "Discover",icon: Search,    route: "/dashboard/campaigns?mode=discover" },
+  { id: "home",    label: "Home",     icon: Home,       route: "/",                                    isExternal: true },
+  { id: "track",   label: "Track",    icon: BarChart3,  route: "/dashboard/campaigns?mode=track" },
+  { id: "manage",  label: "Manage",   icon: Users,      route: "/dashboard/campaigns?mode=manage" },
+  { id: "pay",     label: "Pay",      icon: CreditCard, route: "/dashboard/campaigns?mode=pay" },
+  { id: "discover",label: "Discover", icon: Search,     route: "/dashboard/campaigns?mode=discover" },
 ];
 
 export function BottomDock() {

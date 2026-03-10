@@ -47,6 +47,17 @@ function HomePageContent() {
 
   useEffect(() => {
     const pkgId = searchParams.get("package");
+    const skip = searchParams.get("skip");
+
+    // Auth-aware skip: logged-in users coming from dashboard Discover
+    // bypass the hero and land directly at the gallery
+    if (skip === "gallery" && session?.user) {
+      setShowTalentGallery(true);
+      setShowPackages(true);
+      setTimeout(() => scrollToRef(galleryRef, "start"), 120);
+      return;
+    }
+
     if (pkgId) {
       const pkg = PACKAGES.find((p) => p.id === pkgId);
       if (pkg) {
@@ -58,7 +69,7 @@ function HomePageContent() {
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [session]);
 
   const selectedTalents = selectedPodIds
     .map((id) => curatedLookup.get(id))
