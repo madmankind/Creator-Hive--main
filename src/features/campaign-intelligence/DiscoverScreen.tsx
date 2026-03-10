@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { QuickBookPanel } from "@/components/campaigns/QuickBookPanel";
 import { useCampaign } from "@/contexts/CampaignContext";
+import { useLocalCampaignStore } from "@/store/useLocalCampaignStore";
 import { feyTokens } from "@/lib/fey-design-tokens";
 import { Plus, RotateCcw, Clock, ChevronRight } from "lucide-react";
 
@@ -27,7 +29,9 @@ function formatBudget(n: number) {
 }
 
 export function DiscoverScreen({ selectedCampaignIds: _ }: DiscoverScreenProps) {
+  const router = useRouter();
   const { campaigns, setActiveCampaign, loading } = useCampaign();
+  const addCampaign = useLocalCampaignStore((s) => s.addCampaign);
   const [showAll, setShowAll] = useState(false);
 
   const recentCampaigns = useMemo(() => [...campaigns].slice(0, 3), [campaigns]);
@@ -48,7 +52,7 @@ export function DiscoverScreen({ selectedCampaignIds: _ }: DiscoverScreenProps) 
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
           <button
             type="button"
-            onClick={() => { window.location.href = "/?skip=gallery"; }}
+            onClick={() => { router.push("/?skip=gallery"); }}
             className="group w-full text-left rounded-2xl px-6 py-5 transition-all duration-200"
             style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
             onMouseEnter={(e) => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(255,255,255,0.055)"; el.style.borderColor = "rgba(255,255,255,0.12)"; }}
@@ -113,7 +117,8 @@ export function DiscoverScreen({ selectedCampaignIds: _ }: DiscoverScreenProps) 
                         transition={{ duration: 0.25, delay: i * 0.04 }}
                         onClick={() => {
                           setActiveCampaign(c);
-                          window.location.href = "/dashboard/campaigns?mode=manage";
+                          addCampaign(c);
+                          router.push(`/dashboard/campaigns?mode=manage&campaignId=${c.id}`);
                         }}
                         className="group text-left rounded-2xl px-4 py-3.5 transition-all duration-200"
                         style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}

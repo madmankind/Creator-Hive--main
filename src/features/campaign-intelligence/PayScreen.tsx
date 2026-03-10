@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { feyTokens } from "@/lib/fey-design-tokens";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import { CampaignSwitcher } from "@/components/campaigns/CampaignSwitcher";
 import { CreditCard, FileText, Download, Plus, ArrowUpRight } from "lucide-react";
 import { useCampaign } from "@/contexts/CampaignContext";
 import type { Invoice, Payout } from "@/components/campaigns/types";
@@ -111,6 +112,8 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
   // Header
   const headerLeft = (
     <div className="flex items-center gap-3">
+      <CampaignSwitcher />
+      <div className="h-4 w-px flex-shrink-0" style={{ background: "rgba(255,255,255,0.08)" }} />
       {/* Face toggle */}
       <div
         className="flex rounded-lg overflow-hidden"
@@ -130,9 +133,6 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
           </button>
         ))}
       </div>
-      <span className="text-[12px]" style={{ color: feyTokens.colors.text.muted }}>
-        {activeCampaign?.name || "All campaigns"}
-      </span>
     </div>
   );
 

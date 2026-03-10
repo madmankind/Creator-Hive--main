@@ -61,9 +61,9 @@ export function DashboardShell({
             className="sticky top-0 z-30 flex-shrink-0"
             style={{
               height: "56px",
-              background: "rgba(7,7,11,0.92)",
-              backdropFilter: "blur(24px)",
-              WebkitBackdropFilter: "blur(24px)",
+              background: "rgba(7,7,11,0.52)",
+              backdropFilter: "blur(32px)",
+              WebkitBackdropFilter: "blur(32px)",
               borderBottom: "1px solid rgba(255,255,255,0.06)",
             }}
           >

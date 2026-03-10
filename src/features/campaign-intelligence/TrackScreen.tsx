@@ -98,16 +98,16 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
   const headerLeft = (
     <>
       <CampaignSwitcher />
-      <div className="h-4 w-px" style={{ background: "rgba(255,255,255,0.08)" }} />
-      <div className="flex items-center gap-3">
+      <div className="h-4 w-px flex-shrink-0" style={{ background: "rgba(255,255,255,0.08)" }} />
+      <div className="flex items-center gap-4">
         {TIME_RANGES.map((r) => (
           <button
             key={r}
             onClick={() => setTimeRange(r)}
-            className="text-[12px] font-medium transition-colors"
+            className="text-[12px] transition-colors"
             style={{
-              color: timeRange === r ? "#FFFFFF" : feyTokens.colors.text.muted,
-              fontWeight: timeRange === r ? 600 : 400,
+              color: timeRange === r ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.38)",
+              fontWeight: timeRange === r ? 500 : 400,
             }}
           >
             {r === "custom" ? "Custom" : r}
@@ -134,6 +134,16 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
 
   return (
     <DashboardShell headerLeft={headerLeft} headerRight={headerRight}>
+      {!activeCampaign ? (
+        <div className="flex flex-col items-center justify-center py-24 gap-4">
+          <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+            No campaign selected
+          </p>
+          <p className="text-[12px]" style={{ color: "rgba(255,255,255,0.22)" }}>
+            Use the campaign switcher above to select or start a campaign
+          </p>
+        </div>
+      ) : (
       <div className="grid gap-6" style={{ gridTemplateColumns: showInsights ? "1fr 300px" : "1fr" }}>
         {/* Main column */}
         <div className="space-y-6 min-w-0">
@@ -186,6 +196,7 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
           </div>
         )}
       </div>
+      )}
     </DashboardShell>
   );
 }
