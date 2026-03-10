@@ -220,7 +220,7 @@ export function ExecutionHubPanel({ cards, campaignName, campaignId }: Execution
               color: "rgba(120,210,255,0.92)",
             }}
           >
-            Due: {executionData.nextUp.length}
+            Due soon: {executionData.nextUp.length}
           </div>
           <div
             className="rounded-[8px] px-2.5 py-1 text-[10px] font-medium"
@@ -229,8 +229,16 @@ export function ExecutionHubPanel({ cards, campaignName, campaignId }: Execution
               color: "#10B981",
             }}
           >
-            Payments: {executionData.resources.filter((r) => r.type === "credentials").length}
+            Updates: {executionData.updates.length}
           </div>
+          {cards.length === 0 && (
+            <div
+              className="rounded-[8px] px-2.5 py-1 text-[10px] font-medium"
+              style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.35)" }}
+            >
+              Add creators to see tasks
+            </div>
+          )}
         </div>
       </div>
 

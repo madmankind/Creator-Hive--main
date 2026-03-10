@@ -24,6 +24,39 @@ function iso(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
+// Deterministic color from string — no external image dependencies
+function avatarColor(name: string) {
+  const colors = ["#7C5CFF","#00DCFF","#F59E0B","#10B981","#E5484D","#A78BFA","#34D399","#FB923C"];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffffffff;
+  return colors[Math.abs(h) % colors.length];
+}
+
+function TalentAvatar({ name, size = 26 }: { name: string; size?: number }) {
+  const bg = avatarColor(name);
+  const initials = name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
+  return (
+    <div
+      className="flex-shrink-0 flex items-center justify-center font-semibold"
+      style={{
+        width: size, height: size,
+        borderRadius: size / 3,
+        background: `${bg}22`,
+        border: `1px solid ${bg}55`,
+        color: bg,
+        fontSize: size * 0.38,
+      }}
+    >
+      {initials}
+    </div>
+  );
+}
+
+interface WeeklyCalendarPanelProps {
+  cards: TalentCampaignCard[];
+  onSelectTalent: (cardId: string) => void;
+}
+
 export function WeeklyCalendarPanel({ cards, onSelectTalent }: WeeklyCalendarPanelProps) {
   const [anchor, setAnchor] = useState(() => {
     const now = new Date();
@@ -135,22 +168,7 @@ export function WeeklyCalendarPanel({ cards, onSelectTalent }: WeeklyCalendarPan
               color: feyTokens.colors.text.secondary,
             }}
           >
-            <div
-              style={{
-                width: "26px",
-                height: "26px",
-                borderRadius: "8px",
-                overflow: "hidden",
-                border: "1px solid rgba(255,255,255,0.10)",
-                background: "rgba(255,255,255,0.06)",
-              }}
-            >
-              <img
-                src={`https://i.pravatar.cc/120?img=${(((parseInt(c.talentId.replace(/\D/g, ""), 10) || 1) - 1) % 70) + 1}`}
-                alt={c.talentName}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            </div>
+            <TalentAvatar name={c.talentName} size={26} />
             <div className="text-[11px] font-medium">{c.talentName.split(" ")[0]}</div>
           </div>
         ))}
@@ -197,8 +215,6 @@ export function WeeklyCalendarPanel({ cards, onSelectTalent }: WeeklyCalendarPan
                   {assigned.slice(0, 2).map(([talentId, assignment]) => {
                     const card = cards.find((c) => c.id === talentId);
                     if (!card) return null;
-                    const firstName = card.talentName.split(" ")[0];
-                    const avatarUrl = `https://i.pravatar.cc/120?img=${(((parseInt(card.talentId.replace(/\D/g, ""), 10) || 1) - 1) % 70) + 1}`;
                     const colorMap: Record<DateField, string> = {
                       "Go-live": "#10B981",
                       "Production": "#3B82F6",
@@ -216,24 +232,21 @@ export function WeeklyCalendarPanel({ cards, onSelectTalent }: WeeklyCalendarPan
                           maxWidth: "100%",
                         }}
                       >
-                        <img
-                          src={avatarUrl}
-                          alt={firstName}
-                          className="rounded-none flex-shrink-0"
+                        <div
+                          className="flex-shrink-0 flex items-center justify-center font-semibold"
                           style={{
-                            width: "14px",
-                            height: "14px",
-                            objectFit: "cover",
-                            border: `1px solid ${color}60`,
-                          }}
-                        />
-                        <span
-                          className="text-[9px] font-medium truncate"
-                          style={{
-                            color: color,
+                            width: 14, height: 14,
+                            borderRadius: 4,
+                            background: `${avatarColor(card.talentName)}22`,
+                            border: `1px solid ${avatarColor(card.talentName)}55`,
+                            color: avatarColor(card.talentName),
+                            fontSize: 6,
                           }}
                         >
-                          {firstName}
+                          {card.talentName[0].toUpperCase()}
+                        </div>
+                        <span className="text-[9px] font-medium truncate" style={{ color }}>
+                          {card.talentName.split(" ")[0]}
                         </span>
                       </div>
                     );

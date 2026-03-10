@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 
 export default function ForCreatorsPage() {
   return (
-    <main className="min-h-screen bg-[#0B0F14] text-white">
+    <main style={{ minHeight: '100vh', background: '#07070B', color: 'rgba(255,255,255,0.88)' }}>
       <section className="max-w-4xl mx-auto px-6 pt-28 pb-16">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.06] ring-1 ring-white/[0.10] text-[11px] text-white/40 mb-8">
           For creators &amp; freelancers
@@ -19,10 +19,11 @@ export default function ForCreatorsPage() {
           Join a curated network of UAE and GCC-based creators. Get matched with brands that fit your niche, negotiate scope once, then get paid on time.
         </p>
         <a
-          href="/"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-white text-[#0B0F14] rounded-xl text-[14px] font-medium hover:bg-white/90 transition-all"
+          href="/onboarding/step-1"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[14px] font-medium transition-all"
+          style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.90)' }}
         >
-          Apply to join the Hive →
+          Apply to join →
         </a>
       </section>
 
@@ -32,9 +33,9 @@ export default function ForCreatorsPage() {
           { title: "Scope protection built in", body: "Deliverables and revision limits are locked in before work starts. No scope creep by design." },
           { title: "Payments on time, every time", body: "Milestones release funds automatically on approval. No invoicing, no chasing, no delays." },
         ].map(({ title, body }) => (
-          <div key={title} className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-6">
-            <div className="text-[14px] font-medium text-white/80 mb-2">{title}</div>
-            <div className="text-[13px] text-white/35 leading-relaxed">{body}</div>
+          <div key={title} className="rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="text-[14px] font-medium mb-2" style={{ color: 'rgba(255,255,255,0.80)' }}>{title}</div>
+            <div className="text-[13px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.38)' }}>{body}</div>
           </div>
         ))}
       </section>

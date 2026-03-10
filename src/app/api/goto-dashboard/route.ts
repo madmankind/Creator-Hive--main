@@ -1,23 +1,23 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import type { NextRequest } from "next/server";
 
 /**
  * /api/goto-dashboard
  * Server-side redirect after booking confirmation.
- * Validates the session in the same request context and redirects.
+ * Supports ?mode=manage|track|pay|discover
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await auth();
+  const mode = new URL(req.url).searchParams.get("mode") || "manage";
 
-  // Any authenticated user goes to the campaign dashboard
   if (session?.user) {
     return NextResponse.redirect(
-      new URL("/dashboard/campaigns?mode=track", process.env.NEXTAUTH_URL ?? "http://localhost:3000"),
+      new URL(`/dashboard/campaigns?mode=${mode}`, process.env.NEXTAUTH_URL ?? "http://localhost:3000"),
       { status: 302 }
     );
   }
 
-  // No session — send back to home
   return NextResponse.redirect(
     new URL("/?auth=required", process.env.NEXTAUTH_URL ?? "http://localhost:3000"),
     { status: 302 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronDown, Copy, Plus, Check } from "lucide-react";
 import { useCampaign } from "@/contexts/CampaignContext";
 import { useLocalCampaignStore } from "@/store/useLocalCampaignStore";
@@ -9,6 +10,7 @@ import { cn } from "@/lib/utils";
 type DropdownView = "list" | "duplicate";
 
 export function CampaignSwitcher() {
+  const router = useRouter();
   const { activeCampaign, campaigns, setActiveCampaign } = useCampaign();
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState<DropdownView>("list");
@@ -37,7 +39,7 @@ export function CampaignSwitcher() {
   // New campaign — routes to booking flow (campaign creation IS the booking flow)
   const handleNew = () => {
     close();
-    window.location.href = "/?skip=gallery";
+    router.push("/?skip=gallery");
   };
 
   // Duplicate current team into another campaign
