@@ -94,59 +94,45 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
     if (activeCampaign?.id) fetchKpis(activeCampaign.id);
   }, [activeCampaign?.id, fetchKpis]);
 
-  // Header slots
-  const headerLeft = (
-    <>
-      <CampaignSwitcher />
-      <div className="h-4 w-px flex-shrink-0" style={{ background: "rgba(255,255,255,0.08)" }} />
-      <div className="flex items-center gap-4">
-        {TIME_RANGES.map((r) => (
-          <button
-            key={r}
-            onClick={() => setTimeRange(r)}
-            className="text-[12px] transition-colors"
-            style={{
-              color: timeRange === r ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.38)",
-              fontWeight: timeRange === r ? 500 : 400,
-            }}
-          >
-            {r === "custom" ? "Custom" : r}
-          </button>
-        ))}
-      </div>
-    </>
-  );
-
-  const headerRight = (
-    <button
-      onClick={() => setShowInsights((v) => !v)}
-      className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] transition-colors"
-      style={{
-        background: showInsights ? "rgba(124,92,255,0.15)" : "rgba(255,255,255,0.04)",
-        border: `1px solid ${showInsights ? "rgba(124,92,255,0.4)" : "rgba(255,255,255,0.07)"}`,
-        color: showInsights ? "rgba(124,92,255,0.9)" : feyTokens.colors.text.muted,
-      }}
-    >
-      <SlidersHorizontal size={13} />
-      <span>Forecast</span>
-    </button>
-  );
-
   return (
-    <DashboardShell headerLeft={headerLeft} headerRight={headerRight}>
+    <DashboardShell>
       {!activeCampaign ? (
         <div className="flex flex-col items-center justify-center py-24 gap-4">
           <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.35)" }}>
             No campaign selected
           </p>
           <p className="text-[12px]" style={{ color: "rgba(255,255,255,0.22)" }}>
-            Use the campaign switcher above to select or start a campaign
+            Use the campaign switcher below to select or start a campaign
           </p>
         </div>
       ) : (
       <div className="grid gap-6" style={{ gridTemplateColumns: showInsights ? "1fr 300px" : "1fr" }}>
         {/* Main column */}
         <div className="space-y-6 min-w-0">
+          {/* Inline control bar */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <CampaignSwitcher />
+              <div className="h-4 w-px" style={{ background: "rgba(255,255,255,0.08)" }} />
+              {TIME_RANGES.map((r) => (
+                <button key={r} onClick={() => setTimeRange(r)} className="text-[12px] transition-colors"
+                  style={{ color: timeRange === r ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.35)", fontWeight: timeRange === r ? 500 : 400 }}>
+                  {r === "custom" ? "Custom" : r}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowInsights((v) => !v)}
+              className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] transition-colors"
+              style={{
+                background: showInsights ? "rgba(124,92,255,0.15)" : "rgba(255,255,255,0.04)",
+                border: `1px solid ${showInsights ? "rgba(124,92,255,0.4)" : "rgba(255,255,255,0.07)"}`,
+                color: showInsights ? "rgba(124,92,255,0.9)" : feyTokens.colors.text.muted,
+              }}>
+              <SlidersHorizontal size={13} />
+              <span>Forecast</span>
+            </button>
+          </div>
           {/* Chart */}
           <TrackChart
             timeRange={timeRange}

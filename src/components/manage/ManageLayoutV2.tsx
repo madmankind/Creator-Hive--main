@@ -135,138 +135,61 @@ export function ManageLayoutV2({
             paddingBottom: BOTTOM_NAV_PADDING,
           }}
         >
-          {/* Header (fixed height) - Strict flex row with reserved widths, overflow visible for dropdowns */}
+          {/* Inline control strip — no header bar, no background */}
           <div
             className="flex items-center"
             style={{
               flex: `0 0 ${HEADER_HEIGHT}px`,
               height: `${HEADER_HEIGHT}px`,
-              gap: "20px",
+              gap: "16px",
               position: "relative",
               zIndex: 50,
               overflow: "visible",
-              background: "rgba(7,7,11,0.30)",
-              backdropFilter: "blur(24px)",
-              WebkitBackdropFilter: "blur(24px)",
-              borderBottom: "1px solid rgba(255,255,255,0.05)",
-              marginLeft: "-24px",
-              marginRight: "-24px",
-              paddingLeft: "24px",
-              paddingRight: "24px",
             }}
           >
-            {/* Brand wordmark */}
-            <span
-              className="flex-shrink-0 text-[13px] font-medium opacity-30 select-none"
-            >
-              Creator Hive
-            </span>
-            {/* Divider */}
+            <CampaignSwitcher />
             <div className="flex-shrink-0 w-px h-4" style={{ background: "rgba(255,255,255,0.10)" }} />
-            {/* Campaign switcher — single-row trigger, perfectly center-aligned */}
-            <div className="flex items-center flex-shrink-0" style={{ minWidth: 0 }}>
-              <CampaignSwitcher />
-            </div>
-
-            {/* Campaign stats (flexible, truncate) */}
-            <div
-              className="text-[13px] truncate"
-              style={{ 
-                color: feyTokens.colors.text.muted,
-                flex: "0 1 auto",
-                minWidth: 0,
-              }}
-            >
+            <div className="text-[12px]" style={{ color: feyTokens.colors.text.label }}>
               {cards.length} talent · {cards.reduce((acc, c) => acc + c.deliverables.length, 0)} deliverables
             </div>
-
-            {/* Spacer */}
-            <div style={{ flex: "1 1 auto", minWidth: 0 }} />
-
-            {/* Right: Utility Actions */}
+            <div style={{ flex: "1 1 auto" }} />
             <div className="flex items-center gap-2" ref={settingsRef}>
               <Tooltip label="Contract">
-                <button
-                  onClick={onContractClick}
+                <button onClick={onContractClick}
                   className="flex items-center justify-center rounded-full border transition-colors hover:bg-white/10"
-                  style={{
-                    borderColor: "rgba(255,255,255,0.10)",
-                    background: "rgba(255,255,255,0.06)",
-                    color: feyTokens.colors.text.secondary,
-                    height: "36px",
-                    width: "36px",
-                  }}
-                >
+                  style={{ borderColor: "rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.06)", color: feyTokens.colors.text.secondary, height: "36px", width: "36px" }}>
                   <FileText className="h-4 w-4" />
                 </button>
               </Tooltip>
               <Tooltip label="Settings">
-                <button
-                  onClick={() => setIsSettingsOpen((v) => !v)}
+                <button onClick={() => setIsSettingsOpen((v) => !v)}
                   className="flex items-center justify-center rounded-full border transition-colors hover:bg-white/10 relative"
-                  style={{
-                    borderColor: "rgba(255,255,255,0.10)",
-                    background: "rgba(255,255,255,0.06)",
-                    color: feyTokens.colors.text.secondary,
-                    height: "36px",
-                    width: "36px",
-                  }}
-                >
+                  style={{ borderColor: "rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.06)", color: feyTokens.colors.text.secondary, height: "36px", width: "36px" }}>
                   <Settings2 className="h-4 w-4" />
                 </button>
               </Tooltip>
               <Tooltip label="Share">
-                <button
-                  onClick={() => {
-                    // TODO: share/export
-                  }}
+                <button onClick={() => {}}
                   className="flex items-center justify-center rounded-full border transition-colors hover:bg-white/10"
-                  style={{
-                    borderColor: "rgba(255,255,255,0.10)",
-                    background: "rgba(255,255,255,0.06)",
-                    color: feyTokens.colors.text.secondary,
-                    height: "36px",
-                    width: "36px",
-                  }}
-                >
+                  style={{ borderColor: "rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.06)", color: feyTokens.colors.text.secondary, height: "36px", width: "36px" }}>
                   <Share2 className="h-4 w-4" />
                 </button>
               </Tooltip>
-
               {isSettingsOpen && (
-                <div
-                  className="absolute right-0 mt-2 rounded-[14px] overflow-hidden"
-                  style={{
-                    top: "52px",
-                    width: "220px",
-                    background: "rgba(12,12,18,0.92)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    boxShadow: "0 18px 56px rgba(0,0,0,0.65)",
-                    backdropFilter: "blur(18px)",
-                  }}
-                >
-                  <button
-                    className="w-full text-left px-3 py-2 text-[12px] transition-colors"
+                <div className="absolute right-0 mt-2 rounded-[14px] overflow-hidden"
+                  style={{ top: "52px", width: "220px", background: "rgba(12,12,18,0.92)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 18px 56px rgba(0,0,0,0.65)", backdropFilter: "blur(18px)" }}>
+                  <button className="w-full text-left px-3 py-2 text-[12px] transition-colors"
                     style={{ color: feyTokens.colors.text.secondary }}
-                    onClick={() => {
-                      setIsSettingsOpen(false);
-                      onContractClick?.();
-                    }}
+                    onClick={() => { setIsSettingsOpen(false); onContractClick?.(); }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                  >
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
                     Contract hub
                   </button>
-                  <button
-                    className="w-full text-left px-3 py-2 text-[12px] transition-colors"
+                  <button className="w-full text-left px-3 py-2 text-[12px] transition-colors"
                     style={{ color: feyTokens.colors.text.secondary }}
-                    onClick={() => {
-                      setIsSettingsOpen(false);
-                      // TODO: settings route
-                    }}
+                    onClick={() => setIsSettingsOpen(false)}
                     onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                  >
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
                     Settings
                   </button>
                 </div>
