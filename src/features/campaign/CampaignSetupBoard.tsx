@@ -403,8 +403,6 @@ export function CampaignSetupBoard({
 
     return (
       <div className="relative w-full min-h-[480px]">
-        <div className="absolute inset-0 pointer-events-none z-0" style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
-        <div className="absolute inset-x-0 top-0 h-[200px] pointer-events-none z-0" style={{ background: "radial-gradient(60% 40% at 50% 0%, rgba(16,185,129,0.06) 0%, transparent 100%)" }} />
         <div className="relative z-10 max-w-[780px] mx-auto px-6 py-14">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -486,23 +484,19 @@ export function CampaignSetupBoard({
   // ── Board ─────────────────────────────────────────────────────────────────
   return (
     <div className="relative w-full min-h-[400px]">
-      {/* Success overlay — renders on top when submitted */}
+      {/* Success overlay */}
       <AnimatePresence>
         {submitted && (
           <motion.div
             key="success-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="absolute inset-0 z-50 bg-[#0B0F14]"
+            className="absolute inset-0 z-50"
           >
             <SuccessScreen />
           </motion.div>
         )}
       </AnimatePresence>
-
-      <div className="absolute inset-0 pointer-events-none z-0" style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
-      {/* Seamless blend — no hard top edge, no color tint */}
-      <div className="absolute inset-x-0 top-0 h-[320px] pointer-events-none z-0" style={{ background: "linear-gradient(to bottom, rgba(11,15,20,1) 0%, rgba(11,15,20,0.85) 60%, transparent 100%)" }} />
 
       <div className="relative z-10 max-w-[1100px] mx-auto px-6 md:px-10 pt-8 pb-16">
         <AnimatePresence mode="wait">
