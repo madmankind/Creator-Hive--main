@@ -28,6 +28,7 @@ const profileSchema = z.object({
   niches: z.array(z.string().min(1)).optional().default([]),
   avatarUrl: z.string().url().optional().or(z.literal("")),
   hourlyRate: z.string().optional(),
+  prismArchetype: z.string().optional(),
 });
 
 const mapHourlyRate = (value?: string | null): number | null => {
@@ -100,6 +101,7 @@ export async function PUT(req: Request) {
     niches: (data.niches || []).filter(Boolean).slice(0, 8),
     avatarUrl: data.avatarUrl || null,
     hourlyRate: hourlyRateValue ?? undefined,
+    prismArchetype: data.prismArchetype || null,
     isActive: true,
   };
 

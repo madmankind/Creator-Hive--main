@@ -182,6 +182,7 @@ model CreatorProfile {
   source                 String?               // "form" | "manual" | "scraped"
   isVerified             Boolean                @default(false)
   isActive               Boolean                @default(true)
+  prismArchetype         String?               // e.g. "The Maverick"
   stripeAccountId        String?                @unique
   stripeOnboardingStatus StripeOnboardingStatus @default(NOT_STARTED)
   createdAt              DateTime               @default(now())

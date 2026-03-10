@@ -61,10 +61,8 @@ export function DashboardShell({
             className="sticky top-0 z-30 flex-shrink-0"
             style={{
               height: "56px",
-              background: "rgba(7,7,11,0.92)",
-              backdropFilter: "blur(24px)",
-              WebkitBackdropFilter: "blur(24px)",
-              borderBottom: "none",
+              background: "transparent",
+              borderBottom: "1px solid rgba(255,255,255,0.05)",
             }}
           >
             <div
