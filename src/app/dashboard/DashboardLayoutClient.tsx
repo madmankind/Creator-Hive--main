@@ -2,9 +2,9 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import Sidebar from "@/components/agency/Sidebar";
-import { ReactNode } from "react";
+import { ReactNode, Suspense } from "react";
 
-export function DashboardLayoutClient({ children }: { children: ReactNode }) {
+function DashboardLayoutInner({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode");
@@ -36,6 +36,14 @@ export function DashboardLayoutClient({ children }: { children: ReactNode }) {
         {children}
       </main>
     </div>
+  );
+}
+
+export function DashboardLayoutClient({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={<div className="min-h-screen w-screen" style={{ background: "#07070A" }} />}>
+      <DashboardLayoutInner>{children}</DashboardLayoutInner>
+    </Suspense>
   );
 }
 

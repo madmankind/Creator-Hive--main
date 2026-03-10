@@ -61,15 +61,23 @@ export function DashboardShell({
             className="sticky top-0 z-30 flex-shrink-0"
             style={{
               height: "56px",
-              background: "transparent",
-              backdropFilter: "blur(0px)",
-              WebkitBackdropFilter: "blur(0px)",
+              background: "rgba(7,7,11,0.92)",
+              backdropFilter: "blur(24px)",
+              WebkitBackdropFilter: "blur(24px)",
+              borderBottom: "none",
             }}
           >
             <div
               className="h-full mx-auto flex items-center"
               style={{ maxWidth: "1240px", paddingLeft: "32px", paddingRight: "32px" }}
             >
+              {/* Brand wordmark */}
+              <span
+                className="flex-shrink-0 text-[11px] font-semibold tracking-[0.08em] mr-5 select-none"
+                style={{ color: "rgba(255,255,255,0.22)" }}
+              >
+                Creator Hive
+              </span>
               {headerFullWidth ? (
                 <div className="flex-1 min-w-0">{headerLeft}</div>
               ) : (

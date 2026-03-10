@@ -70,7 +70,7 @@ export function ManageLayoutV2({
   }, [isSettingsOpen]);
 
   // Deterministic height calculations
-  const HEADER_HEIGHT = 64;
+  const HEADER_HEIGHT = 56;
   const TALENT_FRAME_HEIGHT = 290; // Outer frame height
   const VERTICAL_GAP = 24; // Gap between talent frame and panels
   const BOTTOM_NAV_HEIGHT = 88;
@@ -118,7 +118,7 @@ export function ManageLayoutV2({
         style={{
           zIndex: 1,
           background:
-            "radial-gradient(900px 520px at 18% 12%, rgba(0,220,255,0.08) 0%, rgba(0,0,0,0) 60%), radial-gradient(1200px 800px at 50% 40%, rgba(124,92,255,0.22) 0%, rgba(0,0,0,0) 62%)",
+            "radial-gradient(900px 520px at 18% 12%, rgba(0,220,255,0.06) 0%, rgba(0,0,0,0) 60%), radial-gradient(1200px 800px at 55% 35%, rgba(124,92,255,0.18) 0%, rgba(0,0,0,0) 62%)",
           filter: "blur(10px)",
         }}
       />
@@ -131,7 +131,7 @@ export function ManageLayoutV2({
             maxWidth: "1280px",
             paddingLeft: "24px",
             paddingRight: "24px",
-            paddingTop: "16px",
+            paddingTop: "0px",
             paddingBottom: BOTTOM_NAV_PADDING,
           }}
         >
@@ -141,22 +141,27 @@ export function ManageLayoutV2({
             style={{
               flex: `0 0 ${HEADER_HEIGHT}px`,
               height: `${HEADER_HEIGHT}px`,
-              gap: "24px",
+              gap: "20px",
               position: "relative",
               zIndex: 50,
               overflow: "visible",
+              background: "rgba(7,7,11,0.92)",
+              backdropFilter: "blur(24px)",
+              WebkitBackdropFilter: "blur(24px)",
+              borderBottom: "none",
+              marginLeft: "-24px",
+              marginRight: "-24px",
+              paddingLeft: "24px",
+              paddingRight: "24px",
             }}
           >
-            {/* Logo block — kept minimal, no redundant label */}
-            <div className="flex items-center" style={{ flex: "0 0 auto", minWidth: 0, maxWidth: "200px" }}>
-              <div
-                className="text-[13px] font-medium opacity-30 truncate"
-                style={{ color: feyTokens.colors.text.muted }}
-              >
-                Creator Hive
-              </div>
-            </div>
-
+            {/* Brand wordmark */}
+            <span
+              className="flex-shrink-0 text-[11px] font-semibold tracking-[0.08em] select-none"
+              style={{ color: "rgba(255,255,255,0.22)" }}
+            >
+              Creator Hive
+            </span>
             {/* Campaign selector block (fixed width, truncate) */}
             <div className="flex items-center" style={{ flex: "0 0 auto", minWidth: 0, maxWidth: "280px" }}>
               <CampaignSwitcher />
@@ -164,7 +169,7 @@ export function ManageLayoutV2({
 
             {/* Campaign stats (flexible, truncate) */}
             <div
-              className="text-[11px] truncate"
+              className="text-[13px] truncate"
               style={{ 
                 color: feyTokens.colors.text.muted,
                 flex: "0 1 auto",
@@ -274,6 +279,7 @@ export function ManageLayoutV2({
             style={{
               gap: `${VERTICAL_GAP}px`,
               overflow: "hidden",
+              paddingTop: "20px",
             }}
           >
             {/* Talent Frame (fixed height) */}
@@ -290,9 +296,11 @@ export function ManageLayoutV2({
                     className="h-full flex flex-col items-center justify-center gap-3"
                     style={{ color: feyTokens.colors.text.muted }}
                   >
-                    <div className="flex items-center gap-1 opacity-30 text-[36px]">
-                      {"👤👤👤".split("").map((c, i) => (
-                        <span key={i} style={{ opacity: 1 - i * 0.25 }}>{c}</span>
+                    <div className="flex items-center gap-1.5">
+                      {[0, 1, 2, 3].map((i) => (
+                        <svg key={i} width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.12 - i * 0.02, color: "rgba(255,255,255,0.9)" }}>
+                          <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.58-7 8-7s8 3 8 7" />
+                        </svg>
                       ))}
                     </div>
                     <p className="text-[13px]" style={{ color: feyTokens.colors.text.muted }}>

@@ -155,15 +155,22 @@ function PackageCard({
       whileHover={{ scale: 1.008, y: -2 }}
       whileTap={{ scale: 0.986 }}
       transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1.0] }}
-      style={{ width: cardWidth }}
-      className={cn(
-        "group relative flex flex-col rounded-2xl border transition-all duration-200",
-        "h-[330px]",
-        isSelected
-          ? "bg-white/[0.10] border-white/[0.28] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_4px_24px_rgba(0,0,0,0.4)]"
+      style={{
+        width: cardWidth,
+        boxShadow: isSelected
+          ? "0 6px 28px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.12)"
           : isSeasonal
-            ? "bg-amber-500/[0.04] border-amber-400/[0.12] hover:border-amber-400/[0.22] hover:bg-amber-500/[0.08]"
-            : "bg-white/[0.025] border-white/[0.07] hover:border-white/[0.15] hover:bg-white/[0.055]"
+            ? "0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(234,179,8,0.12)"
+            : "0 4px 20px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.06)",
+      }}
+      className={cn(
+        "group relative flex flex-col rounded-2xl transition-all duration-200",
+        "min-h-[330px]",
+        isSelected
+          ? "bg-white/[0.10]"
+          : isSeasonal
+            ? "bg-amber-500/[0.05] hover:bg-amber-500/[0.08]"
+            : "bg-white/[0.03] hover:bg-white/[0.055]"
       )}
     >
       {/* Top shimmer line */}
@@ -212,7 +219,7 @@ function PackageCard({
         </p>
 
         {/* Price */}
-        <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-end justify-between">
+        <div className="mt-3 pt-3 flex items-end justify-between" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
           <div>
             <p className="text-[14px] font-semibold text-white/80 tabular-nums">
               {getPackagePriceLabel(pkg)}

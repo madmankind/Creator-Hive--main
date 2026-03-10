@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HeroBar } from "@/components/HeroBar";
 import { TalentCarousel } from "@/components/marketing/TalentCarousel";
+import { BottomDock } from "@/components/nav/BottomDock";
 import { ClientAuthDialog } from "@/components/auth/ClientAuthDialog";
 import { TalentOnboardingDialogFey } from "@/components/auth/TalentOnboardingDialogFey";
 import { PodSetupOverlay } from "@/features/pod-setup/PodSetupOverlay";
@@ -104,10 +105,10 @@ function HomePageContent() {
   };
 
   return (
-    <main className="bg-[#0B0F14] text-slate-200">
+    <main className="bg-[#07070B] text-slate-200">
       {/* Ambient glow fixed across all sections */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60vw] max-w-[800px] h-[40vh] blur-[120px] opacity-[0.09] bg-gradient-to-b from-white/50 via-white/10 to-transparent rounded-full" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60vw] max-w-[800px] h-[40vh] blur-[120px] opacity-[0.14] bg-gradient-to-b from-white/50 via-white/10 to-transparent rounded-full" />
       </div>
 
       {/* SECTION 1: HERO */}
@@ -322,7 +323,7 @@ function HomePageContent() {
             exit={{ opacity: 0, y: 30 }}
             transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
             className="relative z-10 min-h-screen flex flex-col justify-start pt-20 pb-24"
-            style={{ background: "linear-gradient(to bottom, rgba(11,15,20,0) 0%, rgba(11,15,20,1) 80px)" }}
+            style={{ background: "linear-gradient(to bottom, rgba(7,7,11,0) 0%, rgba(7,7,11,1) 80px)" }}
           >
             {/* Deep amethyst ambient */}
             <div className="pointer-events-none absolute inset-0 overflow-hidden z-0">
@@ -442,13 +443,16 @@ function HomePageContent() {
       />
 
       <TalentOnboardingDialogFey open={talentAuthOpen} onClose={() => setTalentAuthOpen(false)} onSuccess={() => {}} />
+
+      {/* Bottom dock — activates post sign-in on landing page */}
+      {session?.user && <BottomDock />}
     </main>
   );
 }
 
 export default function HomePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#0B0F14]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#07070B]" />}>
       <HomePageContent />
     </Suspense>
   );

@@ -46,6 +46,16 @@ function getSeasonalBanner(): { title: string; subtitle: string } | null {
   return null;
 }
 
+// Package category → Fey-style subtle background tint
+const CATEGORY_TINT: Record<string, string> = {
+  ugc:       "rgba(124,92,255,0.06)",
+  social:    "rgba(34,211,238,0.05)",
+  video:     "rgba(16,185,129,0.05)",
+  seasonal:  "rgba(234,179,8,0.05)",
+  awareness: "rgba(99,102,241,0.05)",
+  performance: "rgba(249,115,22,0.05)",
+};
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function QuickBookPanel() {
@@ -159,6 +169,7 @@ export function QuickBookPanel() {
 function QuickBookCard({ pkg, onSelect }: { pkg: PackageConfig; onSelect: (p: PackageConfig) => void }) {
   const isElite = pkg.tier === "elite";
   const isSeasonal = pkg.category === "seasonal";
+  const tint = CATEGORY_TINT[pkg.category] ?? "rgba(255,255,255,0.025)";
 
   return (
     <motion.button
@@ -166,23 +177,13 @@ function QuickBookCard({ pkg, onSelect }: { pkg: PackageConfig; onSelect: (p: Pa
       onClick={() => onSelect(pkg)}
       whileHover={{ scale: 1.012 }}
       whileTap={{ scale: 0.988 }}
-      className={cn(
-        "group relative text-left w-full rounded-2xl border transition-all duration-200 overflow-hidden",
-        isSeasonal
-          ? "bg-amber-500/[0.05] border-amber-400/[0.14] hover:border-amber-400/[0.25] hover:bg-amber-500/[0.09]"
-          : isElite
-            ? "bg-white/[0.04] border-white/[0.10] hover:border-white/[0.18] hover:bg-white/[0.07]"
-            : "bg-white/[0.025] border-white/[0.07] hover:border-white/[0.14] hover:bg-white/[0.05]"
-      )}
+      className="group relative text-left w-full rounded-2xl transition-all duration-200 overflow-hidden"
+      style={{
+        background: tint,
+        border: "none",
+        boxShadow: "none",
+      }}
     >
-      {/* Elite shimmer top edge */}
-      {isElite && (
-        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent" />
-      )}
-      {isSeasonal && (
-        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-amber-400/40 to-transparent" />
-      )}
-
       <div className="p-4">
         <div className="flex items-start justify-between mb-2.5">
           <div>
@@ -192,12 +193,7 @@ function QuickBookCard({ pkg, onSelect }: { pkg: PackageConfig; onSelect: (p: Pa
             </div>
             <p className="text-[10px] text-white/32 leading-relaxed">{pkg.tagline}</p>
           </div>
-          <div className={cn(
-            "shrink-0 ml-2 px-2 py-0.5 rounded-full text-[9px] font-medium",
-            isSeasonal ? "bg-amber-500/[0.18] text-amber-300/70"
-              : isElite ? "bg-white/[0.09] text-white/55"
-              : "bg-white/[0.05] text-white/32"
-          )}>
+          <div className="shrink-0 ml-2 px-2 py-0.5 rounded-full text-[9px] font-medium bg-white/[0.05] text-white/32">
             {isSeasonal ? "Seasonal" : isElite ? "Elite" : "Starter"}
           </div>
         </div>
@@ -215,7 +211,7 @@ function QuickBookCard({ pkg, onSelect }: { pkg: PackageConfig; onSelect: (p: Pa
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-2.5 border-t border-white/[0.05]">
+        <div className="flex items-center justify-between pt-2.5">
           <div>
             <p className="text-[11px] font-medium text-white/60">{getPackagePriceLabel(pkg)}</p>
             <p className="text-[9px] text-white/22 mt-0.5">{pkg.priceNote}</p>

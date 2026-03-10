@@ -39,7 +39,7 @@ function BalanceTile({
         />
       )}
       <p
-        className="text-[10px] font-semibold uppercase tracking-widest mb-2"
+        className="text-[11px] font-semibold uppercase tracking-widest mb-2"
         style={{ color: feyTokens.colors.text.label }}
       >
         {label}
@@ -63,7 +63,7 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
   return (
     <button
       onClick={onClick}
-      className="px-4 py-2 text-[12px] font-medium rounded-lg transition-all"
+      className="px-4 py-2 text-[13px] font-medium rounded-lg transition-all"
       style={{
         background: active ? "rgba(124,92,255,0.12)" : "transparent",
         border: `1px solid ${active ? "rgba(124,92,255,0.35)" : "rgba(255,255,255,0.06)"}`,
@@ -120,7 +120,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
           <button
             key={face}
             onClick={() => setPayFace(face)}
-            className="px-4 py-1.5 text-[11px] font-medium transition-colors capitalize"
+            className="px-4 py-1.5 text-[12px] font-medium transition-colors capitalize"
             style={{
               background: payFace === face ? "rgba(255,255,255,0.10)" : "transparent",
               color: payFace === face ? feyTokens.colors.text.primary : feyTokens.colors.text.muted,
@@ -130,7 +130,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
           </button>
         ))}
       </div>
-      <span className="text-[11px]" style={{ color: feyTokens.colors.text.muted }}>
+      <span className="text-[12px]" style={{ color: feyTokens.colors.text.muted }}>
         {activeCampaign?.name || "All campaigns"}
       </span>
     </div>
@@ -139,7 +139,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
   const headerRight = (
     <div className="flex items-center gap-2">
       <button
-        className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-[11px] font-semibold transition-colors"
+        className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-semibold transition-colors"
         style={{
           background: "rgba(255,255,255,0.95)",
           color: "#07070B",
@@ -236,7 +236,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
           {activeTab === "invoices" && (
             <>
               {["Invoice #", "Campaign", "Amount", "Status", "Due Date", "Actions"].map((h) => (
-                <span key={h} className="text-[9px] font-semibold uppercase tracking-widest"
+                <span key={h} className="text-[11px] font-semibold uppercase tracking-widest"
                   style={{ color: feyTokens.colors.text.label }}>{h}</span>
               ))}
             </>
@@ -244,7 +244,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
           {activeTab === "payouts" && (
             <>
               {["Creator", "Amount", "Status", "Scheduled", "Method"].map((h) => (
-                <span key={h} className="text-[9px] font-semibold uppercase tracking-widest"
+                <span key={h} className="text-[11px] font-semibold uppercase tracking-widest"
                   style={{ color: feyTokens.colors.text.label }}>{h}</span>
               ))}
             </>
@@ -252,7 +252,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
           {activeTab === "transactions" && (
             <>
               {["Date", "Type", "Amount", "Status", "Reference"].map((h) => (
-                <span key={h} className="text-[9px] font-semibold uppercase tracking-widest"
+                <span key={h} className="text-[11px] font-semibold uppercase tracking-widest"
                   style={{ color: feyTokens.colors.text.label }}>{h}</span>
               ))}
             </>
@@ -277,11 +277,11 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
               alignItems: "center",
             }}
           >
-            <span className="text-[12px] font-medium" style={{ color: feyTokens.colors.text.primary }}>{inv.invoiceNumber}</span>
-            <span className="text-[12px]" style={{ color: feyTokens.colors.text.secondary }}>{inv.campaign}</span>
-            <span className="text-[12px] font-medium tabular-nums" style={{ color: feyTokens.colors.text.primary }}>AED {inv.amount.toLocaleString()}</span>
+            <span className="text-[13px] font-medium" style={{ color: feyTokens.colors.text.primary }}>{inv.invoiceNumber}</span>
+            <span className="text-[13px]" style={{ color: feyTokens.colors.text.secondary }}>{inv.campaign}</span>
+            <span className="text-[13px] font-medium tabular-nums" style={{ color: feyTokens.colors.text.primary }}>AED {inv.amount.toLocaleString()}</span>
             <StatusBadge status={inv.status} />
-            <span className="text-[12px]" style={{ color: feyTokens.colors.text.muted }}>
+            <span className="text-[13px]" style={{ color: feyTokens.colors.text.muted }}>
               {inv.dueDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
             </span>
             <div className="flex items-center gap-2">
@@ -307,13 +307,13 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
               alignItems: "center",
             }}
           >
-            <span className="text-[12px] font-medium" style={{ color: feyTokens.colors.text.primary }}>{po.creator}</span>
-            <span className="text-[12px] font-medium tabular-nums" style={{ color: feyTokens.colors.text.primary }}>AED {po.amount.toLocaleString()}</span>
+            <span className="text-[13px] font-medium" style={{ color: feyTokens.colors.text.primary }}>{po.creator}</span>
+            <span className="text-[13px] font-medium tabular-nums" style={{ color: feyTokens.colors.text.primary }}>AED {po.amount.toLocaleString()}</span>
             <StatusBadge status={po.status} />
-            <span className="text-[12px]" style={{ color: feyTokens.colors.text.muted }}>
+            <span className="text-[13px]" style={{ color: feyTokens.colors.text.muted }}>
               {po.scheduledDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
             </span>
-            <span className="text-[12px]" style={{ color: feyTokens.colors.text.muted }}>{po.method}</span>
+            <span className="text-[13px]" style={{ color: feyTokens.colors.text.muted }}>{po.method}</span>
           </div>
         ))}
         {activeTab === "transactions" && (

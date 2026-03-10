@@ -93,6 +93,24 @@ const getNextDue = (card: TalentCampaignCard): string | null => {
 // Subtle FIFA-like silhouette with FLAT bottom (no notch) so it never covers content.
 const cardClip = "polygon(6% 0, 94% 0, 100% 8%, 100% 100%, 0 100%, 0 8%)";
 
+// Role → subtle Fey-style background tint (matches package card accent intensity ~0.03–0.05)
+const ROLE_TINT: Record<string, { bg: string; shimmer: string }> = {
+  "UGC Creator":          { bg: "rgba(124,92,255,0.04)",  shimmer: "rgba(124,92,255,0.20)" },
+  "Content Creator":      { bg: "rgba(34,211,238,0.03)",  shimmer: "rgba(34,211,238,0.16)" },
+  Videographer:           { bg: "rgba(16,185,129,0.04)",  shimmer: "rgba(16,185,129,0.18)" },
+  Photographer:           { bg: "rgba(234,179,8,0.03)",   shimmer: "rgba(234,179,8,0.16)" },
+  Copywriter:             { bg: "rgba(132,204,22,0.03)",  shimmer: "rgba(132,204,22,0.14)" },
+  Editor:                 { bg: "rgba(6,182,212,0.03)",   shimmer: "rgba(6,182,212,0.16)" },
+  Influencer:             { bg: "rgba(249,115,22,0.03)",  shimmer: "rgba(249,115,22,0.14)" },
+  Designer:               { bg: "rgba(236,72,153,0.03)",  shimmer: "rgba(236,72,153,0.16)" },
+  Strategist:             { bg: "rgba(99,102,241,0.04)",  shimmer: "rgba(99,102,241,0.18)" },
+  Producer:               { bg: "rgba(20,184,166,0.03)",  shimmer: "rgba(20,184,166,0.16)" },
+  "Social Media Manager": { bg: "rgba(168,85,247,0.03)",  shimmer: "rgba(168,85,247,0.16)" },
+};
+function getRoleTint(role: string): { bg: string; shimmer: string } {
+  return ROLE_TINT[role] ?? { bg: "rgba(255,255,255,0.03)", shimmer: "rgba(255,255,255,0.12)" };
+}
+
 export function TalentCard({ card, isSelected, onClick, onFlip, avatarUrl, isHighlighted }: TalentCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -103,6 +121,7 @@ export function TalentCard({ card, isSelected, onClick, onFlip, avatarUrl, isHig
   const nextDue = getNextDue(card);
   const approvedDeliverables = card.deliverables.filter((d) => d.status === "Approved").length;
   const totalDeliverables = card.deliverables.length;
+  const roleTint = getRoleTint(card.talentRole || "");
 
   const handleFlip = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -170,43 +189,31 @@ export function TalentCard({ card, isSelected, onClick, onFlip, avatarUrl, isHig
           transition: "transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1)",
         }}
       >
-        {/* Front Side - Angular card with subtle shadows */}
+        {/* Front Side - Package-card style: neutral glass + subtle role tint */}
         <div
           className="absolute inset-0 flex flex-col cursor-pointer overflow-hidden"
           style={{
             backfaceVisibility: "hidden",
-            clipPath: cardClip,
-            borderRadius: "10px",
+            borderRadius: "16px",
             transform: `rotateY(0deg)`,
             transition: "transform 180ms ease-out",
             padding: "18px",
-            background: "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(0,0,0,0.65) 100%)",
-            border: `1px solid ${
-              isSelected || isHighlighted ? "rgba(255,255,255,0.12)" : isHovered ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.06)"
-            }`,
+            background: `linear-gradient(135deg, ${roleTint.bg} 0%, rgba(255,255,255,0.015) 100%)`,
             boxShadow: isHighlighted
-              ? "0 8px 24px rgba(0,0,0,0.45), 0 0 0 1px rgba(91,63,214,0.15), 0 0 12px rgba(91,63,214,0.12), inset 0 1px 0 rgba(255,255,255,0.03)"
+              ? "0 8px 24px rgba(0,0,0,0.45), 0 0 0 1px rgba(91,63,214,0.15), inset 0 1px 0 rgba(255,255,255,0.08)"
               : isSelected
-                ? "0 6px 20px rgba(0,0,0,0.40), 0 0 0 1px rgba(91,63,214,0.12), 0 0 8px rgba(91,63,214,0.08), inset 0 1px 0 rgba(255,255,255,0.03)"
-                : isHovered
-                  ? "0 4px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.03)"
-                  : "0 3px 12px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.02)",
+                ? "0 6px 28px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.10)"
+                : "0 4px 20px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.06)",
           }}
           onClick={onClick}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          {/* Inner stroke */}
+          {/* Top shimmer line — accent-colored like LandingTalentCard */}
           <div
-            className="absolute inset-[10px] pointer-events-none"
-            style={{
-            clipPath: cardClip,
-            borderRadius: "0px",
-            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
-            opacity: 0.9,
-          }}
-        />
-
+            className="absolute inset-x-0 top-0 h-[1px] pointer-events-none z-10"
+            style={{ background: `linear-gradient(90deg, transparent, ${roleTint.shimmer}, transparent)` }}
+          />
           {/* Content */}
           <div className="relative z-10 flex flex-col h-full min-h-0">
             {/* Top row: role + flip trigger */}
@@ -363,12 +370,10 @@ export function TalentCard({ card, isSelected, onClick, onFlip, avatarUrl, isHig
           style={{
             backfaceVisibility: "hidden",
             transform: "rotateY(180deg)",
-            clipPath: cardClip,
-            borderRadius: "0px",
+            borderRadius: "16px",
             padding: "18px",
-            background: "linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.70) 100%)",
-            border: "1px solid rgba(255,255,255,0.10)",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.03)",
+            background: "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.06)",
           }}
         >
           <div className="flex flex-col h-full">
