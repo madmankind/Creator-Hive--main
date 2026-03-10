@@ -389,15 +389,6 @@ function CardBack({
 export function LandingTalentCard({ talent, isAdded, onAdd, onBook, curatedTalent, matchScore, packageMatch }: LandingTalentCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [showExpandModal, setShowExpandModal] = useState(false);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setPrefersReducedMotion(mq.matches);
-    const h = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
-    mq.addEventListener("change", h);
-    return () => mq.removeEventListener("change", h);
-  }, []);
 
   useEffect(() => {
     if (!showExpandModal) return;
@@ -429,38 +420,33 @@ export function LandingTalentCard({ talent, isAdded, onAdd, onBook, curatedTalen
           </>
         )}
 
-        {/* 3D flip or crossfade */}
-        <div className="relative w-full h-full" style={{ perspective: prefersReducedMotion ? "none" : "1200px", WebkitPerspective: prefersReducedMotion ? "none" : "1200px" }}>
-          {prefersReducedMotion ? (
-            <AnimatePresence mode="wait">
-              {!isFlipped ? (
-                <motion.div key="front" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="w-full h-full">
-                  <CardFront talent={talent} curatedTalent={curatedTalent} isAdded={isAdded} onAdd={onAdd} onBook={onBook} packageMatch={packageMatch} matchScore={matchScore} onFlip={() => setIsFlipped(true)} onExpand={() => setShowExpandModal(true)} />
-                </motion.div>
-              ) : (
-                <motion.div key="back" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="w-full h-full">
-                  <CardBack curatedTalent={curatedTalent} matchScore={matchScore} onFlip={() => setIsFlipped(false)} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          ) : (
-            <div
-              className="relative w-full h-full transition-transform duration-500"
-              style={{
-                transformStyle: "preserve-3d",
-                WebkitTransformStyle: "preserve-3d",
-                transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
-                WebkitTransform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
-              }}
-            >
-              <div className="absolute inset-0" style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}>
+        {/* Crossfade flip — works in all browsers, no 3D/overflow conflicts */}
+        <div className="relative w-full h-full">
+          <AnimatePresence mode="wait">
+            {!isFlipped ? (
+              <motion.div
+                key="front"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18 }}
+                className="absolute inset-0"
+              >
                 <CardFront talent={talent} curatedTalent={curatedTalent} isAdded={isAdded} onAdd={onAdd} onBook={onBook} packageMatch={packageMatch} matchScore={matchScore} onFlip={() => setIsFlipped(true)} onExpand={() => setShowExpandModal(true)} />
-              </div>
-              <div className="absolute inset-0" style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg)", WebkitTransform: "rotateY(180deg)" }}>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="back"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18 }}
+                className="absolute inset-0"
+              >
                 <CardBack curatedTalent={curatedTalent} matchScore={matchScore} onFlip={() => setIsFlipped(false)} />
-              </div>
-            </div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Expand modal */}
