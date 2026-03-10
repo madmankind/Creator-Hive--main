@@ -430,7 +430,7 @@ export function LandingTalentCard({ talent, isAdded, onAdd, onBook, curatedTalen
         )}
 
         {/* 3D flip or crossfade */}
-        <div className="relative w-full h-full" style={{ perspective: prefersReducedMotion ? "none" : "1000px" }}>
+        <div className="relative w-full h-full" style={{ perspective: prefersReducedMotion ? "none" : "1200px", WebkitPerspective: prefersReducedMotion ? "none" : "1200px" }}>
           {prefersReducedMotion ? (
             <AnimatePresence mode="wait">
               {!isFlipped ? (
@@ -446,12 +446,17 @@ export function LandingTalentCard({ talent, isAdded, onAdd, onBook, curatedTalen
           ) : (
             <div
               className="relative w-full h-full transition-transform duration-500"
-              style={{ transformStyle: "preserve-3d", transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)" }}
+              style={{
+                transformStyle: "preserve-3d",
+                WebkitTransformStyle: "preserve-3d",
+                transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
+                WebkitTransform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
+              }}
             >
-              <div className="absolute inset-0" style={{ backfaceVisibility: "hidden" }}>
+              <div className="absolute inset-0" style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}>
                 <CardFront talent={talent} curatedTalent={curatedTalent} isAdded={isAdded} onAdd={onAdd} onBook={onBook} packageMatch={packageMatch} matchScore={matchScore} onFlip={() => setIsFlipped(true)} onExpand={() => setShowExpandModal(true)} />
               </div>
-              <div className="absolute inset-0" style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
+              <div className="absolute inset-0" style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg)", WebkitTransform: "rotateY(180deg)" }}>
                 <CardBack curatedTalent={curatedTalent} matchScore={matchScore} onFlip={() => setIsFlipped(false)} />
               </div>
             </div>
