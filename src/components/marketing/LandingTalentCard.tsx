@@ -11,28 +11,6 @@ import { cn } from "@/lib/utils";
 import { Tooltip, TooltipProvider } from "@/components/ui/tooltip";
 import { PrismBadge } from "@/components/prism/PrismBadge";
 
-// Role → subtle Fey-style background tint (matches package card accent intensity ~8-10%)
-const ROLE_TINT: Record<string, { bg: string; shimmer: string }> = {
-  "UGC Creator":          { bg: "rgba(124,92,255,0.09)",  shimmer: "rgba(124,92,255,0.35)" },   // amethyst
-  "Content Creator":      { bg: "rgba(34,211,238,0.07)",  shimmer: "rgba(34,211,238,0.25)" },   // cyan
-  Videographer:           { bg: "rgba(16,185,129,0.08)",  shimmer: "rgba(16,185,129,0.28)" },   // emerald
-  Photographer:           { bg: "rgba(234,179,8,0.08)",   shimmer: "rgba(234,179,8,0.28)" },    // amber
-  Copywriter:             { bg: "rgba(132,204,22,0.07)",  shimmer: "rgba(132,204,22,0.25)" },   // lime
-  Editor:                 { bg: "rgba(6,182,212,0.08)",   shimmer: "rgba(6,182,212,0.28)" },    // sky
-  Influencer:             { bg: "rgba(249,115,22,0.07)",  shimmer: "rgba(249,115,22,0.25)" },   // orange
-  Designer:               { bg: "rgba(236,72,153,0.08)",  shimmer: "rgba(236,72,153,0.28)" },   // pink
-  Strategist:             { bg: "rgba(99,102,241,0.08)",  shimmer: "rgba(99,102,241,0.28)" },   // indigo
-  Producer:               { bg: "rgba(20,184,166,0.08)",  shimmer: "rgba(20,184,166,0.28)" },   // teal
-  "Social Media Manager": { bg: "rgba(168,85,247,0.08)",  shimmer: "rgba(168,85,247,0.28)" },   // violet
-};
-const DEFAULT_TINT = { bg: "rgba(255,255,255,0.03)", shimmer: "rgba(255,255,255,0.12)" };
-function getRoleTint(roles: string[]): { bg: string; shimmer: string } {
-  for (const r of roles) {
-    if (ROLE_TINT[r]) return ROLE_TINT[r];
-  }
-  return DEFAULT_TINT;
-}
-
 type LandingTalentCardProps = {
   talent: Talent;
   isAdded?: boolean;
@@ -239,7 +217,7 @@ function CardFront({
       </div>
 
       {/* Actions */}
-      <div className="mt-auto shrink-0 pt-3 flex items-center gap-2" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+      <div className="mt-auto shrink-0 pt-3 border-t border-white/[0.08] flex items-center gap-2">
         <Tooltip content={isAdded ? "In pod" : "Add to pod"}>
           <button
             type="button"
@@ -413,8 +391,6 @@ export function LandingTalentCard({ talent, isAdded, onAdd, onBook, curatedTalen
   const [showExpandModal, setShowExpandModal] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
-  const roleTint = getRoleTint(talent.roles);
-
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     setPrefersReducedMotion(mq.matches);
@@ -434,30 +410,23 @@ export function LandingTalentCard({ talent, isAdded, onAdd, onBook, curatedTalen
     <TooltipProvider>
       <motion.article
         className={cn(
-          "group relative rounded-2xl p-5",
+          "group relative rounded-2xl bg-white/[0.05] p-5 ring-1 ring-white/[0.09]",
           "w-[380px] h-[300px] flex-shrink-0 cursor-pointer select-none overflow-hidden",
-          "transition-all duration-300"
+          "transition-shadow duration-300",
+          packageMatch
+            ? "ring-white/[0.15] hover:shadow-[0_0_32px_rgba(255,255,255,0.07)]"
+            : "hover:ring-white/[0.16] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
         )}
-        style={{
-          background: roleTint.bg,
-          boxShadow: "0 4px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.07)",
-        }}
-        whileHover={{
-          boxShadow: `0 8px 36px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.10)`,
-        }}
       >
-        {/* Top shimmer line — always present, accent-colored */}
-        <div
-          className="absolute inset-x-0 top-0 h-[1px] pointer-events-none z-10"
-          style={{ background: `linear-gradient(90deg, transparent, ${roleTint.shimmer}, transparent)` }}
-        />
-
-        {/* Package badge */}
+        {/* Package shimmer */}
         {packageMatch && (
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 px-2.5 py-0.5 rounded-b-lg bg-white/[0.06] ring-1 ring-white/[0.10] text-[9px] text-white/40 pointer-events-none">
-            <span className="text-[10px]">{packageMatch.packageEmoji}</span>
-            <span>{packageMatch.packageName}</span>
-          </div>
+          <>
+            <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none z-10" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 px-2.5 py-0.5 rounded-b-lg bg-white/[0.06] ring-1 ring-t-0 ring-white/[0.10] text-[9px] text-white/40 pointer-events-none">
+              <span className="text-[10px]">{packageMatch.packageEmoji}</span>
+              <span>{packageMatch.packageName}</span>
+            </div>
+          </>
         )}
 
         {/* 3D flip or crossfade */}
