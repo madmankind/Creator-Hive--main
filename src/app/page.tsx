@@ -5,8 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { HeroBar } from "@/components/HeroBar";
 import { TalentCarousel } from "@/components/marketing/TalentCarousel";
 import { BottomDock } from "@/components/nav/BottomDock";
-import { ClientAuthDialog } from "@/components/auth/ClientAuthDialog";
-import { TalentOnboardingDialogFey } from "@/components/auth/TalentOnboardingDialogFey";
+import { HiveAuthModal } from "@/components/auth/HiveAuthModal";
 import { PodSetupOverlay } from "@/features/pod-setup/PodSetupOverlay";
 import { CampaignSetupBoard } from "@/features/campaign/CampaignSetupBoard";
 import { PackageSelector } from "@/features/campaign/PackageSelector";
@@ -220,13 +219,6 @@ function HomePageContent() {
                   onRolesChange={(roles) => setSelectedRoles(roles)}
                   onDiscover={() => setTalentAuthOpen(true)}
                 />
-                <button
-                  type="button"
-                  onClick={() => setTalentAuthOpen(true)}
-                  className="px-8 py-3 bg-white text-[#0B0F14] rounded-xl text-[13px] font-medium hover:bg-white/90 transition-all shadow-[0_4px_28px_rgba(255,255,255,0.10)]"
-                >
-                  Apply to join the Hive →
-                </button>
               </motion.div>
             )}
           </AnimatePresence>
@@ -441,8 +433,9 @@ function HomePageContent() {
 
       <PodSetupOverlay />
 
-      <ClientAuthDialog
+      <HiveAuthModal
         open={clientAuthOpen}
+        mode="client"
         onClose={() => { setClientAuthOpen(false); setPendingDiscover(false); }}
         onSuccess={() => {
           if (pendingDiscover) {
@@ -453,7 +446,12 @@ function HomePageContent() {
         }}
       />
 
-      <TalentOnboardingDialogFey open={talentAuthOpen} onClose={() => setTalentAuthOpen(false)} onSuccess={() => {}} />
+      <HiveAuthModal
+        open={talentAuthOpen}
+        mode="talent"
+        onClose={() => setTalentAuthOpen(false)}
+        onSuccess={() => {}}
+      />
 
       {/* Bottom dock — activates post sign-in on landing page */}
       {session?.user && <BottomDock />}
