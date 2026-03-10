@@ -36,10 +36,10 @@ export function CampaignSwitcher() {
     close();
   };
 
-  // New campaign — routes to booking flow (campaign creation IS the booking flow)
+  // New campaign — return to home welcome page so booking flow starts fresh
   const handleNew = () => {
     close();
-    router.push("/?skip=gallery");
+    router.push("/");
   };
 
   // Duplicate current team into another campaign

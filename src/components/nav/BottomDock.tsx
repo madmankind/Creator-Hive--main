@@ -3,10 +3,10 @@
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { BarChart3, Users, CreditCard, Home } from "lucide-react";
 import { feyTokens } from "@/lib/fey-design-tokens";
-import { Suspense } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
 const MAIN_ITEMS = [
-  { id: "home",   label: "Home",   icon: Home,       route: "/",                               isExternal: true },
+  { id: "home",   label: "Home",   icon: Home,       route: "/" },
   { id: "track",  label: "Track",  icon: BarChart3,  route: "/dashboard/campaigns?mode=track" },
   { id: "manage", label: "Manage", icon: Users,      route: "/dashboard/campaigns?mode=manage" },
   { id: "pay",    label: "Pay",    icon: CreditCard, route: "/dashboard/campaigns?mode=pay" },
@@ -17,6 +17,25 @@ function BottomDockInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentMode = searchParams.get("mode") || "track";
+
+  // Scroll-fade: dim to 20% while scrolling, restore after 600ms idle
+  const [opacity, setOpacity] = useState(1);
+  const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hovered = useRef(false);
+
+  useEffect(() => {
+    const onScroll = () => {
+      if (hovered.current) return;
+      setOpacity(0.18);
+      if (scrollTimer.current) clearTimeout(scrollTimer.current);
+      scrollTimer.current = setTimeout(() => setOpacity(1), 600);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (scrollTimer.current) clearTimeout(scrollTimer.current);
+    };
+  }, []);
 
   const isActive = (id: string) => {
     if (id === "home") return pathname === "/";
@@ -33,7 +52,12 @@ function BottomDockInner() {
   };
 
   return (
-    <div className="fixed left-0 right-0 bottom-0 z-50" style={{ height: "88px", pointerEvents: "none" }}>
+    <div
+      className="fixed left-0 right-0 bottom-0 z-50"
+      style={{ height: "88px", pointerEvents: "none", opacity, transition: "opacity 0.4s ease" }}
+      onMouseEnter={() => { hovered.current = true; setOpacity(1); if (scrollTimer.current) clearTimeout(scrollTimer.current); }}
+      onMouseLeave={() => { hovered.current = false; }}
+    >
       <div className="absolute left-1/2 -translate-x-1/2 bottom-6 flex items-center gap-3" style={{ pointerEvents: "auto" }}>
 
         {/* ── Main pill ── */}

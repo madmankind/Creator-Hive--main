@@ -90,6 +90,18 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
     } catch { /* leave defaults */ }
   }, []);
 
+  // Seed KPIs from local campaign data when no API data yet
+  useEffect(() => {
+    if (!activeCampaign) return;
+    if (activeCampaign.budget > 0 && kpis.spend === "—") {
+      setKpis(prev => ({
+        ...prev,
+        spend: prev.spend !== "—" ? prev.spend : `AED ${activeCampaign.budget.toLocaleString()} (planned)`,
+        remaining: prev.remaining !== "—" ? prev.remaining : `AED ${activeCampaign.budget.toLocaleString()}`,
+      }));
+    }
+  }, [activeCampaign?.id, activeCampaign?.budget, kpis.spend]);
+
   useEffect(() => {
     if (activeCampaign?.id) fetchKpis(activeCampaign.id);
   }, [activeCampaign?.id, fetchKpis]);
@@ -147,6 +159,38 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
       <div className="grid gap-6" style={{ gridTemplateColumns: showInsights ? "1fr 300px" : "1fr" }}>
         {/* Main column */}
         <div className="space-y-6 min-w-0">
+
+          {/* Campaign brief summary bar */}
+          {activeCampaign && (activeCampaign.talentNames?.length || activeCampaign.startDate || activeCampaign.objectives?.length) && (
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 rounded-xl"
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              {activeCampaign.objectives && activeCampaign.objectives.length > 0 && (
+                <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.45)" }}>
+                  <span style={{ color: "rgba(255,255,255,0.25)" }}>Objectives </span>
+                  {activeCampaign.objectives.map((o: string) => o.charAt(0).toUpperCase() + o.slice(1)).join(" · ")}
+                </span>
+              )}
+              {activeCampaign.startDate && (
+                <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.45)" }}>
+                  <span style={{ color: "rgba(255,255,255,0.25)" }}>Dates </span>
+                  {String(activeCampaign.startDate)}{activeCampaign.endDate ? ` → ${String(activeCampaign.endDate)}` : ""}
+                </span>
+              )}
+              {activeCampaign.talentNames && activeCampaign.talentNames.length > 0 && (
+                <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.45)" }}>
+                  <span style={{ color: "rgba(255,255,255,0.25)" }}>Talent </span>
+                  {activeCampaign.talentNames.slice(0, 3).join(", ")}{activeCampaign.talentNames.length > 3 ? ` +${activeCampaign.talentNames.length - 3}` : ""}
+                </span>
+              )}
+              {activeCampaign.budget > 0 && (
+                <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.45)" }}>
+                  <span style={{ color: "rgba(255,255,255,0.25)" }}>Budget </span>
+                  AED {activeCampaign.budget.toLocaleString()}
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Chart */}
           <TrackChart
             timeRange={timeRange}

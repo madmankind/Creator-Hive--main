@@ -358,7 +358,7 @@ function HomePageContent() {
       <AnimatePresence>
         {showTalentGallery && selectedPodIds.length > 0 && !showCampaignBoard && (
           <motion.div
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[min(720px,94vw)]"
+            className="fixed bottom-[calc(88px+16px)] left-1/2 -translate-x-1/2 z-40 w-[min(720px,94vw)]"
             initial={{ opacity: 0, y: 24, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.97 }}

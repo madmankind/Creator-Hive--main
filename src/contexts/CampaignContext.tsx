@@ -20,6 +20,13 @@ export interface Campaign {
   clientName?: string;
   startDate?: string | Date;
   endDate?: string | Date;
+  // Enriched from booking flow
+  talentIds?: string[];
+  talentNames?: string[];
+  bookingType?: "campaign" | "retainer";
+  paymentSchedule?: "milestone_50_50" | "upfront_100" | "monthly";
+  notes?: string;
+  objectives?: string[];
 }
 
 interface CampaignContextType {

@@ -222,9 +222,17 @@ export function CampaignSetupBoard({
       id: localId,
       name: state.campaignName || "Untitled Campaign",
       objective: state.objectives[0] ?? "awareness",
+      objectives: state.objectives,
       budget: parseInt(state.totalBudget.replace(/,/g, "")) || 0,
       spend: 0,
       status: "active",
+      startDate: state.startDate || undefined,
+      endDate: state.endDate || undefined,
+      bookingType: state.bookingType,
+      paymentSchedule: state.paymentSchedule,
+      notes: state.notes || undefined,
+      talentIds: talents.map((t) => t.id),
+      talentNames: talents.map((t) => t.name),
     });
     fetch("/api/bookings", {
       method: "POST",

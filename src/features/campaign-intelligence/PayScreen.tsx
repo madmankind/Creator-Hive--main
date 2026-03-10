@@ -103,11 +103,23 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
 
   const paid = invoices.filter((i) => i.status === "Paid").reduce((s, i) => s + i.amount, 0);
   const outstanding = invoices.filter((i) => i.status !== "Paid").reduce((s, i) => s + i.amount, 0);
-  const total = paid + outstanding;
+  // Fall back to campaign budget when no API ledger data exists yet
+  const budgetFromCampaign = activeCampaign?.budget ?? 0;
+  const total = (paid + outstanding) > 0 ? paid + outstanding : budgetFromCampaign;
   const upcomingPayouts = payouts.filter((p) => p.status !== "Paid").reduce((s, p) => s + p.amount, 0);
   const spendPct = total > 0 ? Math.round((paid / total) * 100) : 0;
 
   const fmt = (n: number) => `AED ${n > 0 ? n.toLocaleString() : "0"}`;
+
+  // Payment schedule label from campaign context
+  const SCHEDULE_LABELS: Record<string, string> = {
+    milestone_50_50: "50 / 50 Milestone",
+    upfront_100: "100% Upfront",
+    monthly: "Monthly Retainer",
+  };
+  const scheduleLabel = activeCampaign?.paymentSchedule
+    ? SCHEDULE_LABELS[activeCampaign.paymentSchedule] ?? activeCampaign.paymentSchedule
+    : null;
 
   // Header
   const headerLeft = (
@@ -169,6 +181,29 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
     <DashboardShell headerLeft={headerLeft} headerRight={headerRight}>
       {/* Hero balance section */}
       <div className="mb-8">
+        {/* Campaign meta from briefing */}
+        {activeCampaign && (activeCampaign.talentNames?.length || scheduleLabel) && (
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 mb-4 px-4 py-2.5 rounded-xl"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            {scheduleLabel && (
+              <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.45)" }}>
+                <span style={{ color: "rgba(255,255,255,0.25)" }}>Schedule </span>{scheduleLabel}
+              </span>
+            )}
+            {activeCampaign.bookingType && (
+              <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.45)" }}>
+                <span style={{ color: "rgba(255,255,255,0.25)" }}>Type </span>
+                {activeCampaign.bookingType === "retainer" ? "Monthly Retainer" : "Per Campaign"}
+              </span>
+            )}
+            {activeCampaign.talentNames && activeCampaign.talentNames.length > 0 && (
+              <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.45)" }}>
+                <span style={{ color: "rgba(255,255,255,0.25)" }}>Talent </span>
+                {activeCampaign.talentNames.slice(0, 3).join(", ")}{activeCampaign.talentNames.length > 3 ? ` +${activeCampaign.talentNames.length - 3}` : ""}
+              </span>
+            )}
+          </div>
+        )}
         <div className="flex items-end gap-3 mb-2">
           <p
             className="text-[52px] font-light tracking-tight leading-none"
