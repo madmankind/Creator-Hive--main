@@ -145,14 +145,6 @@ export function ManageLayoutV2({
               position: "relative",
               zIndex: 50,
               overflow: "visible",
-              background: "rgba(7,7,11,0.30)",
-              backdropFilter: "blur(24px)",
-              WebkitBackdropFilter: "blur(24px)",
-              borderBottom: "1px solid rgba(255,255,255,0.05)",
-              marginLeft: "-24px",
-              marginRight: "-24px",
-              paddingLeft: "24px",
-              paddingRight: "24px",
             }}
           >
             {/* Brand wordmark */}
