@@ -189,21 +189,24 @@ export function TalentCard({ card, isSelected, onClick, onFlip, avatarUrl, isHig
           transition: "transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1)",
         }}
       >
-        {/* Front Side - Package-card style: neutral glass + subtle role tint */}
+        {/* Front Side - Fey-glass card with role accent */}
         <div
           className="absolute inset-0 flex flex-col cursor-pointer overflow-hidden"
           style={{
             backfaceVisibility: "hidden",
-            borderRadius: "16px",
+            clipPath: cardClip,
+            borderRadius: "10px",
             transform: `rotateY(0deg)`,
             transition: "transform 180ms ease-out",
             padding: "18px",
-            background: `linear-gradient(135deg, ${roleTint.bg} 0%, rgba(255,255,255,0.015) 100%)`,
+            background: `linear-gradient(160deg, ${roleTint.bg} 0%, rgba(0,0,0,0.55) 100%)`,
             boxShadow: isHighlighted
-              ? "0 8px 24px rgba(0,0,0,0.45), 0 0 0 1px rgba(91,63,214,0.15), inset 0 1px 0 rgba(255,255,255,0.08)"
+              ? "0 8px 24px rgba(0,0,0,0.45), 0 0 0 1px rgba(91,63,214,0.15), 0 0 12px rgba(91,63,214,0.12), inset 0 1px 0 rgba(255,255,255,0.03)"
               : isSelected
-                ? "0 6px 28px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.10)"
-                : "0 4px 20px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.06)",
+                ? "0 6px 20px rgba(0,0,0,0.40), 0 0 0 1px rgba(91,63,214,0.12), 0 0 8px rgba(91,63,214,0.08), inset 0 1px 0 rgba(255,255,255,0.03)"
+                : isHovered
+                  ? "0 4px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)"
+                  : "0 3px 12px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.04)",
           }}
           onClick={onClick}
           onMouseEnter={() => setIsHovered(true)}
@@ -370,10 +373,12 @@ export function TalentCard({ card, isSelected, onClick, onFlip, avatarUrl, isHig
           style={{
             backfaceVisibility: "hidden",
             transform: "rotateY(180deg)",
-            borderRadius: "16px",
+            clipPath: cardClip,
+            borderRadius: "0px",
             padding: "18px",
-            background: "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.06)",
+            background: "linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.70) 100%)",
+            border: "1px solid rgba(255,255,255,0.10)",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.03)",
           }}
         >
           <div className="flex flex-col h-full">
