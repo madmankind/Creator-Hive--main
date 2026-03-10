@@ -482,22 +482,24 @@ export function CampaignSetupBoard({
   };
 
   // ── Board ─────────────────────────────────────────────────────────────────
+
+  // Success: full replacement — no overlay layering
+  if (submitted) {
+    return (
+      <motion.div
+        key="success-full"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1.0] }}
+        className="w-full"
+      >
+        <SuccessScreen />
+      </motion.div>
+    );
+  }
+
   return (
     <div className="relative w-full min-h-[400px]">
-      {/* Success overlay */}
-      <AnimatePresence>
-        {submitted && (
-          <motion.div
-            key="success-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="absolute inset-0 z-50"
-          >
-            <SuccessScreen />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <div className="relative z-10 max-w-[1100px] mx-auto px-6 md:px-10 pt-8 pb-16">
         <AnimatePresence mode="wait">
           {showReview ? (

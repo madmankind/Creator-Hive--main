@@ -128,9 +128,9 @@ export function ManageLayoutV2({
         <div
           className="w-full flex flex-col min-h-0"
           style={{
-            maxWidth: "1280px",
-            paddingLeft: "24px",
-            paddingRight: "24px",
+            maxWidth: "1240px",
+            paddingLeft: "32px",
+            paddingRight: "32px",
             paddingTop: "0px",
             paddingBottom: BOTTOM_NAV_PADDING,
           }}
@@ -272,7 +272,7 @@ export function ManageLayoutV2({
             style={{
               gap: `${VERTICAL_GAP}px`,
               overflow: "hidden",
-              paddingTop: "20px",
+              paddingTop: "28px",
             }}
           >
             {/* Talent Frame (fixed height) */}
