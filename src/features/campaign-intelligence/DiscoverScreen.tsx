@@ -58,7 +58,7 @@ export function DiscoverScreen(_: DiscoverScreenProps) {
 
   const headerLeft = (
     <span className="text-[14px] font-medium tracking-[-0.01em]" style={{ color: feyTokens.colors.text.primary }}>
-      Hive
+      Pulse
     </span>
   );
 

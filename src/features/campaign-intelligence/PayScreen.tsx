@@ -109,42 +109,64 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
 
   const fmt = (n: number) => `AED ${n > 0 ? n.toLocaleString() : "0"}`;
 
-  return (
-    <DashboardShell>
-      {/* Inline control bar */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <CampaignSwitcher />
-          <div className="h-4 w-px flex-shrink-0" style={{ background: "rgba(255,255,255,0.08)" }} />
-          <div className="flex rounded-lg overflow-hidden"
-            style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
-            {(["client", "talent"] as PayFace[]).map((face) => (
-              <button key={face} onClick={() => setPayFace(face)}
-                className="px-4 py-1.5 text-[12px] font-medium transition-colors capitalize"
-                style={{
-                  background: payFace === face ? "rgba(255,255,255,0.10)" : "transparent",
-                  color: payFace === face ? feyTokens.colors.text.primary : feyTokens.colors.text.muted,
-                }}>
-                {face === "client" ? "Client Pay" : "Talent Pay"}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-semibold"
-            style={{ background: "rgba(255,255,255,0.95)", color: "#07070B" }}>
-            <CreditCard size={13} /> Collect Payment
+  // Header
+  const headerLeft = (
+    <div className="flex items-center gap-3">
+      <CampaignSwitcher />
+      <div className="h-4 w-px flex-shrink-0" style={{ background: "rgba(255,255,255,0.08)" }} />
+      {/* Face toggle */}
+      <div
+        className="flex rounded-lg overflow-hidden"
+        style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}
+      >
+        {(["client", "talent"] as PayFace[]).map((face) => (
+          <button
+            key={face}
+            onClick={() => setPayFace(face)}
+            className="px-4 py-1.5 text-[12px] font-medium transition-colors capitalize"
+            style={{
+              background: payFace === face ? "rgba(255,255,255,0.10)" : "transparent",
+              color: payFace === face ? feyTokens.colors.text.primary : feyTokens.colors.text.muted,
+            }}
+          >
+            {face === "client" ? "Client Pay" : "Talent Pay"}
           </button>
-          <button className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[11px] transition-colors hover:bg-white/5"
-            style={{ borderColor: "rgba(255,255,255,0.08)", color: feyTokens.colors.text.muted }}>
-            <FileText size={13} /> Invoice
-          </button>
-          <button className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[11px] transition-colors hover:bg-white/5"
-            style={{ borderColor: "rgba(255,255,255,0.08)", color: feyTokens.colors.text.muted }}>
-            <Download size={13} /> CSV
-          </button>
-        </div>
+        ))}
       </div>
+    </div>
+  );
+
+  const headerRight = (
+    <div className="flex items-center gap-2">
+      <button
+        className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-semibold transition-colors"
+        style={{
+          background: "rgba(255,255,255,0.95)",
+          color: "#07070B",
+        }}
+      >
+        <CreditCard size={13} />
+        Collect Payment
+      </button>
+      <button
+        className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[11px] transition-colors hover:bg-white/5"
+        style={{ borderColor: "rgba(255,255,255,0.08)", color: feyTokens.colors.text.muted }}
+      >
+        <FileText size={13} />
+        Invoice
+      </button>
+      <button
+        className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[11px] transition-colors hover:bg-white/5"
+        style={{ borderColor: "rgba(255,255,255,0.08)", color: feyTokens.colors.text.muted }}
+      >
+        <Download size={13} />
+        CSV
+      </button>
+    </div>
+  );
+
+  return (
+    <DashboardShell headerLeft={headerLeft} headerRight={headerRight}>
       {/* Hero balance section */}
       <div className="mb-8">
         <div className="flex items-end gap-3 mb-2">
