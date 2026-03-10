@@ -1,104 +1,89 @@
-'use client'
-import useSWR from 'swr'
-import { useAgencyFilter } from '@/store/agencyFilter'
+'use client';
+import useSWR from 'swr';
+import { DashboardShell } from '@/components/dashboard/DashboardShell';
+import { feyTokens } from '@/lib/fey-design-tokens';
+import { Download, FileText } from 'lucide-react';
 
-type InvoiceResponse = {
-  data: Array<{
-    id: string;
-    amount: number;
-    status: string;
-    dueDate: string | null;
-    paidDate: string | null;
-    talentId: string;
-    talent?: { name: string | null };
-    campaign?: { title: string | null };
-  }>;
-};
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-const fetcher = (url: string) => fetch(url).then(res => res.json())
-
-export default function Invoices() {
-  const { activeTalentId } = useAgencyFilter()
-  const { data } = useSWR<InvoiceResponse>('/api/invoices', fetcher)
-  const invoices = (data?.data || []).filter((inv)=>{
-    if (!activeTalentId) return true
-    return inv.talentId === activeTalentId
-  })
-  const totalInvoiced = invoices.reduce((sum, inv) => sum + inv.amount, 0)
-  const pendingTotal = invoices.filter((inv) => inv.status === 'PENDING').reduce((sum, inv) => sum + inv.amount, 0)
-  const overdueTotal = invoices.filter((inv) => inv.status === 'OVERDUE').reduce((sum, inv) => sum + inv.amount, 0)
-
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { bg: string; text: string }> = {
+    PAID:    { bg: 'rgba(16,185,129,0.10)', text: '#34d399' },
+    PENDING: { bg: 'rgba(234,179,8,0.09)',  text: 'rgba(253,224,71,0.80)' },
+    OVERDUE: { bg: 'rgba(229,72,77,0.09)',  text: 'rgba(229,72,77,0.75)' },
+  };
+  const s = map[status] ?? map.PENDING;
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-[24px] font-semibold">Invoices</h1>
-        <button className="rounded-full bg-white/10 border border-white/10 px-4 py-2 hover:bg-white/15 transition text-sm">
-          Export
-        </button>
-      </div>
-
-      <div className="grid md:grid-cols-3 gap-4">
-        <div className="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
-          <div className="text-sm text-white/70">Total invoiced</div>
-          <div className="text-2xl font-semibold mt-1">
-            ${totalInvoiced.toLocaleString()}
-          </div>
-        </div>
-        <div className="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
-          <div className="text-sm text-white/70">Pending</div>
-          <div className="text-2xl font-semibold mt-1">
-            ${pendingTotal.toLocaleString()}
-          </div>
-        </div>
-        <div className="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
-          <div className="text-sm text-white/70">Overdue</div>
-          <div className="text-2xl font-semibold mt-1 text-red-400">
-            ${overdueTotal.toLocaleString()}
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-xl bg-white/5 ring-1 ring-white/10 overflow-hidden">
-        <div className="p-4 border-b border-white/10">
-          <div className="text-sm text-white/70">All invoices</div>
-        </div>
-        <div className="divide-y divide-white/10">
-          {invoices.length === 0 ? (
-            <div className="text-center py-12 text-white/50">
-              No invoices {activeTalentId ? 'for this talent' : 'found'}
-            </div>
-          ) : (
-            invoices.map((invoice) => (
-              <div key={invoice.id} className="p-4 hover:bg-white/3 transition cursor-pointer">
-                <div className="flex items-center justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-3">
-                      <div className="font-medium">{invoice.id}</div>
-                      <div className={`text-xs px-2 py-1 rounded-full ${
-                        invoice.status === 'PAID' ? 'bg-green-500/20 text-green-300' :
-                        invoice.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-300' :
-                        'bg-red-500/20 text-red-300'
-                      }`}>
-                        {invoice.status.toLowerCase()}
-                      </div>
-                    </div>
-                    <div className="text-sm text-white/60 mt-1">{invoice.talent?.name || 'Talent'} • {invoice.campaign?.title || 'Campaign'}</div>
-                    <div className="text-xs text-white/50 mt-1">
-                      Due: {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : '—'} {invoice.paidDate && `• Paid: ${new Date(invoice.paidDate).toLocaleDateString()}`}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-lg font-semibold">${invoice.amount.toLocaleString()}</div>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  )
+    <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold"
+      style={{ background: s.bg, color: s.text }}>{status.toLowerCase()}</span>
+  );
 }
 
+export default function Invoices() {
+  const { data } = useSWR('/api/invoices', fetcher);
+  const invoices = data?.data ?? [];
+  const totalInvoiced = invoices.reduce((s: number, i: any) => s + i.amount, 0);
+  const pending = invoices.filter((i: any) => i.status === 'PENDING').reduce((s: number, i: any) => s + i.amount, 0);
+  const overdue = invoices.filter((i: any) => i.status === 'OVERDUE').reduce((s: number, i: any) => s + i.amount, 0);
 
+  const headerLeft = (
+    <span className="text-[14px] font-medium tracking-[-0.01em]" style={{ color: feyTokens.colors.text.primary }}>Invoices</span>
+  );
+  const headerRight = (
+    <button className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] transition-all"
+      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: feyTokens.colors.text.secondary }}>
+      <Download size={12} /> Export
+    </button>
+  );
 
+  return (
+    <DashboardShell headerLeft={headerLeft} headerRight={headerRight}>
+      <div className="space-y-5">
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            { label: 'Total Invoiced', value: `AED ${totalInvoiced.toLocaleString()}` },
+            { label: 'Pending', value: `AED ${pending.toLocaleString()}`, accent: 'rgba(234,179,8,0.7)' },
+            { label: 'Overdue', value: `AED ${overdue.toLocaleString()}`, accent: 'rgba(229,72,77,0.7)' },
+          ].map((t) => (
+            <div key={t.label} className="rounded-2xl px-5 py-4 relative overflow-hidden"
+              style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${t.accent ? t.accent + '25' : 'rgba(255,255,255,0.07)'}` }}>
+              {t.accent && <div className="absolute inset-x-0 bottom-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${t.accent}, transparent)` }} />}
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] mb-1.5" style={{ color: feyTokens.colors.text.label }}>{t.label}</p>
+              <p className="text-[22px] font-light tracking-tight" style={{ color: feyTokens.colors.text.primary }}>{t.value}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="grid px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.12em]"
+            style={{ gridTemplateColumns: '1fr 2fr 1fr 1fr 1fr 60px', borderBottom: '1px solid rgba(255,255,255,0.05)', color: feyTokens.colors.text.label }}>
+            {['Invoice #', 'Campaign', 'Amount', 'Status', 'Due Date', ''].map((h) => <span key={h}>{h}</span>)}
+          </div>
+          {invoices.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-14 gap-2">
+              <FileText size={24} style={{ color: feyTokens.colors.text.label, opacity: 0.4 }} />
+              <p className="text-[13px]" style={{ color: feyTokens.colors.text.muted }}>No invoices yet</p>
+              <p className="text-[11px]" style={{ color: feyTokens.colors.text.label }}>Invoices appear when a campaign is active</p>
+            </div>
+          ) : invoices.map((inv: any) => (
+            <div key={inv.id}
+              className="grid px-5 py-3.5 hover:bg-white/[0.02] transition"
+              style={{ gridTemplateColumns: '1fr 2fr 1fr 1fr 1fr 60px', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <span className="text-[13px] font-medium" style={{ color: feyTokens.colors.text.primary }}>{inv.id.slice(0,8).toUpperCase()}</span>
+              <span className="text-[13px] truncate pr-2" style={{ color: feyTokens.colors.text.secondary }}>{inv.campaign?.title || 'Campaign'}</span>
+              <span className="text-[13px] font-medium tabular-nums" style={{ color: feyTokens.colors.text.primary }}>AED {inv.amount.toLocaleString()}</span>
+              <StatusBadge status={inv.status} />
+              <span className="text-[12px]" style={{ color: feyTokens.colors.text.muted }}>
+                {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-AE', { month: 'short', day: 'numeric' }) : '—'}
+              </span>
+              <button className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/10"
+                style={{ color: feyTokens.colors.text.label }}>
+                <Download size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </DashboardShell>
+  );
+}

@@ -1,11 +1,23 @@
 "use client";
-
 import useSWR from "swr";
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
-import { cn } from "@/lib/utils";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import { CampaignSwitcher } from "@/components/campaigns/CampaignSwitcher";
+import { feyTokens } from "@/lib/fey-design-tokens";
+import { FileText, Upload, Download, ArrowLeft } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
+const inputCls = "w-full rounded-xl px-4 py-3 text-[13px] outline-none transition-colors bg-white/[0.04] ring-1 ring-white/[0.08] placeholder:text-white/20 focus:ring-white/20";
+
+const STATUS_OPTIONS = ["DRAFT","ACTIVE","IN_PROGRESS","COMPLETED","CANCELLED"];
+const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  DRAFT:       { bg: 'rgba(99,102,241,0.09)', text: 'rgba(165,180,252,0.75)' },
+  ACTIVE:      { bg: 'rgba(16,185,129,0.10)', text: 'rgba(52,211,153,0.85)' },
+  IN_PROGRESS: { bg: 'rgba(99,102,241,0.09)', text: 'rgba(165,180,252,0.75)' },
+  COMPLETED:   { bg: 'rgba(255,255,255,0.05)', text: 'rgba(255,255,255,0.35)' },
+  CANCELLED:   { bg: 'rgba(229,72,77,0.08)',   text: 'rgba(229,72,77,0.65)' },
+};
 
 export default function CampaignDetailPage() {
   const params = useParams<{ id: string }>();
@@ -22,224 +34,186 @@ export default function CampaignDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (campaign) {
-      setTitle(campaign.title || "");
-      setBrief(campaign.brief || "");
-      setStatus(campaign.status || "DRAFT");
-    }
+    if (campaign) { setTitle(campaign.title || ""); setBrief(campaign.brief || ""); setStatus(campaign.status || "DRAFT"); }
   }, [campaign]);
 
   const handleSave = async () => {
     if (!params?.id) return;
-    setSaving(true);
-    setError(null);
+    setSaving(true); setError(null);
     try {
       const res = await fetch(`/api/agency/campaigns/${params.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, brief, status }),
       });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(body?.error || "Failed to update campaign");
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || "Failed to update");
       await mutate();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update campaign");
-    } finally {
-      setSaving(false);
-    }
+    } catch (err) { setError(err instanceof Error ? err.message : "Failed to update"); }
+    finally { setSaving(false); }
   };
 
-  if (isLoading) {
-    return <div className="p-6 text-white/70">Loading...</div>;
-  }
+  const headerLeft = (
+    <div className="flex items-center gap-3">
+      <button onClick={() => router.push('/dashboard/campaigns?mode=manage')}
+        className="flex items-center gap-1.5 text-[12px] transition-opacity hover:opacity-60"
+        style={{ color: feyTokens.colors.text.label }}>
+        <ArrowLeft size={13} /> Back
+      </button>
+      <div className="w-px h-4" style={{ background: 'rgba(255,255,255,0.08)' }} />
+      <CampaignSwitcher />
+    </div>
+  );
+  const headerRight = (
+    <button onClick={handleSave} disabled={saving}
+      className="rounded-lg px-4 py-2 text-[12px] font-medium transition-all disabled:opacity-40"
+      style={{ background: 'rgba(255,255,255,0.95)', color: '#07070B' }}>
+      {saving ? 'Saving…' : 'Save changes'}
+    </button>
+  );
 
-  if (!campaign) {
-    return <div className="p-6 text-red-400">Campaign not found</div>;
-  }
+  if (isLoading) return <DashboardShell headerLeft={<span style={{ color: feyTokens.colors.text.muted }}>Loading…</span>}><div /></DashboardShell>;
+  if (!campaign) return <DashboardShell headerLeft={<span style={{ color: '#f87171' }}>Campaign not found</span>}><div /></DashboardShell>;
+
+  const sc = STATUS_COLORS[status] ?? STATUS_COLORS.DRAFT;
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-white/90">Campaign details</h1>
-          <p className="text-sm text-white/60">Manage your campaign basics</p>
-        </div>
-        <button
-          onClick={() => router.push("/dashboard/campaigns")}
-          className="text-sm text-white/60 hover:text-white transition"
-        >
-          ← Back
-        </button>
-      </div>
+    <DashboardShell headerLeft={headerLeft} headerRight={headerRight}>
+      <div className="grid gap-5 max-w-4xl" style={{ gridTemplateColumns: '1fr 320px' }}>
 
-      <section className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-6 space-y-4">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="block text-xs uppercase tracking-[0.18em] text-white/50 mb-2">Title</label>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-xl bg-white/5 px-4 py-3 text-white ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-white/30"
-            />
+        {/* Left: main fields */}
+        <div className="space-y-4">
+          <div className="rounded-2xl px-5 py-5 space-y-4"
+            style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] mb-2" style={{ color: feyTokens.colors.text.label }}>Campaign name</label>
+              <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)}
+                style={{ color: 'rgba(255,255,255,0.88)' }} />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] mb-2" style={{ color: feyTokens.colors.text.label }}>Status</label>
+              <div className="flex flex-wrap gap-2">
+                {STATUS_OPTIONS.map((s) => (
+                  <button key={s} onClick={() => setStatus(s)}
+                    className="px-3 py-1 rounded-full text-[11px] font-medium transition-all"
+                    style={{
+                      background: status === s ? STATUS_COLORS[s].bg : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${status === s ? STATUS_COLORS[s].text + '40' : 'rgba(255,255,255,0.07)'}`,
+                      color: status === s ? STATUS_COLORS[s].text : feyTokens.colors.text.label,
+                    }}>{s.replace('_',' ')}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] mb-2" style={{ color: feyTokens.colors.text.label }}>Brief</label>
+              <textarea className={inputCls + " h-32 resize-none"} value={brief} onChange={(e) => setBrief(e.target.value)}
+                style={{ color: 'rgba(255,255,255,0.88)' }} placeholder="Campaign goals, deliverables, timeline…" />
+            </div>
+            {error && <p className="text-[12px]" style={{ color: '#f87171' }}>{error}</p>}
           </div>
-          <div>
-            <label className="block text-xs uppercase tracking-[0.18em] text-white/50 mb-2">Status</label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="w-full rounded-xl bg-white/5 px-4 py-3 text-white ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-white/30"
-            >
-              {["DRAFT", "ACTIVE", "IN_PROGRESS", "COMPLETED", "CANCELLED"].map((s) => (
-                <option key={s} value={s} className="bg-[#0B0F14]">{s}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div>
-          <label className="block text-xs uppercase tracking-[0.18em] text-white/50 mb-2">Brief</label>
-          <textarea
-            value={brief}
-            onChange={(e) => setBrief(e.target.value)}
-            rows={6}
-            className="w-full rounded-xl bg-white/5 px-4 py-3 text-white ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-white/30"
-          />
-        </div>
-        {error && <div className="text-sm text-red-400">{error}</div>}
-        <div className="flex justify-end">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="rounded-full bg-white px-6 py-2 text-black text-sm font-semibold hover:bg-white/90 disabled:opacity-60"
-          >
-            {saving ? "Saving..." : "Save changes"}
-          </button>
-        </div>
-      </section>
 
-      <section className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-white/90">Assigned talents</h2>
-          <span className="text-xs text-white/50">Planned</span>
-        </div>
-        {campaign.talents?.length ? (
-          <div className="space-y-2">
-            {campaign.talents.map((t: any) => (
-              <div key={t.talentId} className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-white/10 grid place-items-center text-xs text-white/80">
-                    {(t.talent?.name || "U").charAt(0)}
+          {/* Attachments */}
+          <div className="rounded-2xl px-5 py-4"
+            style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ color: feyTokens.colors.text.label }}>Attachments</p>
+              <label className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] cursor-pointer transition-all"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', color: feyTokens.colors.text.secondary }}>
+                <Upload size={11} /> Upload
+                <input type="file" multiple className="sr-only"
+                  onChange={async (e) => {
+                    if (!params?.id || !e.target.files?.length) return;
+                    const fd = new FormData();
+                    Array.from(e.target.files).forEach((f) => fd.append("file", f));
+                    await fetch(`/api/campaigns/${params.id}/files/upload`, { method: "POST", body: fd });
+                    e.target.value = ""; refreshFiles();
+                  }} />
+              </label>
+            </div>
+            {(filesData?.data ?? []).length === 0 ? (
+              <p className="text-[12px]" style={{ color: feyTokens.colors.text.label }}>No files attached</p>
+            ) : (
+              <div className="space-y-2">
+                {(filesData.data ?? []).map((f: any) => (
+                  <div key={f.id} className="flex items-center justify-between rounded-xl px-3 py-2"
+                    style={{ background: 'rgba(255,255,255,0.02)' }}>
+                    <div>
+                      <p className="text-[12px]" style={{ color: feyTokens.colors.text.secondary }}>{f.originalName}</p>
+                      <p className="text-[10px]" style={{ color: feyTokens.colors.text.label }}>{(f.sizeBytes/1024).toFixed(1)} KB</p>
+                    </div>
+                    <button onClick={async () => {
+                      const res = await fetch(`/api/campaigns/${params.id}/files/${f.id}/download`);
+                      const body = await res.json();
+                      if (body?.url) window.open(body.url, "_blank");
+                    }}
+                      className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] transition-all"
+                      style={{ background: 'rgba(255,255,255,0.04)', color: feyTokens.colors.text.muted }}>
+                      <Download size={10} /> Download
+                    </button>
                   </div>
-                  <div className="text-sm text-white/90">{t.talent?.name || "Unknown"}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right: talent + pod */}
+        <div className="space-y-4">
+          <div className="rounded-2xl px-4 py-4"
+            style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ color: feyTokens.colors.text.label }}>Talent</p>
+              <span className="text-[11px]" style={{ color: feyTokens.colors.text.label }}>
+                {campaign.talents?.length ?? 0} assigned
+              </span>
+            </div>
+            {(campaign.talents?.length ?? 0) === 0 ? (
+              <p className="text-[12px]" style={{ color: feyTokens.colors.text.label }}>No talent assigned yet</p>
+            ) : campaign.talents.map((t: any) => (
+              <div key={t.talentId} className="flex items-center gap-2.5 py-2">
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-medium flex-shrink-0"
+                  style={{ background: 'rgba(124,92,255,0.12)', border: '1px solid rgba(124,92,255,0.25)', color: 'rgba(167,139,250,0.85)' }}>
+                  {(t.talent?.name || "U").charAt(0)}
                 </div>
-                <span className={cn(
-                  "text-[10px] px-2 py-0.5 rounded-full font-semibold",
-                  t.status === "IN_PROGRESS" ? "bg-blue-500/20 text-blue-300"
-                    : t.status === "SUBMITTED" ? "bg-purple-500/20 text-purple-300"
-                      : t.status === "APPROVED" ? "bg-emerald-500/20 text-emerald-300"
-                        : "bg-neutral-500/20 text-neutral-300"
-                )}>
-                  {t.status.toLowerCase().replace("_", " ")}
+                <p className="text-[13px] flex-1 truncate" style={{ color: feyTokens.colors.text.secondary }}>{t.talent?.name || "Unknown"}</p>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full"
+                  style={{ background: 'rgba(255,255,255,0.04)', color: feyTokens.colors.text.label }}>
+                  {t.status.toLowerCase().replace("_"," ")}
                 </span>
               </div>
             ))}
           </div>
-        ) : (
-          <div className="text-sm text-white/60">No talents assigned yet.</div>
-        )}
-      </section>
 
-      <section className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-6 space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-white/90">Pod & invites</h2>
-          <button
-            onClick={async () => {
-              if (!params?.id || !podData?.pod?.talentIds?.length) return;
-              await fetch(`/api/pods/${params.id}/invite`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ talentIds: podData.pod.talentIds }),
-              });
-              refreshPod();
-            }}
-            disabled={!podData?.pod?.talentIds?.length}
-            className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-white/90 disabled:opacity-60"
-          >
-            Send invites
-          </button>
-        </div>
-        <div className="text-xs text-white/60">
-          Pod size: {podData?.pod?.talentIds?.length || 0}
-        </div>
-        <div className="space-y-2">
-          {(podData?.invites ?? []).map((inv: any) => (
-            <div key={inv.id} className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2">
-              <div className="text-sm text-white/90">{inv.talent?.name || inv.talentId}</div>
-              <span className={cn(
-                "text-[10px] px-2 py-0.5 rounded-full font-semibold",
-                inv.status === "ACCEPTED"
-                  ? "bg-emerald-500/20 text-emerald-300"
-                  : inv.status === "DECLINED"
-                  ? "bg-red-500/20 text-red-300"
-                  : "bg-amber-500/20 text-amber-300"
-              )}>
-                {inv.status.toLowerCase()}
-              </span>
-            </div>
-          ))}
-          {(!podData?.invites || podData.invites.length === 0) && (
-            <div className="text-sm text-white/60">No invites sent yet.</div>
-          )}
-        </div>
-      </section>
-
-      <section className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-6 space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-white/90">Attachments</h2>
-          <input
-            type="file"
-            multiple
-            onChange={async (e) => {
-              if (!params?.id || !e.target.files?.length) return;
-              const formData = new FormData();
-              Array.from(e.target.files).forEach((file) => formData.append("file", file));
-              await fetch(`/api/campaigns/${params.id}/files/upload`, {
-                method: "POST",
-                body: formData,
-              });
-              e.target.value = "";
-              refreshFiles();
-            }}
-            className="text-xs text-white/70"
-          />
-        </div>
-        <div className="space-y-2">
-          {(filesData?.data ?? []).map((file: any) => (
-            <div key={file.id} className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2 text-sm text-white/90">
-              <div>
-                <div>{file.originalName}</div>
-                <div className="text-xs text-white/50">
-                  {(file.sizeBytes / 1024).toFixed(1)} KB · {new Date(file.createdAt).toLocaleString()}
-                </div>
-              </div>
+          <div className="rounded-2xl px-4 py-4"
+            style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ color: feyTokens.colors.text.label }}>Invites</p>
               <button
-                className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-black hover:bg-white/90"
                 onClick={async () => {
-                  const res = await fetch(`/api/campaigns/${params.id}/files/${file.id}/download`);
-                  const body = await res.json();
-                  if (body?.url) {
-                    window.open(body.url, "_blank");
-                  }
+                  if (!params?.id || !podData?.pod?.talentIds?.length) return;
+                  await fetch(`/api/pods/${params.id}/invite`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ talentIds: podData.pod.talentIds }) });
+                  refreshPod();
                 }}
-              >
-                Download
+                disabled={!podData?.pod?.talentIds?.length}
+                className="rounded-lg px-3 py-1 text-[11px] font-medium transition-all disabled:opacity-40"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)', color: feyTokens.colors.text.secondary }}>
+                Send invites
               </button>
             </div>
-          ))}
-          {(!filesData?.data || filesData.data.length === 0) && (
-            <div className="text-sm text-white/60">No attachments yet.</div>
-          )}
+            <p className="text-[11px] mb-2" style={{ color: feyTokens.colors.text.label }}>Pod: {podData?.pod?.talentIds?.length ?? 0} selected</p>
+            {(podData?.invites ?? []).length === 0 ? (
+              <p className="text-[12px]" style={{ color: feyTokens.colors.text.label }}>No invites sent yet</p>
+            ) : (podData.invites ?? []).map((inv: any) => (
+              <div key={inv.id} className="flex items-center justify-between py-1.5">
+                <p className="text-[12px]" style={{ color: feyTokens.colors.text.secondary }}>{inv.talent?.name || inv.talentId}</p>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full"
+                  style={{ background: inv.status === 'ACCEPTED' ? 'rgba(16,185,129,0.10)' : 'rgba(255,255,255,0.04)', color: inv.status === 'ACCEPTED' ? '#34d399' : feyTokens.colors.text.label }}>
+                  {inv.status.toLowerCase()}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-      </section>
-    </main>
+
+      </div>
+    </DashboardShell>
   );
 }

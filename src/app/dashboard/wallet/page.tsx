@@ -1,102 +1,85 @@
-'use client'
-import useSWR from 'swr'
-import { useAgencyFilter } from '@/store/agencyFilter'
+'use client';
+import useSWR from 'swr';
+import { DashboardShell } from '@/components/dashboard/DashboardShell';
+import { feyTokens } from '@/lib/fey-design-tokens';
+import { ArrowUpRight, ArrowDownLeft, Plus } from 'lucide-react';
 
-type WalletResponse = {
-  data: Array<{
-    id: string;
-    amount: number;
-    status: string;
-    type: 'PAYOUT' | 'PENDING' | 'PAYMENT';
-    createdAt: string;
-    description?: string | null;
-    invoice?: { invoiceNumber?: string | null; talent?: { name: string | null }; talentId?: string };
-  }>;
-};
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-const fetcher = (url: string) => fetch(url).then(res => res.json())
+function BalanceTile({ label, value, accent, note }: { label: string; value: string; accent?: string; note?: string }) {
+  return (
+    <div className="rounded-2xl px-5 py-4 relative overflow-hidden"
+      style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${accent ? accent + '25' : 'rgba(255,255,255,0.07)'}` }}>
+      {accent && <div className="absolute inset-x-0 bottom-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }} />}
+      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] mb-2" style={{ color: feyTokens.colors.text.label }}>{label}</p>
+      <p className="text-[26px] font-light tracking-tight" style={{ color: feyTokens.colors.text.primary, lineHeight: 1 }}>{value}</p>
+      {note && <p className="text-[10px] mt-1.5" style={{ color: feyTokens.colors.text.label }}>{note}</p>}
+    </div>
+  );
+}
 
 export default function Wallet() {
-  const { activeTalentId } = useAgencyFilter()
-  const { data } = useSWR<WalletResponse>('/api/wallet/transactions', fetcher)
-  const transactions = (data?.data || []).filter((txn)=>{
-    if (!activeTalentId) return true
-    return txn.invoice?.talentId === activeTalentId
-  })
+  const { data } = useSWR('/api/wallet/transactions', fetcher);
+  const txns = data?.data ?? [];
+  const totalPaid = txns.filter((t: any) => t.status === 'COMPLETED').reduce((s: number, t: any) => s + t.amount, 0);
+  const totalPending = txns.filter((t: any) => t.status === 'PENDING').reduce((s: number, t: any) => s + t.amount, 0);
 
-  const totalPaid = transactions.filter((txn) => txn.status === 'COMPLETED').reduce((sum, txn) => sum + txn.amount, 0)
-  const totalPending = transactions.filter((txn) => txn.status === 'PENDING').reduce((sum, txn) => sum + txn.amount, 0)
+  const headerLeft = (
+    <span className="text-[14px] font-medium tracking-[-0.01em]" style={{ color: feyTokens.colors.text.primary }}>Wallet</span>
+  );
+  const headerRight = (
+    <button className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-medium transition-all"
+      style={{ background: 'rgba(255,255,255,0.95)', color: '#07070B' }}>
+      <Plus size={13} /> Add Funds
+    </button>
+  );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-[24px] font-semibold">Wallet</h1>
-        <button className="rounded-full bg-white/10 border border-white/10 px-4 py-2 hover:bg-white/15 transition text-sm">
-          Add Funds
-        </button>
-      </div>
+    <DashboardShell headerLeft={headerLeft} headerRight={headerRight}>
+      <div className="space-y-6">
+        <div className="grid grid-cols-3 gap-4">
+          <BalanceTile label="Available Balance" value="AED 5,420" accent="rgba(52,211,153,0.8)" note="Ready to withdraw" />
+          <BalanceTile label="Paid Out" value={`AED ${totalPaid.toLocaleString()}`} accent="rgba(124,92,255,0.7)" note="To creators" />
+          <BalanceTile label="Pending" value={`AED ${totalPending.toLocaleString()}`} accent="rgba(234,179,8,0.7)" note="Awaiting approval" />
+        </div>
 
-      <div className="grid md:grid-cols-3 gap-4">
-        <div className="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
-          <div className="text-sm text-white/70">Available balance</div>
-          <div className="text-2xl font-semibold mt-1">$5,420</div>
-          <div className="text-xs text-white/50 mt-1">Ready to withdraw</div>
-        </div>
-        <div className="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
-          <div className="text-sm text-white/70">Total paid out</div>
-          <div className="text-2xl font-semibold mt-1">${totalPaid.toLocaleString()}</div>
-          <div className="text-xs text-white/50 mt-1">To talents</div>
-        </div>
-        <div className="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
-          <div className="text-sm text-white/70">Pending payouts</div>
-          <div className="text-2xl font-semibold mt-1">${totalPending.toLocaleString()}</div>
-          <div className="text-xs text-white/50 mt-1">Awaiting approval</div>
-        </div>
-      </div>
-
-      <div className="rounded-xl bg-white/5 ring-1 ring-white/10 overflow-hidden">
-        <div className="p-4 border-b border-white/10">
-          <div className="text-sm text-white/70">Recent transactions</div>
-        </div>
-        <div className="divide-y divide-white/10">
-          {transactions.length === 0 ? (
-            <div className="text-center py-12 text-white/50">
-              No transactions {activeTalentId ? 'for this talent' : 'found'}
+        <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="px-5 py-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: feyTokens.colors.text.label }}>Recent Transactions</p>
+          </div>
+          {txns.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-14 gap-2">
+              <p className="text-[13px]" style={{ color: feyTokens.colors.text.muted }}>No transactions yet</p>
+              <p className="text-[11px]" style={{ color: feyTokens.colors.text.label }}>Fund a campaign to see transactions here</p>
             </div>
           ) : (
-            transactions.map((transaction) => (
-              <div key={transaction.id} className="p-4 hover:bg-white/3 transition">
-                <div className="flex items-center justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-3">
-                      <div className="font-medium">{transaction.description || transaction.invoice?.invoiceNumber || transaction.id}</div>
-                      <div className={`text-xs px-2 py-1 rounded-full ${
-                        transaction.status === 'COMPLETED' ? 'bg-green-500/20 text-green-300' :
-                        'bg-yellow-500/20 text-yellow-300'
-                      }`}>
-                        {transaction.status.toLowerCase()}
-                      </div>
-                    </div>
-                    <div className="text-sm text-white/60 mt-1">{transaction.invoice?.talent?.name || 'Talent'}</div>
-                    <div className="text-xs text-white/50 mt-1">{transaction.createdAt ? new Date(transaction.createdAt).toLocaleDateString() : ''}</div>
+            txns.map((t: any) => (
+              <div key={t.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-white/[0.02] transition"
+                style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ background: t.type === 'PAYOUT' ? 'rgba(229,72,77,0.10)' : 'rgba(52,211,153,0.10)' }}>
+                    {t.type === 'PAYOUT' ? <ArrowUpRight size={14} style={{ color: '#E5484D' }} /> : <ArrowDownLeft size={14} style={{ color: '#10B981' }} />}
                   </div>
-                  <div className="text-right">
-                    <div className={`text-lg font-semibold ${
-                      transaction.type === 'PAYOUT' ? 'text-red-400' : 'text-green-400'
-                    }`}>
-                      {transaction.type === 'PAYOUT' ? '-' : '+'}${transaction.amount.toLocaleString()}
-                    </div>
+                  <div>
+                    <p className="text-[13px] font-medium" style={{ color: feyTokens.colors.text.secondary }}>{t.description || t.invoice?.invoiceNumber || t.id}</p>
+                    <p className="text-[11px]" style={{ color: feyTokens.colors.text.label }}>{t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-AE', { month: 'short', day: 'numeric' }) : '—'}</p>
                   </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-[14px] font-medium tabular-nums" style={{ color: t.type === 'PAYOUT' ? '#E5484D' : '#10B981' }}>
+                    {t.type === 'PAYOUT' ? '-' : '+'}AED {t.amount.toLocaleString()}
+                  </p>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full"
+                    style={{ background: t.status === 'COMPLETED' ? 'rgba(16,185,129,0.10)' : 'rgba(234,179,8,0.10)', color: t.status === 'COMPLETED' ? '#10B981' : '#E3A23A' }}>
+                    {t.status.toLowerCase()}
+                  </span>
                 </div>
               </div>
             ))
           )}
         </div>
       </div>
-    </div>
-  )
+    </DashboardShell>
+  );
 }
-
-
-
-

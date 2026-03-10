@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 
 export default function PricingPage() {
   return (
-    <main className="min-h-screen bg-[#0B0F14] text-white">
+    <main className="min-h-screen bg-[#07070B] text-white">
       <section className="max-w-4xl mx-auto px-6 pt-28 pb-16 text-center">
         <h1 className="text-[40px] md:text-[52px] font-semibold tracking-[-0.03em] leading-[1.1] text-white/92 mb-4">
           Simple pricing

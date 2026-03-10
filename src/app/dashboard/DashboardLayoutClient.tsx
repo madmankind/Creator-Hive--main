@@ -13,28 +13,13 @@ function DashboardLayoutInner({ children }: { children: ReactNode }) {
   const isCampaignMode = pathname === "/dashboard/campaigns" && 
     (mode === "track" || mode === "manage" || mode === "pay" || mode === "discover" || !mode);
 
-  if (isCampaignMode) {
-    // Full-viewport layout for Fey unified dashboard - no sidebar, scrollable
-    return (
-      <div 
-        className="min-h-screen w-screen"
-        style={{
-          background: "#07070A",
-          zIndex: 1,
-        }}
-      >
-        {children}
-      </div>
-    );
-  }
-
-  // For other dashboard routes, use sidebar layout
+  // All campaign/dashboard routes use full-viewport Fey dark layout — no sidebar
   return (
-    <div className="flex min-h-screen bg-[#F6F7FB] text-slate-900">
-      <Sidebar />
-      <main className="flex-1 min-w-0">
-        {children}
-      </main>
+    <div
+      className="min-h-screen w-screen"
+      style={{ background: "#07070B", color: "rgba(255,255,255,0.88)" }}
+    >
+      {children}
     </div>
   );
 }
