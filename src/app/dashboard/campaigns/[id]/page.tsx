@@ -211,6 +211,38 @@ export default function CampaignDetailPage() {
               </div>
             ))}
           </div>
+
+          {/* Contract & Milestones Section (#8 #18) */}
+          <div className="rounded-2xl px-4 py-4"
+            style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ color: feyTokens.colors.text.label }}>Contracts & Milestones</p>
+              <a href="/dashboard/contracts"
+                className="rounded-lg px-3 py-1 text-[11px] font-medium transition-all"
+                style={{ background: "rgba(124,92,255,0.12)", border: "1px solid rgba(124,92,255,0.30)", color: "rgba(167,139,250,0.90)" }}>
+                View all
+              </a>
+            </div>
+            <p className="text-[12px]" style={{ color: feyTokens.colors.text.muted }}>
+              Create contracts with milestone-based escrow payments for talent in this campaign.
+              Once accepted, each milestone unlocks on approval.
+            </p>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+              {[
+                { label: "Draft contract", step: "1" },
+                { label: "Talent signs", step: "2" },
+                { label: "Release escrow", step: "3" },
+              ].map(s => (
+                <div key={s.step} className="rounded-xl py-2.5 px-2"
+                  style={{ background: "rgba(124,92,255,0.06)", border: "1px solid rgba(124,92,255,0.14)" }}>
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center mx-auto mb-1.5 text-[10px] font-bold"
+                    style={{ background: "rgba(124,92,255,0.25)", color: "rgba(167,139,250,0.90)" }}>{s.step}</div>
+                  <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.50)" }}>{s.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
 
       </div>

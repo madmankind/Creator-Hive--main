@@ -96,7 +96,7 @@ export function userHasRole(role: unknown, allowed: UserRole[]) {
 }
 
 export function redirectByRole(role?: UserRole | string | null) {
-  if (role === "CREATOR") return "/dashboard/profile";
+  if (role === "CREATOR") return "/dashboard/creator";
   if (role === "AGENCY" || role === "ADMIN") return "/discovery";
   return "/";
 }

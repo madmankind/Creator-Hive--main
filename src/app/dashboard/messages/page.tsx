@@ -76,13 +76,26 @@ function MessagesContent() {
                   <h2 className="text-[16px] font-medium mb-1" style={{ color: feyTokens.colors.text.primary }}>{selected.subject}</h2>
                   <p className="text-[12px]" style={{ color: feyTokens.colors.text.muted }}>{selected.from} · {selected.time}</p>
                 </div>
-                <button
-                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] transition-all"
-                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)', color: feyTokens.colors.text.secondary }}
-                >
-                  <Send size={11} />
-                  Reply
-                </button>
+                <div className="flex items-center gap-2">
+                  {/* Rich action buttons #14 */}
+                  {[
+                    { label: "Send contract", href: "/dashboard/contracts", bg: "rgba(124,92,255,0.12)", color: "rgba(167,139,250,0.85)", border: "rgba(124,92,255,0.25)" },
+                    { label: "Request payment", href: "/dashboard/pay", bg: "rgba(16,185,129,0.10)", color: "#10B981", border: "rgba(16,185,129,0.25)" },
+                  ].map(btn => (
+                    <a key={btn.label} href={btn.href}
+                      className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] transition-all font-medium"
+                      style={{ background: btn.bg, border: `1px solid ${btn.border}`, color: btn.color }}>
+                      {btn.label}
+                    </a>
+                  ))}
+                  <button
+                    className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] transition-all"
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)", color: feyTokens.colors.text.secondary }}
+                  >
+                    <Send size={11} />
+                    Reply
+                  </button>
+                </div>
               </div>
               <p className="text-[14px] font-light leading-relaxed" style={{ color: feyTokens.colors.text.secondary }}>
                 {selected.body}

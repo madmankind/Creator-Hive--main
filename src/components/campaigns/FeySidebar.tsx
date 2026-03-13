@@ -259,6 +259,22 @@ export function FeySidebar({ selectedCampaignIds, onCampaignChange }: FeySidebar
       </nav>
 
 
+      {/* Secondary Nav */}
+      <div className="px-2 pb-2 space-y-0.5">
+        {[
+          { href: "/dashboard/contracts", label: "Contracts" },
+          { href: "/dashboard/messages",  label: "Messages" },
+          { href: "/dashboard/wallet",    label: "Wallet" },
+          { href: "/dashboard/invites",   label: "Invites" },
+        ].map(({ href, label }) => (
+          <Link key={href} href={href}
+            className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[10px] transition-colors hover:bg-white/5"
+            style={{ color: "rgba(255,255,255,0.45)" }}>
+            {label}
+          </Link>
+        ))}
+      </div>
+
       {/* User Block */}
       <div className="px-4 py-3">
         <div className="flex items-center gap-2.5">

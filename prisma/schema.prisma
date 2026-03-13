@@ -167,28 +167,37 @@ model CreatorProfile {
   agencyId               String?
   name                   String
   instagram              String?
+  tiktok                 String?
+  youtube                String?
   bio                    String?                @db.Text
   hourlyRate             Int?
   dayRate                Int?
-  skills                 String[] // Array of skill strings
-  niches                 String[] // Array of niche strings
+  skills                 String[]
+  niches                 String[]
   location               String?
   avatarUrl              String?
   portfolioUrl           String?
-  displayName            String?               // Public alias shown to clients (privacy layer)
-  fullName               String?               // Legal/real name (internal only)
-  qualityScore           Int?                  // 0–15 vetting score
-  talentStatus           String                @default("pending") // "pending" | "active" | "paused" | "rejected"
-  source                 String?               // "form" | "manual" | "scraped"
+  displayName            String?
+  fullName               String?
+  qualityScore           Int?
+  talentStatus           String                 @default("pending")
+  source                 String?
   isVerified             Boolean                @default(false)
   isActive               Boolean                @default(true)
-  prismArchetype         String?               // e.g. "The Maverick"
+  prismArchetype         String?
   stripeAccountId        String?                @unique
   stripeOnboardingStatus StripeOnboardingStatus @default(NOT_STARTED)
+  availabilityStatus     String                 @default("AVAILABLE")
+  profileViews           Int                    @default(0)
+  totalEarned            Int                    @default(0)
+  responseRate           Float?
+  avgResponseHours       Int?
+  referralCode           String?                @unique
+  instagramVerified      Boolean                @default(false)
+  tiktokVerified         Boolean                @default(false)
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
 
-  // Relations
   agency                      AgencyAccount?               @relation(fields: [agencyId], references: [id], onDelete: SetNull)
   user                        User?                        @relation(fields: [userId], references: [id], onDelete: Cascade)
   campaigns                   CampaignTalent[]
@@ -196,11 +205,15 @@ model CreatorProfile {
   invoices                    Invoice[]
   invites                     CampaignInvite[]
   campaignPodSelectionConfigs CampaignPodSelectionConfig[]
+  portfolioItems              PortfolioItem[]
+  contracts                   Contract[]
+  opportunityPreference       CreatorOpportunityPreference?
 
   @@index([userId])
   @@index([agencyId])
   @@index([instagram])
   @@index([isActive])
+  @@index([availabilityStatus])
   @@map("creator_profiles")
 }
 
@@ -525,6 +538,126 @@ model Transaction {
   @@map("transactions")
 }
 
+
+// ============================================
+// PORTFOLIO
+// ============================================
+
+model PortfolioItem {
+  id               String   @id @default(cuid())
+  creatorProfileId String
+  title            String?
+  caption          String?  @db.Text
+  mediaUrl         String
+  mediaType        String   @default("image")
+  thumbnailUrl     String?
+  position         Int      @default(0)
+  externalLink     String?
+  platform         String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  creator CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+
+  @@index([creatorProfileId])
+  @@map("portfolio_items")
+}
+
+// ============================================
+// CONTRACTS & MILESTONES
+// ============================================
+
+model Contract {
+  id               String         @id @default(cuid())
+  campaignId       String?
+  creatorProfileId String
+  agencyId         String?
+  title            String
+  content          String         @db.Text
+  status           ContractStatus @default(DRAFT)
+  totalAmount      Int?
+  currency         String         @default("AED")
+  agencySignedAt   DateTime?
+  creatorSignedAt  DateTime?
+  agencySignature  String?
+  creatorSignature String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  creator    CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  milestones Milestone[]
+
+  @@index([campaignId])
+  @@index([creatorProfileId])
+  @@map("contracts")
+}
+
+model Milestone {
+  id               String          @id @default(cuid())
+  contractId       String
+  title            String
+  description      String?         @db.Text
+  amount           Int
+  currency         String          @default("AED")
+  dueDate          DateTime?
+  status           MilestoneStatus @default(PENDING)
+  fundedAt         DateTime?
+  releasedAt       DateTime?
+  completedAt      DateTime?
+  submissionNote   String?         @db.Text
+  submissionFiles  String[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@map("milestones")
+}
+
+// ============================================
+// OPPORTUNITY PREFERENCES
+// ============================================
+
+model CreatorOpportunityPreference {
+  id               String   @id @default(cuid())
+  creatorProfileId String   @unique
+  interestedRoles  String[]
+  interestedNiches String[]
+  minRate          Int?
+  openToLongTerm   Boolean  @default(true)
+  openToShortTerm  Boolean  @default(true)
+  preferredBrands  String[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  creator CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+
+  @@index([creatorProfileId])
+  @@map("creator_opportunity_preferences")
+}
+
+// ============================================
+// REFERRALS
+// ============================================
+
+model Referral {
+  id             String         @id @default(cuid())
+  referrerId     String
+  referredEmail  String
+  referredUserId String?
+  code           String         @unique
+  status         ReferralStatus @default(PENDING)
+  rewardAmount   Int            @default(0)
+  rewardPaidAt   DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([referrerId])
+  @@index([code])
+  @@map("referrals")
+}
+
 // ============================================
 // ENUMS
 // ============================================
@@ -630,4 +763,30 @@ enum BriefStatus {
   SENT
   APPROVED
   REJECTED
+}
+
+enum ContractStatus {
+  DRAFT
+  SENT
+  AGENCY_SIGNED
+  FULLY_SIGNED
+  COMPLETED
+  CANCELLED
+}
+
+enum MilestoneStatus {
+  PENDING
+  FUNDED
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  RELEASED
+  DISPUTED
+}
+
+enum ReferralStatus {
+  PENDING
+  SIGNED_UP
+  COMPLETED
+  REWARDED
 }

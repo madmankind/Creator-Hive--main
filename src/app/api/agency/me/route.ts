@@ -1,33 +1,35 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/server/db";
-import { getOrCreateAgency } from "@/server/agency";
 import { requireUser } from "@/server/authz";
 
+const schema = z.object({
+  name: z.string().min(2),
+  website: z.string().url().optional().or(z.literal("")),
+  goals: z.array(z.string()).optional(),
+  budget: z.string().optional(),
+  location: z.string().optional(),
+});
+
 export async function GET() {
-  const authResult = await requireUser({ roles: ["AGENCY", "ADMIN"] });
-  if ("error" in authResult) return authResult.error;
-  const { user } = authResult;
+  const auth = await requireUser({ roles: ["AGENCY", "ADMIN"] });
+  if ("error" in auth) return auth.error;
+  const agency = await db.agencyAccount.findUnique({ where: { userId: auth.user.id } });
+  return NextResponse.json({ agency });
+}
 
-  const agency = await getOrCreateAgency(user);
-  const talents = await db.creatorProfile.findMany({
-    where: { agencyId: agency.id },
-    orderBy: { createdAt: "desc" },
+export async function POST(req: Request) {
+  const auth = await requireUser({ roles: ["AGENCY", "ADMIN"] });
+  if ("error" in auth) return auth.error;
+  const { name, website, location } = schema.parse(await req.json());
+  const agency = await db.agencyAccount.upsert({
+    where: { userId: auth.user.id },
+    update: { name, website: website || null, location: location || null },
+    create: { userId: auth.user.id, name, website: website || null, location: location || null },
   });
+  return NextResponse.json({ agency });
+}
 
-  const pods = await db.podSelection.findMany({
-    where: { userId: user.id },
-    orderBy: { updatedAt: "desc" },
-  });
-
-  return NextResponse.json({
-    user: {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-    },
-    agency,
-    talents,
-    pods,
-  });
+export async function PUT(req: Request) {
+  return POST(req);
 }
