@@ -10,7 +10,7 @@ import { ArrowRight, TrendingUp, Zap, Globe, Users } from "lucide-react";
 
 const MOMENT = {
   label: "Seasonal moment",
-  headline: "Ramadan 2026 is 3 weeks away",
+  headline: "Build your next campaign with curated GCC talent",
   sub: "Campaign slots are filling fast. Build your team now — brands that brief early get first pick of vetted talent.",
   cta: "Browse talent →",
   accent: "rgba(234,179,8,0.75)",

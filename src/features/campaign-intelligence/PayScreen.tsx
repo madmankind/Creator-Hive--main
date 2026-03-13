@@ -204,7 +204,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
               color: payFace === face ? feyTokens.colors.text.primary : feyTokens.colors.text.muted,
             }}
           >
-            {face === "client" ? "Client Pay" : "Talent Pay"}
+            {face === "client" ? "From clients" : "To talent"}
           </button>
         ))}
       </div>
@@ -222,7 +222,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
         }}
       >
         <CreditCard size={13} />
-        Collect Payment
+        Request payment
       </button>
       <button
         onClick={handleGenerateInvoice}

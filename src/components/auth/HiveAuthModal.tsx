@@ -108,7 +108,7 @@ const SLIDE = {
   initial:    { opacity: 0, y: 14 },
   animate:    { opacity: 1, y: 0  },
   exit:       { opacity: 0, y: -8 },
-  transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] },
+  transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const },
 };
 
 /* ─────────────────────────────────────────
@@ -176,7 +176,7 @@ function AuthStep({
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -24 }}
-            transition={{ duration: 0.28, ease: [0.25, 0.1, 0.25, 1] }}
+            transition={{ duration: 0.28, ease: [0.25, 0.1, 0.25, 1] as const }}
             className="text-[14px] font-light max-w-[340px] mx-auto"
             style={{ color: "rgba(255,255,255,0.42)" }}
           >
@@ -461,7 +461,7 @@ function OTPStep({
         {digits.map((d, i) => (
           <input
             key={i}
-            ref={refs[i]}
+            ref={refs[i] as React.RefObject<HTMLInputElement | null>}
             type="text"
             inputMode="numeric"
             maxLength={1}
@@ -524,7 +524,7 @@ function PhoneStep({ onSubmit, onBack }: { onSubmit: (phone: string) => void; on
         <AnimatePresence mode="wait">
           <motion.p key="wa-sub"
             initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }}
-            transition={{ duration: 0.28, ease: [0.25, 0.1, 0.25, 1] }}
+            transition={{ duration: 0.28, ease: [0.25, 0.1, 0.25, 1] as const }}
             className="text-[14px] font-light max-w-[340px] mx-auto"
             style={{ color: "rgba(255,255,255,0.42)" }}
           >
@@ -684,7 +684,7 @@ function PrismResultStep({ archetype, onContinue }: {
       <motion.div className="rounded-2xl p-7 w-full space-y-4"
         style={{ background: archetype.accentBg, border: `1px solid ${archetype.ring}` }}
         initial={{ scale: 0.93, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}>
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] as const }}>
         <div className="text-[44px]">{archetype.emoji}</div>
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] mb-1.5" style={{ color: archetype.accent }}>
@@ -1405,7 +1405,7 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
           initial={{ opacity: 0, y: 60 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 40 }}
-          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] as const }}
         >
           {/* Ambient glow — white top + deep amethyst */}
           <div className="pointer-events-none absolute inset-0 overflow-hidden">

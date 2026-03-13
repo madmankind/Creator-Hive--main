@@ -153,7 +153,7 @@ export const PACKAGES: PackageConfig[] = [
     category: "seasonal",
     tier: "starter",
     name: "Hive Moments",
-    tagline: "Ramadan & National Day campaigns",
+    tagline: "Seasonal and cultural campaigns",
     emoji: "☽",
     roles: ["UGC Creator", "Designer", "Copywriter", "Content Creator"],
     deliverableTemplates: [
@@ -182,7 +182,7 @@ export const PACKAGE_CATEGORY_META: Record<PackageCategory, { label: string; des
   performance: { label: "Performance", description: "Paid social and conversion creative",emoji: "⚡" },
   social:      { label: "Social",      description: "Organic presence and community",     emoji: "◉"  },
   team:        { label: "Team",        description: "Outsourced creative departments",    emoji: "⬡"  },
-  seasonal:    { label: "Seasonal",    description: "Ramadan & National Day campaigns",   emoji: "☽"  },
+  seasonal:    { label: "Seasonal",    description: "Seasonal and cultural campaigns",   emoji: "☽"  },
 };
 
 export function getPackageById(id: string): PackageConfig | undefined {

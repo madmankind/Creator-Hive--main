@@ -38,7 +38,7 @@ function getSeasonalBanner(): { title: string; subtitle: string } | null {
   const now = new Date();
   const month = now.getMonth() + 1;
   if (month >= 1 && month <= 3) {
-    return { title: "☽ Ramadan 2026 is coming", subtitle: "Book your seasonal campaign team now — slots are limited" };
+    return { title: "Seasonal campaigns", subtitle: "Book your seasonal campaign team now — slots are limited" };
   }
   if (month >= 10 && month <= 12) {
     return { title: "🇦🇪 National Day season", subtitle: "Book your UAE National Day campaign team — Dec 2 edition" };

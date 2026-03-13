@@ -93,7 +93,7 @@ const SLIDE = {
   initial: { opacity: 0, x: 24 },
   animate: { opacity: 1, x: 0 },
   exit:    { opacity: 0, x: -24 },
-  transition: { duration: 0.28, ease: [0.25, 0.1, 0.25, 1.0] },
+  transition: { duration: 0.28, ease: [0.25, 0.1, 0.25, 1.0] as const },
 };
 
 function PillButton({ active, onClick, children }: { active?: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -103,7 +103,7 @@ function PillButton({ active, onClick, children }: { active?: boolean; onClick: 
       className="w-full text-left rounded-2xl px-5 py-4 ring-1 transition-all duration-200"
       style={{
         background: active ? "rgba(124,92,255,0.12)" : "rgba(255,255,255,0.04)",
-        ring: active ? "rgba(124,92,255,0.4)" : "rgba(255,255,255,0.09)",
+        
         boxShadow: active ? "inset 0 0 0 1px rgba(124,92,255,0.40)" : "inset 0 0 0 1px rgba(255,255,255,0.09)",
       }}
     >
@@ -320,7 +320,7 @@ function RevealStep({ archetype, onNext }: { archetype: string; onNext: () => vo
     <motion.div
       initial={{ opacity: 0, scale: 0.97 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1.0] }}
+      transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1.0] as const }}
       className="space-y-8 text-center"
     >
       {/* Glowing archetype orb */}
@@ -525,7 +525,7 @@ function DoneStep({ name, archetype }: { name: string; archetype: string }) {
     <motion.div
       initial={{ opacity: 0, scale: 0.97 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1.0] }}
+      transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1.0] as const }}
       className="text-center space-y-8 py-6"
     >
       <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"

@@ -554,7 +554,7 @@ export function CampaignSetupBoard({
                   type="text"
                   value={state.campaignName}
                   onChange={(e) => update("campaignName", e.target.value)}
-                  placeholder="e.g. Ramadan 2026 — Awareness Push"
+                  placeholder="e.g. Campaign Name — Awareness Push"
                   className="w-full bg-transparent border-none outline-none text-[18px] font-light text-white/80 placeholder:text-white/15 tracking-[-0.01em]"
                 />
               </div>
@@ -642,7 +642,7 @@ export function CampaignSetupBoard({
                       rows={3}
                       value={state.notes}
                       onChange={(e) => update("notes", e.target.value)}
-                      placeholder="e.g. Focus on Ramadan generosity theme, Arabic-first content preferred, avoid competitor references…"
+                      placeholder="e.g. Key themes, content preferences, language requirements…, Arabic-first content preferred, avoid competitor references…"
                       className={cn(inputCls, "resize-none text-[12px] leading-relaxed [color-scheme:dark] [appearance:none]")}
                       style={{ background: "rgba(255,255,255,0.05)" }}
                     />
