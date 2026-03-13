@@ -17,7 +17,6 @@
 /.next/
 /out/
 # --- Local / transient artifacts ---
-.!*.env
 .env
 .env.*
 .tunnel.log
@@ -52,12 +51,3 @@ next-env.d.ts
 /generated/prisma
 
 # local development artifacts
-.tunnel.log
-.!*!.env
-
-# Local artifacts
-.stash list
-git branch --show-current
-git status
-.env
-.tunnel.log
