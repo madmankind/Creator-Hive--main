@@ -10,7 +10,7 @@ import { feyTokens } from "@/lib/fey-design-tokens";
    TYPES
 ───────────────────────────────────────── */
 type Mode = "client" | "talent";
-type Step = "auth" | "inbox" | "prism-intro" | "prism-q" | "prism-result" | "profile" | "done";
+type Step = "auth" | "otp" | "phone" | "loading" | "inbox" | "prism-intro" | "prism-q" | "prism-result" | "profile" | "done";
 
 export type HiveAuthModalProps = {
   open: boolean;
@@ -126,15 +126,17 @@ function GoogleG() {
    AUTH STEP (shared client + talent)
 ───────────────────────────────────────── */
 function AuthStep({
-  mode, email, setEmail, submitting, error,
-  onEmailSubmit, onGoogleClick,
+  mode, authMode, setAuthMode, email, setEmail, submitting, error,
+  onEmailSubmit, onGoogleClick, onWhatsAppClick,
 }: {
-  mode: Mode; email: string; setEmail: (v: string) => void;
+  mode: Mode;
+  authMode: "signup" | "login";
+  setAuthMode: (m: "signup" | "login") => void;
+  email: string; setEmail: (v: string) => void;
   submitting: boolean; error: string;
-  onEmailSubmit: () => void; onGoogleClick: () => void;
+  onEmailSubmit: () => void; onGoogleClick: () => void; onWhatsAppClick?: () => void;
 }) {
   const [focused, setFocused] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const typing = email.length > 0;
 
   const blurStyle = (suppress?: boolean): React.CSSProperties => ({
@@ -144,31 +146,40 @@ function AuthStep({
     pointerEvents: (typing && !suppress) ? "none" : "auto",
   });
 
-  const headingText = mode === "client"
-    ? { pre: "Discover the talent.", grad: "Creator Hive." }
-    : { pre: "Join the Hive.", grad: "Creator Hive." };
+  const subtitleMap: Record<string, string> = {
+    "client-signup": "Enter your work email to access UAE's most vetted creator marketplace.",
+    "client-login":  "Welcome back. Enter your email and we'll send you a secure link.",
+    "talent-signup": "Your application starts here. We'll match you to campaigns that fit who you are.",
+    "talent-login":  "Good to have you back. Enter your email to continue.",
+  };
+  const subtitle = subtitleMap[`${mode}-${authMode}`];
 
-  const subtitle = mode === "client"
-    ? "Enter your work email to access UAE's most vetted creator marketplace."
-    : "Your application starts here. We'll match you to campaigns that fit who you are.";
+  const googleLabel = authMode === "login"
+    ? "Continue with Google"
+    : mode === "client" ? "Continue with Google" : "Sign up with Google";
 
   return (
     <div className="w-full flex flex-col items-center gap-7">
 
-      {/* Heading — blurs when typing */}
-      <div className="text-center space-y-2.5" style={blurStyle()}>
-        <h1 className="text-[30px] sm:text-[34px] font-light tracking-[-0.03em] leading-tight">
-          <span style={{ color: "rgba(255,255,255,0.88)" }}>{headingText.pre} </span>
-          <span style={{
-            background: "linear-gradient(100deg, #9B7FFF 0%, #C4AEFF 45%, #5DD0FF 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-          }}>{headingText.grad}</span>
+      {/* Static heading — blurs when typing */}
+      <div className="text-center space-y-3" style={blurStyle()}>
+        <h1 className="text-[30px] sm:text-[36px] font-medium tracking-[-0.025em] text-white leading-[1.12]">
+          Welcome to Creator Hive
         </h1>
-        <p className="text-[14px] font-light max-w-[340px] mx-auto" style={{ color: "rgba(255,255,255,0.42)" }}>
-          {subtitle}
-        </p>
+        {/* Subtitle — swipes horizontally on mode/authMode change */}
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={`${mode}-${authMode}`}
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -24 }}
+            transition={{ duration: 0.28, ease: [0.25, 0.1, 0.25, 1] }}
+            className="text-[14px] font-light max-w-[340px] mx-auto"
+            style={{ color: "rgba(255,255,255,0.42)" }}
+          >
+            {subtitle}
+          </motion.p>
+        </AnimatePresence>
       </div>
 
       {/* Email input */}
@@ -179,11 +190,10 @@ function AuthStep({
             height: "52px",
             background: focused ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.04)",
             border: `1px solid ${focused ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.10)"}`,
-            boxShadow: focused ? "0 0 0 3px rgba(155,127,255,0.08)" : "none",
+            boxShadow: focused ? "0 0 0 3px rgba(255,255,255,0.05)" : "none",
           }}
         >
           <input
-            ref={inputRef}
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
@@ -193,7 +203,7 @@ function AuthStep({
             placeholder="account email"
             autoFocus
             className="flex-1 bg-transparent outline-none text-[15px] font-light min-w-0"
-            style={{ color: "rgba(255,255,255,0.90)", caretColor: "rgba(155,127,255,0.9)" }}
+            style={{ color: "rgba(255,255,255,0.90)", caretColor: "rgba(255,255,255,0.6)" }}
           />
           <button
             type="button"
@@ -217,8 +227,8 @@ function AuthStep({
         )}
       </div>
 
-      {/* Google option — blurs when typing */}
-      <div style={blurStyle()}>
+      {/* Social options — blurs when typing */}
+      <div style={blurStyle()} className="flex flex-col items-center gap-3">
         <button
           type="button"
           onClick={onGoogleClick}
@@ -232,8 +242,40 @@ function AuthStep({
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
         >
           <GoogleG />
-          {mode === "client" ? "Continue with Google" : "Sign up with Google"}
+          {googleLabel}
         </button>
+
+        {/* WhatsApp option — talent only */}
+        {mode === "talent" && onWhatsAppClick && (
+          <button
+            type="button"
+            onClick={onWhatsAppClick}
+            className="flex items-center gap-2.5 px-5 py-2.5 rounded-full transition-all duration-150"
+            style={{
+              border: "1px solid rgba(37,211,102,0.25)",
+              color: "rgba(255,255,255,0.65)",
+              fontSize: "14px",
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(37,211,102,0.06)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+          >
+            <WhatsAppIcon />
+            Continue with WhatsApp
+          </button>
+        )}
+
+        {/* Sign up / Log in toggle */}
+        <p className="text-[13px] mt-1" style={{ color: "rgba(255,255,255,0.28)" }}>
+          {authMode === "signup" ? "Already have an account? " : "Don’t have an account? "}
+          <button
+            type="button"
+            onClick={() => setAuthMode(authMode === "signup" ? "login" : "signup")}
+            className="transition-opacity hover:opacity-80"
+            style={{ color: "rgba(255,255,255,0.65)", textDecoration: "underline", textUnderlineOffset: "2px" }}
+          >
+            {authMode === "signup" ? "Log in" : "Sign up"}
+          </button>
+        </p>
       </div>
 
     </div>
@@ -269,7 +311,266 @@ function InboxStep({ email, onBack }: { email: string; onBack: () => void }) {
       </div>
 
       <button type="button" onClick={onBack} className="text-[13px] transition-opacity hover:opacity-60" style={{ color: "rgba(255,255,255,0.30)" }}>
-        ← Back to Signup
+        ← Back
+      </button>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────
+   LOADING STEP — rotating logo → reveal landing
+───────────────────────────────────────── */
+function LoadingStep({ onDone }: { onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 1800);
+    return () => clearTimeout(t);
+  }, [onDone]);
+
+  return (
+    <div className="flex flex-col items-center gap-5">
+      {/* Rotating CH icon */}
+      <div style={{ animation: "chSpin 1.6s linear infinite", transformOrigin: "center" }}>
+        <img
+          src="/brand/ch-icon.svg"
+          width={48} height={54}
+          alt="Creator Hive"
+          style={{
+            filter: "brightness(0) invert(1) opacity(0.6)",
+          }}
+        />
+      </div>
+      <p style={{
+        color: "rgba(255,255,255,0.32)",
+        fontSize: "13px",
+        fontWeight: 300,
+        letterSpacing: "0.03em",
+      }}>
+        Signing you in…
+      </p>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────
+   WHATSAPP ICON
+───────────────────────────────────────── */
+function WhatsAppIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" fill="#25D366"/>
+    </svg>
+  );
+}
+
+/* ─────────────────────────────────────────
+   OTP STEP — 6-digit code entry
+───────────────────────────────────────── */
+function OTPStep({
+  destination, via, onVerify, onBack, onResend,
+}: {
+  destination: string;
+  via: "email" | "whatsapp";
+  onVerify: () => void;
+  onBack: () => void;
+  onResend?: () => void;
+}) {
+  const [digits, setDigits] = useState(["", "", "", "", "", ""]);
+  const [verifying, setVerifying] = useState(false);
+  const [error, setError] = useState("");
+  const [resent, setResent] = useState(false);
+  const inputRef0 = useRef<HTMLInputElement>(null);
+  const inputRef1 = useRef<HTMLInputElement>(null);
+  const inputRef2 = useRef<HTMLInputElement>(null);
+  const inputRef3 = useRef<HTMLInputElement>(null);
+  const inputRef4 = useRef<HTMLInputElement>(null);
+  const inputRef5 = useRef<HTMLInputElement>(null);
+  const refs: Record<number, ReturnType<typeof useRef<HTMLInputElement | null>>> = {
+    0: inputRef0, 1: inputRef1, 2: inputRef2, 3: inputRef3, 4: inputRef4, 5: inputRef5,
+  };
+
+  const handleChange = (idx: number, val: string) => {
+    if (!/^\d*$/.test(val)) return;
+    const next = [...digits];
+    next[idx] = val.slice(-1);
+    setDigits(next);
+    if (val && idx < 5) refs[idx + 1].current?.focus();
+    if (next.every(d => d !== "") && !verifying) submit(next.join(""));
+  };
+
+  const handleKeyDown = (idx: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !digits[idx] && idx > 0) {
+      refs[idx - 1].current?.focus();
+    }
+    if (e.key === "ArrowLeft" && idx > 0) refs[idx - 1].current?.focus();
+    if (e.key === "ArrowRight" && idx < 5) refs[idx + 1].current?.focus();
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!pasted) return;
+    const next = ["", "", "", "", "", ""];
+    pasted.split("").forEach((d, i) => { next[i] = d; });
+    setDigits(next);
+    refs[Math.min(pasted.length, 5)].current?.focus();
+    if (pasted.length === 6) submit(pasted);
+  };
+
+  const submit = async (code: string) => {
+    setError("");
+    setVerifying(true);
+    await new Promise(r => setTimeout(r, 900));
+    // In production: verify code against backend
+    // Accept any 6-digit code for now (demo mode)
+    if (code.length === 6) {
+      onVerify();
+    } else {
+      setError("Invalid code. Please try again.");
+      setDigits(["", "", "", "", "", ""]);
+      refs[0].current?.focus();
+    }
+    setVerifying(false);
+  };
+
+  const handleResend = () => {
+    setResent(true);
+    onResend?.();
+    setTimeout(() => setResent(false), 30000);
+  };
+
+  const label = via === "whatsapp"
+    ? `Code sent to your WhatsApp at ${destination}`
+    : `Code sent to ${destination}`;
+
+  return (
+    <div className="w-full flex flex-col items-center gap-8">
+      <div className="text-center space-y-3">
+        <h1 className="text-[30px] sm:text-[36px] font-medium tracking-[-0.025em] text-white leading-[1.12]">
+          Welcome to Creator Hive
+        </h1>
+        <p className="text-[14px] font-light max-w-[360px] mx-auto" style={{ color: "rgba(255,255,255,0.42)" }}>
+          {label}
+        </p>
+      </div>
+
+      {/* 6-digit boxes */}
+      <div className="flex items-center gap-2.5" onPaste={handlePaste}>
+        {digits.map((d, i) => (
+          <input
+            key={i}
+            ref={refs[i]}
+            type="text"
+            inputMode="numeric"
+            maxLength={1}
+            value={d}
+            onChange={e => handleChange(i, e.target.value)}
+            onKeyDown={e => handleKeyDown(i, e)}
+            autoFocus={i === 0}
+            className="w-11 h-14 text-center text-[22px] font-light rounded-xl outline-none transition-all duration-150"
+            style={{
+              background: d ? "rgba(124,92,255,0.12)" : "rgba(255,255,255,0.04)",
+              border: `1px solid ${d ? "rgba(124,92,255,0.40)" : "rgba(255,255,255,0.10)"}`,
+              color: "rgba(255,255,255,0.92)",
+              caretColor: "transparent",
+              boxShadow: d ? "0 0 0 3px rgba(124,92,255,0.08)" : "none",
+            }}
+          />
+        ))}
+      </div>
+
+      {verifying && (
+        <div className="flex items-center gap-2" style={{ color: "rgba(255,255,255,0.35)", fontSize: "13px" }}>
+          <span className="block w-3.5 h-3.5 rounded-full border-2 border-white/20 border-t-white/50 animate-spin" />
+          Verifying…
+        </div>
+      )}
+      {error && <p className="text-[12px] text-center" style={{ color: "rgba(251,113,133,0.85)" }}>{error}</p>}
+
+      <div className="flex flex-col items-center gap-2">
+        <button
+          type="button"
+          disabled={resent}
+          onClick={handleResend}
+          className="text-[13px] transition-opacity"
+          style={{ color: resent ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.45)", cursor: resent ? "default" : "pointer" }}
+        >
+          {resent ? "Code resent" : "Resend code"}
+        </button>
+        <button type="button" onClick={onBack} className="text-[13px] transition-opacity hover:opacity-60"
+          style={{ color: "rgba(255,255,255,0.25)" }}>
+          ← Back
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────
+   PHONE STEP — WhatsApp phone number entry
+───────────────────────────────────────── */
+function PhoneStep({ onSubmit, onBack }: { onSubmit: (phone: string) => void; onBack: () => void }) {
+  const [phone, setPhone] = useState("");
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <div className="w-full flex flex-col items-center gap-7">
+      <div className="text-center space-y-3">
+        <h1 className="text-[30px] sm:text-[36px] font-medium tracking-[-0.025em] text-white leading-[1.12]">
+          Welcome to Creator Hive
+        </h1>
+        <AnimatePresence mode="wait">
+          <motion.p key="wa-sub"
+            initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }}
+            transition={{ duration: 0.28, ease: [0.25, 0.1, 0.25, 1] }}
+            className="text-[14px] font-light max-w-[340px] mx-auto"
+            style={{ color: "rgba(255,255,255,0.42)" }}
+          >
+            Enter your WhatsApp number and we’ll send you a one-time code.
+          </motion.p>
+        </AnimatePresence>
+      </div>
+
+      <div className="w-full max-w-[400px]">
+        <div className="flex items-center rounded-full px-5 transition-all duration-200"
+          style={{
+            height: "52px",
+            background: focused ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.04)",
+            border: `1px solid ${focused ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.10)"}`,
+            boxShadow: focused ? "0 0 0 3px rgba(255,255,255,0.05)" : "none",
+          }}>
+          <span className="flex-shrink-0 text-[15px] font-light pr-3 border-r mr-3"
+            style={{ color: "rgba(255,255,255,0.40)", borderColor: "rgba(255,255,255,0.12)" }}>
+            +971
+          </span>
+          <input
+            type="tel"
+            value={phone}
+            onChange={e => setPhone(e.target.value.replace(/\D/g, ""))}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            onKeyDown={e => { if (e.key === "Enter" && phone.trim().length >= 8) onSubmit("+971" + phone); }}
+            placeholder="50 123 4567"
+            autoFocus
+            className="flex-1 bg-transparent outline-none text-[15px] font-light"
+            style={{ color: "rgba(255,255,255,0.90)", caretColor: "rgba(255,255,255,0.6)" }}
+          />
+          <button type="button"
+            onClick={() => phone.trim().length >= 8 && onSubmit("+971" + phone)}
+            disabled={phone.trim().length < 8}
+            className="flex-shrink-0 flex items-center justify-center rounded-full ml-2 transition-all duration-200"
+            style={{
+              width: "34px", height: "34px",
+              background: phone.trim().length >= 8 ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.09)",
+              color: phone.trim().length >= 8 ? "#07070B" : "rgba(255,255,255,0.30)",
+            }}>
+            <ArrowRight size={15} strokeWidth={2.5} />
+          </button>
+        </div>
+      </div>
+
+      <button type="button" onClick={onBack} className="text-[13px] transition-opacity hover:opacity-60"
+        style={{ color: "rgba(255,255,255,0.28)" }}>
+        ← Back
       </button>
     </div>
   );
@@ -623,7 +924,10 @@ function DoneStep({ firstName, archetype }: { firstName: string; archetype?: Ret
 ───────────────────────────────────────── */
 export function HiveAuthModal({ open, mode, onClose, onSuccess }: HiveAuthModalProps) {
   const [step, setStep]           = useState<Step>("auth");
+  const [authMode, setAuthMode]   = useState<"signup" | "login">("signup");
   const [email, setEmail]         = useState("");
+  const [phone, setPhone]         = useState("");
+  const [otpVia, setOtpVia]       = useState<"email" | "whatsapp">("email");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]         = useState("");
   const [prismAnswers, setPrismAnswers] = useState<Record<string, string>>({});
@@ -633,7 +937,8 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess }: HiveAuthModalP
 
   useEffect(() => {
     if (!open) {
-      setStep("auth"); setEmail(""); setSubmitting(false); setError("");
+      setStep("auth"); setAuthMode("signup"); setEmail(""); setPhone(""); setOtpVia("email");
+      setSubmitting(false); setError("");
       setPrismAnswers({}); setQIndex(0); setArchetype(null); setProfileFirstName("");
     }
   }, [open]);
@@ -648,13 +953,13 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess }: HiveAuthModalP
       const result = await signIn("credentials", {
         redirect: false,
         email: email.trim(),
-        userType: mode,
+        userType: authMode === "login" ? mode : mode,
         displayName: email.split("@")[0],
       });
       if (result?.ok || !result?.error || result.error.toLowerCase().includes("configuration")) {
         localStorage.setItem(`ch_${mode}_email`, email.trim().toLowerCase());
       } else {
-        setError("Couldn't send sign-in link. Please try again.");
+        setError("Couldn't send link. Please try again.");
         setSubmitting(false);
         return;
       }
@@ -663,16 +968,34 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess }: HiveAuthModalP
     }
 
     setSubmitting(false);
-    if (mode === "client") {
-      setStep("inbox");
-      setTimeout(() => { onSuccess(); }, 1800);
-    } else {
-      setStep("prism-intro");
-    }
+    // All email paths go through OTP verification first
+    setOtpVia("email");
+    setStep("otp");
   };
 
   const handleGoogleClick = () => {
     signIn("google", { callbackUrl: mode === "talent" ? "/onboarding/step-1" : "/dashboard/campaigns" });
+  };
+
+  const handleWhatsAppClick = () => {
+    setStep("phone");
+  };
+
+  const handlePhoneSubmit = (phoneNumber: string) => {
+    setPhone(phoneNumber);
+    setOtpVia("whatsapp");
+    // In production: POST to /api/auth/whatsapp-otp with phoneNumber
+    setStep("otp");
+  };
+
+  const handleOTPVerify = () => {
+    // OTP verified — decide next step based on mode + authMode
+    if (authMode === "login" || mode === "client") {
+      setStep("loading");
+    } else {
+      // talent new signup — go through prism
+      setStep("prism-intro");
+    }
   };
 
   const handlePrismAnswer = (key: "A" | "B") => {
@@ -693,101 +1016,165 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess }: HiveAuthModalP
     setTimeout(() => { onSuccess(); onClose(); }, 2000);
   };
 
+  const SIMPLE_STEPS = ["auth", "otp", "phone", "loading"];
+  const isSimple = SIMPLE_STEPS.includes(step);
+
   return (
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[9000] flex flex-col"
+          className="fixed inset-0 z-[9000]"
           style={{ background: "#07070B" }}
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          transition={{ duration: 0.22 }}
+          initial={{ opacity: 0, y: 60 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 40 }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
         >
-          {/* Purple spotlight */}
-          <div className="pointer-events-none fixed inset-0"
-            style={{ background: "radial-gradient(ellipse 800px 500px at 50% 40%, rgba(124,92,255,0.14) 0%, transparent 65%)", zIndex: 0 }} />
+          {/* Ambient glow — white top + deep amethyst */}
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div style={{
+              position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)",
+              width: "60vw", maxWidth: "800px", height: "40vh",
+              background: "radial-gradient(ellipse, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.06) 50%, transparent 80%)",
+              filter: "blur(120px)", opacity: 0.13, borderRadius: "50%",
+            }} />
+            <div style={{
+              position: "absolute", top: "30%", left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "80vw", height: "70vh",
+              background: "radial-gradient(ellipse, #7c3aed 0%, #4c1d95 60%, transparent 100%)",
+              filter: "blur(180px)", opacity: 0.18, borderRadius: "50%",
+            }} />
+          </div>
 
-          {/* Close button */}
-          <button type="button" onClick={onClose}
-            className="fixed top-6 left-6 z-10 flex items-center justify-center rounded-full transition-colors"
-            style={{ width: "32px", height: "32px", background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.55)" }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.12)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)"; }}>
-            <X size={15} strokeWidth={2} />
-          </button>
+          {/* Close button — hidden during loading */}
+          {step !== "loading" && (
+            <button type="button" onClick={onClose}
+              className="absolute top-6 left-6 z-20 flex items-center justify-center rounded-full transition-colors"
+              style={{ width: "32px", height: "32px", background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.55)" }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.12)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)"; }}>
+              <X size={15} strokeWidth={2} />
+            </button>
+          )}
 
-          {/* Scrollable content area */}
-          <div className="relative z-10 flex-1 overflow-y-auto flex flex-col">
-            <div className="flex-1 flex items-center justify-center px-6 py-20">
+          {/* SIMPLE STEPS: pt-[106px] pushes content down to align heading with landing page
+               (landing page heading sits ~53px below screen center due to toggle pill above it;
+                adding pt=2×53px to the flex container shifts center by exactly 53px) */}
+          {isSimple && (
+            <div className="absolute inset-0 flex items-center justify-center px-6 pt-[106px]">
               <div className="w-full max-w-[520px]">
                 <AnimatePresence mode="wait">
                   {step === "auth" && (
                     <motion.div key="auth" {...SLIDE}>
-                      <AuthStep mode={mode} email={email} setEmail={setEmail}
+                      <AuthStep mode={mode} authMode={authMode} setAuthMode={setAuthMode}
+                        email={email} setEmail={setEmail}
                         submitting={submitting} error={error}
-                        onEmailSubmit={handleEmailSubmit} onGoogleClick={handleGoogleClick} />
+                        onEmailSubmit={handleEmailSubmit}
+                        onGoogleClick={handleGoogleClick}
+                        onWhatsAppClick={handleWhatsAppClick} />
                     </motion.div>
                   )}
-                  {step === "inbox" && (
-                    <motion.div key="inbox" {...SLIDE}>
-                      <InboxStep email={email} onBack={() => setStep("auth")} />
+                  {step === "otp" && (
+                    <motion.div key="otp" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.3 }}>
+                      <OTPStep
+                        destination={otpVia === "whatsapp" ? phone : email}
+                        via={otpVia}
+                        onVerify={handleOTPVerify}
+                        onBack={() => setStep(otpVia === "whatsapp" ? "phone" : "auth")}
+                        onResend={() => { /* re-send OTP */ }}
+                      />
                     </motion.div>
                   )}
-                  {step === "prism-intro" && (
-                    <motion.div key="prism-intro" {...SLIDE}>
-                      <PrismIntroStep onStart={() => { setQIndex(0); setStep("prism-q"); }} />
+                  {step === "phone" && (
+                    <motion.div key="phone" {...SLIDE}>
+                      <PhoneStep onSubmit={handlePhoneSubmit} onBack={() => setStep("auth")} />
                     </motion.div>
                   )}
-                  {step === "prism-q" && (
-                    <motion.div key={`prism-q-${qIndex}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
-                      <PrismQuestionStep q={PRISM_QUESTIONS[qIndex]} qIndex={qIndex} total={PRISM_QUESTIONS.length} onAnswer={handlePrismAnswer} />
-                    </motion.div>
-                  )}
-                  {step === "prism-result" && archetype && (
-                    <motion.div key="prism-result" {...SLIDE}>
-                      <PrismResultStep archetype={archetype} onContinue={() => setStep("profile")} />
-                    </motion.div>
-                  )}
-                  {step === "profile" && archetype && (
-                    <motion.div key="profile" {...SLIDE}>
-                      <ProfileStep archetype={archetype} onSubmit={handleProfileSubmit} />
-                    </motion.div>
-                  )}
-                  {step === "done" && (
-                    <motion.div key="done" {...SLIDE}>
-                      <DoneStep firstName={profileFirstName} archetype={archetype ?? undefined} />
+                  {step === "loading" && (
+                    <motion.div key="loading"
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      transition={{ duration: 0.35 }}>
+                      <LoadingStep onDone={() => { onSuccess(); onClose(); }} />
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
             </div>
+          )}
 
-            {/* Bottom bar — Fey-style */}
-            {(step === "auth" || step === "inbox") && (
-              <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
-                className="flex-shrink-0 flex items-center justify-between px-6 py-4"
-                style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[13px] font-bold"
-                    style={{ background: "rgba(124,92,255,0.20)", color: "rgba(155,127,255,0.90)" }}>
-                    CH
-                  </div>
-                  <span className="text-[13px] font-medium" style={{ color: "rgba(255,255,255,0.55)" }}>Creator Hive</span>
+          {/* COMPLEX STEPS: scrollable column for prism/profile/done */}
+          {!isSimple && (
+            <div className="absolute inset-0 overflow-y-auto flex flex-col">
+              <div className="flex-1 flex items-center justify-center px-6 py-16">
+                <div className="w-full max-w-[520px]">
+                  <AnimatePresence mode="wait">
+                    {step === "inbox" && (
+                      <motion.div key="inbox" {...SLIDE}>
+                        <InboxStep email={email} onBack={() => setStep("auth")} />
+                      </motion.div>
+                    )}
+                    {step === "prism-intro" && (
+                      <motion.div key="prism-intro" {...SLIDE}>
+                        <PrismIntroStep onStart={() => { setQIndex(0); setStep("prism-q"); }} />
+                      </motion.div>
+                    )}
+                    {step === "prism-q" && (
+                      <motion.div key={`prism-q-${qIndex}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
+                        <PrismQuestionStep q={PRISM_QUESTIONS[qIndex]} qIndex={qIndex} total={PRISM_QUESTIONS.length} onAnswer={handlePrismAnswer} />
+                      </motion.div>
+                    )}
+                    {step === "prism-result" && archetype && (
+                      <motion.div key="prism-result" {...SLIDE}>
+                        <PrismResultStep archetype={archetype} onContinue={() => setStep("profile")} />
+                      </motion.div>
+                    )}
+                    {step === "profile" && archetype && (
+                      <motion.div key="profile" {...SLIDE}>
+                        <ProfileStep archetype={archetype} onSubmit={handleProfileSubmit} />
+                      </motion.div>
+                    )}
+                    {step === "done" && (
+                      <motion.div key="done" {...SLIDE}>
+                        <DoneStep firstName={profileFirstName} archetype={archetype ?? undefined} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-                <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.20)" }}>
-                  By signing up, you agree to our{" "}
-                  <a href="/terms" className="underline hover:no-underline" style={{ color: "rgba(255,255,255,0.35)" }}>Terms of Service</a>.
-                </p>
-              </motion.div>
-            )}
-          </div>
+              </div>
+            </div>
+          )}
 
-          {/* Inline styles for native selects */}
+          {/* Bottom bar — Fey-style (only on auth/phone steps) */}
+          {(step === "auth" || step === "phone") && (
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
+              className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-between px-6 py-4"
+              style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[13px] font-bold"
+                  style={{ background: "rgba(124,92,255,0.20)", color: "rgba(155,127,255,0.90)" }}>
+                  CH
+                </div>
+                <span className="text-[13px] font-medium" style={{ color: "rgba(255,255,255,0.55)" }}>Creator Hive</span>
+              </div>
+              <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.20)" }}>
+                By continuing, you agree to our{" "}
+                <a href="/terms" className="underline hover:no-underline" style={{ color: "rgba(255,255,255,0.35)" }}>Terms of Service</a>.
+              </p>
+            </motion.div>
+          )}
+
+          {/* Inline styles */}
           <style>{`
             select option { background: #111118; color: rgba(255,255,255,0.88); }
             input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.22) !important; }
             input:focus, select:focus, textarea:focus { border-color: rgba(155,127,255,0.45) !important; }
+            @keyframes chSpin {
+              0%   { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
           `}</style>
         </motion.div>
       )}

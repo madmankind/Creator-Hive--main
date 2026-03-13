@@ -187,18 +187,17 @@ export function WeeklyCalendarPanel({ cards, onSelectTalent }: WeeklyCalendarPan
                 key={dayKey}
                 className="rounded-none p-2 flex flex-col cursor-pointer transition-colors"
                 style={{
-                  background: "rgba(0,0,0,0.25)",
-                  border: "1px solid rgba(255,255,255,0.10)",
+                  background: "rgba(255,255,255,0.03)",
+                  border: "none",
+                  borderRadius: "8px",
                 }}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => onDropToDay(d)}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "rgba(0,0,0,0.35)";
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)";
+                  e.currentTarget.style.background = "rgba(255,255,255,0.055)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "rgba(0,0,0,0.25)";
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
+                  e.currentTarget.style.background = "rgba(255,255,255,0.03)";
                 }}
               >
                 <div className="flex items-center justify-between mb-1.5">
@@ -273,8 +272,7 @@ export function WeeklyCalendarPanel({ cards, onSelectTalent }: WeeklyCalendarPan
         <div
           className="flex-1 min-h-0 rounded-none p-3 flex flex-col"
           style={{
-            background: "rgba(0,0,0,0.25)",
-            border: "1px solid rgba(255,255,255,0.10)",
+            background: "rgba(255,255,255,0.02)",
             overflow: "hidden",
           }}
         >
@@ -364,7 +362,6 @@ export function WeeklyCalendarPanel({ cards, onSelectTalent }: WeeklyCalendarPan
                               style={{
                                 background: "rgba(255,255,255,0.04)",
                                 color: feyTokens.colors.text.muted,
-                                border: "1px solid rgba(255,255,255,0.10)",
                               }}
                             >
                               Set date

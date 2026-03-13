@@ -20,6 +20,42 @@ interface ManageScreenProps {
   selectedCampaignIds: string[];
 }
 
+// Demo cards shown when no real talent has been added to a campaign yet
+const DEMO_CARDS: TalentCampaignCard[] = [
+  {
+    id: "demo-1", campaignId: "demo", talentId: "demo-1",
+    talentName: "Layla Al Hashmi", talentRole: "UGC Creator",
+    deliverables: [
+      { id: "d1", type: "Reel", files: [], status: "Pending", revisionCount: 0 },
+      { id: "d2", type: "Story", files: [], status: "Pending", revisionCount: 0 },
+    ],
+    agreedRate: 4500, currency: "AED", engagementRate: 4.2,
+    status: "SHORTLISTED", paymentStatus: "UNFUNDED", bookingState: "PENDING",
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "demo-2", campaignId: "demo", talentId: "demo-2",
+    talentName: "Sara Mansour", talentRole: "Growth Strategist",
+    deliverables: [
+      { id: "d3", type: "Post", files: [], status: "Pending", revisionCount: 0 },
+    ],
+    agreedRate: 6000, currency: "AED", engagementRate: 5.8,
+    status: "BOOKED", paymentStatus: "UNFUNDED", bookingState: "CONFIRMED",
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "demo-3", campaignId: "demo", talentId: "demo-3",
+    talentName: "Omar Khalil", talentRole: "Video Producer",
+    deliverables: [
+      { id: "d4", type: "Video", files: [], status: "Pending", revisionCount: 0 },
+      { id: "d5", type: "Reel", files: [], status: "Pending", revisionCount: 0 },
+    ],
+    agreedRate: 8500, currency: "AED", engagementRate: 3.9,
+    status: "IN_PRODUCTION", paymentStatus: "PARTIALLY_FUNDED", bookingState: "CONFIRMED",
+    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+];
+
 // Feature flag: enable V2 layout
 const USE_MANAGE_V2 = true;
 
@@ -47,9 +83,12 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
       const res = await fetch(`/api/campaigns/${campaignId}/talents`);
       if (!res.ok) throw new Error(`Failed to load talent (${res.status})`);
       const data = await res.json();
-      setCards(data.cards ?? []);
+      const realCards: TalentCampaignCard[] = data.cards ?? [];
+      // Fall back to demo cards when campaign has no assigned talent yet
+      setCards(realCards.length > 0 ? realCards : DEMO_CARDS.map(c => ({ ...c, campaignId })));
     } catch {
-      setCards([]);
+      // Show demo cards if API is unavailable
+      setCards(DEMO_CARDS.map(c => ({ ...c, campaignId })));
     } finally {
       setCardsLoading(false);
     }
@@ -160,21 +199,24 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
           zIndex: 1,
         }}
       />
-      <div
-        className="fixed inset-0 pointer-events-none bg-hive-radial opacity-70"
-        style={{
-          zIndex: 1,
-          maskImage: "radial-gradient(70% 70% at 50% 20%, black 0%, black 55%, transparent 85%)",
-          WebkitMaskImage: "radial-gradient(70% 70% at 50% 20%, black 0%, black 55%, transparent 85%)",
-        }}
-      />
+      {/* White top spotlight — matches landing page density */}
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
           zIndex: 1,
-          background:
-            "radial-gradient(900px 520px at 18% 12%, rgba(0,220,255,0.08) 0%, rgba(0,0,0,0) 60%), radial-gradient(1200px 800px at 50% 40%, rgba(124,92,255,0.22) 0%, rgba(0,0,0,0) 62%)",
-          filter: "blur(10px)",
+          background: "radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.04) 55%, transparent 80%)",
+          filter: "blur(130px)",
+          opacity: 0.07,
+        }}
+      />
+      {/* Amethyst center glow — matches landing page density */}
+      <div
+        className="fixed inset-0 pointer-events-none"
+        style={{
+          zIndex: 1,
+          background: "radial-gradient(ellipse at 50% 35%, #7c3aed 0%, #4c1d95 55%, transparent 100%)",
+          filter: "blur(200px)",
+          opacity: 0.08,
         }}
       />
 

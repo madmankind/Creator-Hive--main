@@ -11,7 +11,7 @@ import { CampaignSetupBoard } from "@/features/campaign/CampaignSetupBoard";
 import { PackageSelector } from "@/features/campaign/PackageSelector";
 import { curatedTalent } from "@/lib/curatedTalent";
 import { PACKAGES, type PackageConfig } from "@/lib/packages";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Sparkles } from "lucide-react";
@@ -47,6 +47,19 @@ function HomePageContent() {
   useEffect(() => {
     const pkgId = searchParams.get("package");
     const skip = searchParams.get("skip");
+    const auth = searchParams.get("auth");
+
+    // Open auth modal when redirected from /signup?type=...
+    if (auth === "talent" && !session?.user) {
+      setMode("talent");
+      setTalentAuthOpen(true);
+      return;
+    }
+    if (auth === "client" && !session?.user) {
+      setMode("client");
+      setClientAuthOpen(true);
+      return;
+    }
 
     // Auth-aware skip: logged-in users coming from dashboard Discover
     // bypass the hero and land directly at the gallery
@@ -123,13 +136,24 @@ function HomePageContent() {
 
       {/* SECTION 1: HERO */}
       <section className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6">
+        {/* Deep amethyst ambient — matches sign-in page */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden z-0">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[70vh] rounded-full"
+            style={{ background: "radial-gradient(ellipse, #7c3aed 0%, #4c1d95 60%, transparent 100%)", filter: "blur(180px)", opacity: 0.13 }} />
+        </div>
         <div className="w-full max-w-[760px] mx-auto text-center space-y-6">
 
           <div className="inline-flex items-center gap-1 rounded-full bg-white/[0.05] p-1 ring-1 ring-white/[0.09]">
             {(["client", "talent"] as const).map((m) => (
               <button
                 key={m}
-                onClick={() => setMode(m)}
+                onClick={() => {
+                  setMode(m);
+                  if (!session?.user) {
+                    if (m === "client") setClientAuthOpen(true);
+                    else setTalentAuthOpen(true);
+                  }
+                }}
                 className={cn(
                   "px-4 py-1.5 rounded-full text-[11px] font-medium transition-all duration-200",
                   mode === m
@@ -174,9 +198,15 @@ function HomePageContent() {
               >
                 <HeroBar
                   mode={mode}
-                  onQueryChange={(q) => { setSearchQuery(q); if (q) openGallery(); }}
-                  onRolesChange={(roles) => { setSelectedRoles(roles); if (roles.length) openGallery(); }}
+                  onQueryChange={(q) => { setSearchQuery(q); }}
+                  onRolesChange={(roles) => { setSelectedRoles(roles); }}
                   onDiscover={openGallery}
+                  showClear={showTalentGallery}
+                  onClear={() => {
+                    setShowTalentGallery(false);
+                    setSearchQuery("");
+                    setSelectedRoles([]);
+                  }}
                 />
 
                 <div className="pt-1 flex justify-center">
@@ -453,8 +483,32 @@ function HomePageContent() {
         onSuccess={() => {}}
       />
 
-      {/* Bottom dock — activates post sign-in on landing page */}
-      {session?.user && <BottomDock />}
+      {/* Bottom dock + logout — shown when logged in */}
+      {session?.user && (
+        <>
+          <BottomDock />
+          <button
+            type="button"
+            onClick={() => signOut({ callbackUrl: "/" })}
+            className="fixed top-5 right-5 z-50 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] transition-all duration-150"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.09)",
+              color: "rgba(255,255,255,0.35)",
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)";
+              (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.65)";
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
+              (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.35)";
+            }}
+          >
+            Log out
+          </button>
+        </>
+      )}
     </main>
   );
 }

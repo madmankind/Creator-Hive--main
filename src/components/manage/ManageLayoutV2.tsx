@@ -71,7 +71,7 @@ export function ManageLayoutV2({
 
   // Deterministic height calculations
   const HEADER_HEIGHT = 56;
-  const TALENT_FRAME_HEIGHT = 290; // Outer frame height
+  const TALENT_FRAME_HEIGHT = 300; // Height for the scrollable talent row
   const VERTICAL_GAP = 24; // Gap between talent frame and panels
   const BOTTOM_NAV_HEIGHT = 88;
   // Safe-area aware bottom padding (includes iOS safe-area-inset-bottom)
@@ -104,22 +104,25 @@ export function ManageLayoutV2({
         }}
       />
 
-      {/* Background Gradients (same as original) */}
-      <div
-        className="fixed inset-0 pointer-events-none bg-hive-radial opacity-70"
-        style={{
-          zIndex: 1,
-          maskImage: "radial-gradient(70% 70% at 50% 20%, black 0%, black 55%, transparent 85%)",
-          WebkitMaskImage: "radial-gradient(70% 70% at 50% 20%, black 0%, black 55%, transparent 85%)",
-        }}
-      />
+      {/* Background Gradients — matches landing page */}
+      {/* White top spotlight — matches landing page density */}
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
           zIndex: 1,
-          background:
-            "radial-gradient(900px 520px at 18% 12%, rgba(0,220,255,0.06) 0%, rgba(0,0,0,0) 60%), radial-gradient(1200px 800px at 55% 35%, rgba(124,92,255,0.18) 0%, rgba(0,0,0,0) 62%)",
-          filter: "blur(10px)",
+          background: "radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.04) 55%, transparent 80%)",
+          filter: "blur(130px)",
+          opacity: 0.07,
+        }}
+      />
+      {/* Amethyst center glow — matches landing page density */}
+      <div
+        className="fixed inset-0 pointer-events-none"
+        style={{
+          zIndex: 1,
+          background: "radial-gradient(ellipse at 50% 35%, #7c3aed 0%, #4c1d95 55%, transparent 100%)",
+          filter: "blur(200px)",
+          opacity: 0.08,
         }}
       />
 
@@ -275,7 +278,7 @@ export function ManageLayoutV2({
               paddingTop: "28px",
             }}
           >
-            {/* Talent Frame (fixed height) */}
+            {/* Talent Frame — single flat scrollable pane, no inner glass wrapper */}
             <div
               style={{
                 flex: `0 0 ${TALENT_FRAME_HEIGHT}px`,
@@ -283,46 +286,42 @@ export function ManageLayoutV2({
                 ...outlineStyle,
               }}
             >
-              <div style={{ ...GLASS, height: "100%", padding: "14px 16px" }}>
-                {cards.length === 0 ? (
-                  <div
-                    className="h-full flex flex-col items-center justify-center gap-3"
-                    style={{ color: feyTokens.colors.text.muted }}
+              {cards.length === 0 ? (
+                <div
+                  className="h-full flex flex-col items-center justify-center gap-3"
+                  style={{ color: feyTokens.colors.text.muted }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    {[0, 1, 2, 3].map((i) => (
+                      <svg key={i} width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.12 - i * 0.02, color: "rgba(255,255,255,0.9)" }}>
+                        <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.58-7 8-7s8 3 8 7" />
+                      </svg>
+                    ))}
+                  </div>
+                  <p className="text-[13px]" style={{ color: feyTokens.colors.text.muted }}>
+                    No creators added to this campaign yet
+                  </p>
+                  <a
+                    href="/dashboard/campaigns?mode=discover"
+                    className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-medium transition-colors"
+                    style={{
+                      background: "rgba(124,92,255,0.12)",
+                      border: "1px solid rgba(124,92,255,0.3)",
+                      color: "rgba(167,139,250,0.9)",
+                    }}
                   >
-                    <div className="flex items-center gap-1.5">
-                      {[0, 1, 2, 3].map((i) => (
-                        <svg key={i} width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.12 - i * 0.02, color: "rgba(255,255,255,0.9)" }}>
-                          <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.58-7 8-7s8 3 8 7" />
-                        </svg>
-                      ))}
-                    </div>
-                    <p className="text-[13px]" style={{ color: feyTokens.colors.text.muted }}>
-                      No creators added to this campaign yet
-                    </p>
-                    <a
-                      href="/dashboard/campaigns?mode=discover"
-                      className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-medium transition-colors"
-                      style={{
-                        background: "rgba(124,92,255,0.12)",
-                        border: "1px solid rgba(124,92,255,0.3)",
-                        color: "rgba(167,139,250,0.9)",
-                      }}
-                    >
-                      <Plus size={13} />
-                      Browse creators
-                    </a>
-                  </div>
-                ) : (
-                  <div style={{ height: "100%", minHeight: 0, overflow: "hidden" }}>
-                    <TalentCarousel
-                      cards={cards}
-                      selectedCardId={selectedCardId}
-                      onCardSelect={onCardSelect}
-                      highlightedCardId={highlightedCardId}
-                    />
-                  </div>
-                )}
-              </div>
+                    <Plus size={13} />
+                    Browse creators
+                  </a>
+                </div>
+              ) : (
+                <TalentCarousel
+                  cards={cards}
+                  selectedCardId={selectedCardId}
+                  onCardSelect={onCardSelect}
+                  highlightedCardId={highlightedCardId}
+                />
+              )}
             </div>
 
             {/* Two-Panel Row (fills remaining height via flex) */}

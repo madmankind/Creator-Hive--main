@@ -86,3 +86,32 @@ export type PrismaTransaction = Parameters<
   Parameters<typeof db.$transaction>[0]
 >[0]
 
+
+/**
+ * Extended db client with explicit type assertions for models that may not
+ * yet be reflected in the generated Prisma client (run `prisma generate` to update).
+ * Used by routes that interact with CampaignFile, CampaignInvite, WalletTransaction.
+ */
+export const dbExt = db as unknown as typeof db & {
+  campaignFile: typeof db.campaignFile & {
+    findMany: (args?: unknown) => Promise<unknown[]>;
+    findUnique: (args?: unknown) => Promise<unknown>;
+    create: (args?: unknown) => Promise<unknown>;
+    update: (args?: unknown) => Promise<unknown>;
+    delete: (args?: unknown) => Promise<unknown>;
+  };
+  campaignInvite: typeof db.campaignInvite & {
+    findMany: (args?: unknown) => Promise<unknown[]>;
+    findUnique: (args?: unknown) => Promise<unknown>;
+    upsert: (args?: unknown) => Promise<unknown>;
+    create: (args?: unknown) => Promise<unknown>;
+    update: (args?: unknown) => Promise<unknown>;
+    delete: (args?: unknown) => Promise<unknown>;
+  };
+  walletTransaction: typeof db.walletTransaction & {
+    findMany: (args?: unknown) => Promise<unknown[]>;
+    findUnique: (args?: unknown) => Promise<unknown>;
+    create: (args?: unknown) => Promise<unknown>;
+    update: (args?: unknown) => Promise<unknown>;
+  };
+};

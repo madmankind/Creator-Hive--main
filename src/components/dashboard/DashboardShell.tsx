@@ -32,24 +32,26 @@ export function DashboardShell({
         isolation: "isolate",
       }}
     >
-      {/* ── Background layers (matches ManageLayoutV2) ── */}
+      {/* ── Background layers (matches landing page) ── */}
       <div className="fixed inset-0 pointer-events-none" style={{ background: "#07070B", zIndex: 0 }} />
-      <div
-        className="fixed inset-0 pointer-events-none bg-hive-radial opacity-70"
-        style={{
-          zIndex: 1,
-          maskImage: "radial-gradient(70% 70% at 50% 20%, black 0%, black 55%, transparent 85%)",
-          WebkitMaskImage: "radial-gradient(70% 70% at 50% 20%, black 0%, black 55%, transparent 85%)",
-        }}
-      />
+      {/* White top spotlight — matches landing page density */}
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
           zIndex: 1,
-          background:
-            "radial-gradient(900px 520px at 18% 12%, rgba(0,220,255,0.06) 0%, rgba(0,0,0,0) 60%), " +
-            "radial-gradient(1200px 800px at 55% 35%, rgba(124,92,255,0.18) 0%, rgba(0,0,0,0) 62%)",
-          filter: "blur(10px)",
+          background: "radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.04) 55%, transparent 80%)",
+          filter: "blur(130px)",
+          opacity: 0.07,
+        }}
+      />
+      {/* Amethyst center glow — matches landing page density */}
+      <div
+        className="fixed inset-0 pointer-events-none"
+        style={{
+          zIndex: 1,
+          background: "radial-gradient(ellipse at 50% 35%, #7c3aed 0%, #4c1d95 55%, transparent 100%)",
+          filter: "blur(200px)",
+          opacity: 0.08,
         }}
       />
 
