@@ -126,6 +126,30 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
     }
   };
 
+  const handlePayClick = () => {
+    if (currentCampaignId) {
+      router.push(`/dashboard/campaigns/${currentCampaignId}?mode=pay`);
+    }
+  };
+
+  const handlePrimaryAction = async (action: string, card: TalentCampaignCard) => {
+    if (action.startsWith("Confirm booking")) {
+      // POST to API to confirm the booking invitation
+      try {
+        await fetch(`/api/contracts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ campaignId: card.campaignId, creatorId: card.talentId }),
+        });
+      } catch { /* no-op – optimistic UI */ }
+      setHighlightedCardId(card.id);
+    } else if (action.startsWith("Approve deliverable") || action.startsWith("Review deliverable")) {
+      router.push(`/dashboard/contracts`);
+    } else if (action.startsWith("Secure deposit") || action.startsWith("Release payment")) {
+      handlePayClick();
+    }
+  };
+
   useEffect(() => {
     if (!highlightedCardId) return;
     const t = setTimeout(() => setHighlightedCardId(null), 1200);
@@ -158,6 +182,8 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
           campaignName={activeCampaign?.name}
           debugOutlines={searchParams.get("debug") === "1"}
           onContractClick={() => setIsContractDrawerOpen(true)}
+          onPayClick={handlePayClick}
+          onPrimaryAction={handlePrimaryAction}
         />
         <BottomDock />
         <ContractDrawer

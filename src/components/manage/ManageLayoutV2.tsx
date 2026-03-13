@@ -30,6 +30,8 @@ interface ManageLayoutV2Props {
   campaignName?: string;
   debugOutlines?: boolean;
   onContractClick?: () => void;
+  onPayClick?: () => void;
+  onPrimaryAction?: (action: string, card: TalentCampaignCard) => void;
 }
 
 /**
@@ -54,6 +56,8 @@ export function ManageLayoutV2({
   campaignName,
   debugOutlines = false,
   onContractClick,
+  onPayClick,
+  onPrimaryAction,
 }: ManageLayoutV2Props) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
@@ -320,6 +324,9 @@ export function ManageLayoutV2({
                   selectedCardId={selectedCardId}
                   onCardSelect={onCardSelect}
                   highlightedCardId={highlightedCardId}
+                  onContractClick={onContractClick}
+                  onPayClick={onPayClick}
+                  onPrimaryAction={onPrimaryAction}
                 />
               )}
             </div>

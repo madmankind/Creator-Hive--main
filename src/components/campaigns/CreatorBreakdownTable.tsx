@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { feyTokens } from "@/lib/fey-design-tokens";
 import { FeySurface } from "@/components/campaigns/primitives/FeySurface";
@@ -41,64 +42,90 @@ export function CreatorBreakdownTable({ campaignIds }: CreatorBreakdownTableProp
    * - Real-time metrics from social platform APIs (Instagram, TikTok, etc.)
    * - Aggregated from individual asset/deliverable performance data
    */
+  const router = useRouter();
   const [creators, setCreators] = useState<CreatorData[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editedCreators, setEditedCreators] = useState<CreatorData[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Load from localStorage on mount, fallback to mock
+  // Load from API (real campaign talent) → fallback to localStorage → fallback to mock
   useEffect(() => {
     const storageKey = `campaign_creators_${campaignIds.join("_")}`;
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
+    const activeCampaignId = campaignIds[0];
+
+    const applyData = (data: CreatorData[]) => {
+      setCreators(data);
+      setEditedCreators(data);
+    };
+
+    const fetchFromApi = async () => {
+      if (!activeCampaignId) return false;
       try {
-        const parsed = JSON.parse(saved);
-        setCreators(parsed);
-        setEditedCreators(parsed);
-        return;
-      } catch (e) {
-        console.warn("Failed to parse saved creators data", e);
+        const res = await fetch(`/api/campaigns/${activeCampaignId}/talents`);
+        if (!res.ok) return false;
+        const json = await res.json();
+        const cards: Array<{ id: string; talentName: string; talentRole: string; deliverables: Array<{type: string}>; agreedRate: number; status: string }> = json.cards ?? [];
+        if (cards.length === 0) return false;
+
+        const mapped: CreatorData[] = cards.map((c) => ({
+          id: c.id,
+          name: c.talentName,
+          role: c.talentRole,
+          deliverables: c.deliverables.length > 0
+            ? c.deliverables.map((d) => d.type).join(", ")
+            : "TBD",
+          reach: 0,
+          impressions: 0,
+          er: 0,
+          spend: c.agreedRate,
+          status: (c.status === "IN_PRODUCTION" || c.status === "APPROVED" || c.status === "PAID")
+            ? "On Track"
+            : c.status === "SUBMITTED"
+            ? "Needs Review"
+            : c.status === "UNAVAILABLE"
+            ? "At Risk"
+            : "On Track",
+        }));
+
+        // Merge with any locally-saved metric overrides
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          try {
+            const savedMap = new Map((JSON.parse(saved) as CreatorData[]).map(c => [c.id, c]));
+            const merged = mapped.map(c => savedMap.has(c.id) ? { ...c, ...savedMap.get(c.id) } : c);
+            applyData(merged);
+            return true;
+          } catch { /* ignore */ }
+        }
+        applyData(mapped);
+        return true;
+      } catch {
+        return false;
       }
-    }
-    
-    // Fallback to mock data
-    const mockData: CreatorData[] = [
-      {
-        id: "1",
-        name: "Sarah Chen",
-        role: "UGC Creator",
-        deliverables: "1 Reel, 2 Stories",
-        reach: 486400,
-        impressions: 1200000,
-        er: 4.2,
-        spend: 2100,
-        status: "On Track",
-      },
-      {
-        id: "2",
-        name: "Alex Nguyen",
-        role: "Content Creator",
-        deliverables: "3 Posts",
-        reach: 441700,
-        impressions: 1100000,
-        er: 3.5,
-        spend: 1800,
-        status: "On Track",
-      },
-      {
-        id: "3",
-        name: "Emily Smith",
-        role: "Videographer",
-        deliverables: "2 Reels",
-        reach: 426800,
-        impressions: 950000,
-        er: 3.4,
-        spend: 1900,
-        status: "Needs Review",
-      },
-    ];
-    setCreators(mockData);
-    setEditedCreators(mockData);
+    };
+
+    fetchFromApi().then((fetched) => {
+      if (fetched) return;
+
+      // Fallback: localStorage saved data
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        try {
+          applyData(JSON.parse(saved));
+          return;
+        } catch (e) {
+          console.warn("Failed to parse saved creators data", e);
+        }
+      }
+
+      // Final fallback: mock data (only shown when no real campaign)
+      const mockData: CreatorData[] = [
+        { id: "1", name: "Sarah Chen",   role: "UGC Creator",       deliverables: "1 Reel, 2 Stories", reach: 486400,  impressions: 1200000, er: 4.2, spend: 2100, status: "On Track" },
+        { id: "2", name: "Alex Nguyen",  role: "Content Creator",   deliverables: "3 Posts",           reach: 441700,  impressions: 1100000, er: 3.5, spend: 1800, status: "On Track" },
+        { id: "3", name: "Emily Smith",  role: "Videographer",      deliverables: "2 Reels",           reach: 426800,  impressions: 950000,  er: 3.4, spend: 1900, status: "Needs Review" },
+      ];
+      applyData(mockData);
+    });
   }, [campaignIds]);
 
   const formatNumber = (value: number) => {
@@ -298,12 +325,14 @@ export function CreatorBreakdownTable({ campaignIds }: CreatorBreakdownTableProp
                       {creator.name.charAt(0)}
                     </div>
                     <div>
-                      <div
-                        className="text-xs font-medium"
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/creators/${creator.id}`)}
+                        className="text-xs font-medium transition-opacity hover:opacity-70 text-left"
                         style={{ color: feyTokens.colors.text.primary }}
                       >
                         {creator.name}
-                      </div>
+                      </button>
                     </div>
                   </div>
                 </td>

@@ -11,12 +11,98 @@ import { CampaignSetupBoard } from "@/features/campaign/CampaignSetupBoard";
 import { PackageSelector } from "@/features/campaign/PackageSelector";
 import { curatedTalent } from "@/lib/curatedTalent";
 import { PACKAGES, type PackageConfig } from "@/lib/packages";
-import { useSession, signOut } from "next-auth/react";
+import { useSession, signIn, signOut } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Sparkles } from "lucide-react";
 
 const curatedLookup = new Map(curatedTalent.map((t) => [t.id, t]));
+
+function HeroPhoneStep({ onSubmit, onBack }: { onSubmit: (phone: string) => void; onBack: () => void }) {
+  const [phone, setPhone] = useState("");
+  const [focused, setFocused] = useState(false);
+  const [countryCode, setCountryCode] = useState("+971");
+  const CODES = [
+    { code: "+971", flag: "🇦🇪", name: "UAE" },
+    { code: "+966", flag: "🇸🇦", name: "KSA" },
+    { code: "+965", flag: "🇰🇼", name: "Kuwait" },
+    { code: "+974", flag: "🇶🇦", name: "Qatar" },
+    { code: "+973", flag: "🇧🇭", name: "Bahrain" },
+    { code: "+968", flag: "🇴🇲", name: "Oman" },
+    { code: "+1",   flag: "🇺🇸", name: "US" },
+    { code: "+44",  flag: "🇬🇧", name: "UK" },
+  ];
+  const canSubmit = phone.trim().length >= 7;
+
+  return (
+    <div className="w-full space-y-4">
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Country code selector */}
+        <div
+          className="shrink-0 rounded-full bg-[#0D0D14] ring-1 ring-white/10 transition min-h-[48px] flex items-center"
+          style={{ border: focused ? "1px solid rgba(255,255,255,0.20)" : undefined }}
+        >
+          <select
+            value={countryCode}
+            onChange={e => setCountryCode(e.target.value)}
+            className="bg-transparent outline-none text-[14px] text-slate-300 px-3 py-2 cursor-pointer"
+            style={{ WebkitAppearance: "none", appearance: "none" }}
+          >
+            {CODES.map(c => (
+              <option key={c.code} value={c.code}>{c.flag} {c.code}</option>
+            ))}
+          </select>
+        </div>
+        {/* Phone number input */}
+        <div
+          className="rounded-full bg-[#0D0D14] ring-1 ring-white/10 hover:ring-white/15 transition p-2 pl-4 sm:pl-5 flex-1 flex items-center min-h-[48px]"
+        >
+          <input
+            type="tel"
+            value={phone}
+            onChange={e => setPhone(e.target.value.replace(/\D/g, ""))}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            onKeyDown={e => { if (e.key === "Enter" && canSubmit) onSubmit(countryCode + phone); }}
+            placeholder="50 123 4567"
+            autoFocus
+            className="flex-1 bg-transparent outline-none text-[15px] leading-8 text-slate-200 placeholder:text-slate-400/40 min-w-0"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => canSubmit && onSubmit(countryCode + phone)}
+          disabled={!canSubmit}
+          className="shrink-0 rounded-full bg-white px-4 sm:px-5 py-2 text-xs font-semibold text-black hover:bg-white/90 transition min-h-[44px] disabled:opacity-40"
+        >
+          Send code
+        </button>
+      </div>
+      <div className="flex justify-center">
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-[12px] text-white/30 hover:text-white/55 transition flex items-center gap-1.5"
+        >
+          ← Use email instead
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function HeroInlineLoading({ onDone }: { onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 1600);
+    return () => clearTimeout(t);
+  }, [onDone]);
+  return (
+    <div className="flex items-center justify-center gap-3 py-4">
+      <span className="block w-5 h-5 rounded-full border-2 border-white/20 border-t-white/60 animate-spin" />
+      <span className="text-[14px] text-white/38">Signing you in…</span>
+    </div>
+  );
+}
 
 function scrollToRef(ref: React.RefObject<HTMLElement | null>, block: ScrollLogicalPosition = "start") {
   ref.current?.scrollIntoView({ behavior: "smooth", block });
@@ -29,11 +115,20 @@ function HomePageContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [clientAuthOpen, setClientAuthOpen] = useState(false);
-  const [talentAuthOpen, setTalentAuthOpen] = useState(false);
   const [pendingDiscover, setPendingDiscover] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<PackageConfig | null>(null);
   const [selectedPodIds, setSelectedPodIds] = useState<string[]>([]);
   const [showCampaignBoard, setShowCampaignBoard] = useState(false);
+  // Inline hero auth (replaces full-screen modal for initial sign-in)
+  const [heroAuthStep, setHeroAuthStep] = useState<"idle" | "email" | "phone" | "otp" | "loading">("idle");
+  const [heroAuthEmail, setHeroAuthEmail] = useState("");
+  const [heroAuthAuthMode, setHeroAuthAuthMode] = useState<"signup" | "login">("signup");
+  const [heroAuthSubmitting, setHeroAuthSubmitting] = useState(false);
+  const [heroAuthError, setHeroAuthError] = useState("");
+  const [heroAuthPhone, setHeroAuthPhone] = useState("");
+  const [heroAuthOtpVia, setHeroAuthOtpVia] = useState<"email" | "whatsapp">("email");
+  const [heroAuthGoogleLoading, setHeroAuthGoogleLoading] = useState(false);
+  const [talentModalOpen, setTalentModalOpen] = useState<"auth" | "phone" | "talent-type" | null>(null);
 
   const packageRef = useRef<HTMLElement>(null);
   const galleryRef = useRef<HTMLElement>(null);
@@ -45,19 +140,32 @@ function HomePageContent() {
   const isClient = role === "AGENCY";
 
   useEffect(() => {
-    const pkgId = searchParams.get("package");
-    const skip = searchParams.get("skip");
-    const auth = searchParams.get("auth");
+    const pkgId  = searchParams.get("package");
+    const skip   = searchParams.get("skip");
+    const auth   = searchParams.get("auth");
+    const bookId = searchParams.get("book"); // ?book=[creatorId] from public profile "Book now"
 
     // Open auth modal when redirected from /signup?type=...
     if (auth === "talent" && !session?.user) {
       setMode("talent");
-      setTalentAuthOpen(true);
+      setHeroAuthStep("email");
       return;
     }
     if (auth === "client" && !session?.user) {
       setMode("client");
-      setClientAuthOpen(true);
+      setHeroAuthStep("email");
+      return;
+    }
+
+    // ?book=[creatorId] — pre-select that creator in the pod and reveal gallery
+    if (bookId) {
+      const found = curatedLookup.get(bookId);
+      if (found) {
+        setSelectedPodIds((prev) => prev.includes(bookId) ? prev : [...prev, bookId]);
+      }
+      setShowTalentGallery(true);
+      setShowPackages(true);
+      setTimeout(() => scrollToRef(galleryRef, "start"), 300);
       return;
     }
 
@@ -81,7 +189,57 @@ function HomePageContent() {
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
+  }, [session, searchParams]);
+
+  const handleHeroEmailSubmit = async () => {
+    if (!heroAuthEmail.trim()) return;
+    setHeroAuthError("");
+    setHeroAuthSubmitting(true);
+    try {
+      const result = await signIn("credentials", {
+        redirect: false,
+        email: heroAuthEmail.trim(),
+        userType: mode,
+        displayName: heroAuthEmail.split("@")[0],
+      });
+      if (result?.ok || !result?.error || result.error.toLowerCase().includes("configuration")) {
+        localStorage.setItem(`ch_${mode}_email`, heroAuthEmail.trim().toLowerCase());
+      } else {
+        setHeroAuthError("Couldn't send link. Please try again.");
+        setHeroAuthSubmitting(false);
+        return;
+      }
+    } catch {
+      localStorage.setItem(`ch_${mode}_email`, heroAuthEmail.trim().toLowerCase());
+    }
+    setHeroAuthSubmitting(false);
+    setHeroAuthOtpVia("email");
+    setHeroAuthStep("otp");
+  };
+
+  const handleHeroOTPVerify = () => {
+    if (mode === "client" || heroAuthAuthMode === "login") {
+      setHeroAuthStep("loading");
+    } else {
+      setHeroAuthStep("idle");
+      setTalentModalOpen("talent-type");
+    }
+  };
+
+  const handleHeroGoogleClick = async () => {
+    setHeroAuthGoogleLoading(true);
+    try {
+      await signIn("google", { callbackUrl: mode === "talent" ? "/onboarding/step-1" : "/dashboard/campaigns" });
+    } catch {
+      setHeroAuthGoogleLoading(false);
+    }
+  };
+
+  const handleHeroPhoneSubmit = (phone: string) => {
+    setHeroAuthPhone(phone);
+    setHeroAuthOtpVia("whatsapp");
+    setHeroAuthStep("otp");
+  };
 
   const selectedTalents = selectedPodIds
     .map((id) => curatedLookup.get(id))
@@ -104,6 +262,11 @@ function HomePageContent() {
       setPendingDiscover(false);
     }
   }, [isClient, pendingDiscover]);
+
+  useEffect(() => {
+    if (session?.user) setHeroAuthStep("idle");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
 
   const openGallery = () => {
     if (!session?.user) {
@@ -150,8 +313,12 @@ function HomePageContent() {
                 onClick={() => {
                   setMode(m);
                   if (!session?.user) {
-                    if (m === "client") setClientAuthOpen(true);
-                    else setTalentAuthOpen(true);
+                    setHeroAuthStep("email");
+                    setHeroAuthEmail("");
+                    setHeroAuthError("");
+                    setHeroAuthAuthMode("signup");
+                  } else {
+                    setHeroAuthStep("idle");
                   }
                 }}
                 className={cn(
@@ -178,7 +345,7 @@ function HomePageContent() {
               <h1 className="text-[30px] md:text-[36px] font-medium tracking-[-0.025em] text-white leading-[1.12]">
                 {mode === "client" ? "Welcome to Creator Hive" : "Join Creator Hive"}
               </h1>
-              <p className="text-[14px] text-white/38 font-light max-w-[420px] mx-auto leading-relaxed">
+              <p className="text-[14px] text-white/38 font-light max-w-[420px] mx-auto leading-relaxed min-h-[46px]">
                 {mode === "client"
                   ? "Book Top 1% talent seamlessly"
                   : "Showcase your work to top brands across the Gulf."}
@@ -186,80 +353,197 @@ function HomePageContent() {
             </motion.div>
           </AnimatePresence>
 
-          <AnimatePresence mode="wait">
-            {mode === "client" && (
-              <motion.div
-                key="client-bar"
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1.0] }}
-                className="space-y-4"
-              >
-                <HeroBar
-                  mode={mode}
-                  onQueryChange={(q) => { setSearchQuery(q); }}
-                  onRolesChange={(roles) => { setSelectedRoles(roles); }}
-                  onDiscover={openGallery}
-                  showClear={showTalentGallery}
-                  onClear={() => {
-                    setShowTalentGallery(false);
-                    setSearchQuery("");
-                    setSelectedRoles([]);
-                  }}
-                />
-
-                <div className="pt-1 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = !showPackages;
-                      setShowPackages(next);
-                      if (next) {
-                        setTimeout(() => scrollToRef(packageRef, "start"), 120);
-                      }
+          <div className="flex flex-col justify-start">
+            <AnimatePresence mode="wait">
+              {!session?.user && heroAuthStep !== "idle" ? (
+                <motion.div
+                  key="hero-auth"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1.0] }}
+                  className="w-full space-y-4"
+                >
+                  {heroAuthStep === "email" && (
+                    <>
+                      {/* Email pill + Continue — full width on mobile */}
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="rounded-full bg-[#0D0D14] ring-1 ring-white/10 hover:ring-white/15 transition p-2 pl-4 sm:pl-5 flex-1 flex items-center min-h-[48px]">
+                          <input
+                            type="email"
+                            value={heroAuthEmail}
+                            onChange={e => setHeroAuthEmail(e.target.value)}
+                            onKeyDown={e => { if (e.key === "Enter") handleHeroEmailSubmit(); }}
+                            placeholder="account email"
+                            autoFocus
+                            className="flex-1 bg-transparent outline-none text-[15px] leading-8 text-slate-200 placeholder:text-slate-400/40 min-w-0"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleHeroEmailSubmit}
+                          disabled={!heroAuthEmail.trim() || heroAuthSubmitting}
+                          className="shrink-0 rounded-full bg-white px-4 sm:px-5 py-2 text-xs font-semibold text-black hover:bg-white/90 transition min-h-[44px]"
+                        >
+                          {heroAuthSubmitting ? "…" : "Continue"}
+                        </button>
+                      </div>
+                      {heroAuthError && (
+                        <p className="text-[12px] text-center text-red-400/80">{heroAuthError}</p>
+                      )}
+                      {/* Social options — stack on narrow screens */}
+                      <div className="flex flex-col sm:flex-row flex-wrap justify-center items-center gap-2 sm:gap-3">
+                        <button
+                          type="button"
+                          onClick={handleHeroGoogleClick}
+                          disabled={heroAuthGoogleLoading}
+                          className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 sm:py-2 rounded-full text-[13px] transition-all min-h-[44px]"
+                          style={{ border: "1px solid rgba(255,255,255,0.12)", color: heroAuthGoogleLoading ? "rgba(255,255,255,0.30)" : "rgba(255,255,255,0.60)" }}
+                          onMouseEnter={e => { if (!heroAuthGoogleLoading) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                        >
+                          {heroAuthGoogleLoading
+                            ? <span className="block w-4 h-4 rounded-full border-2 border-white/20 border-t-white/60 animate-spin" />
+                            : <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908C16.658 14.082 17.64 11.836 17.64 9.2z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+                          }
+                          {heroAuthGoogleLoading ? "Connecting…" : "Continue with Google"}
+                        </button>
+                        {mode === "talent" && (
+                          <button
+                            type="button"
+                            onClick={() => setHeroAuthStep("phone")}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 sm:py-2 rounded-full text-[13px] transition-all min-h-[44px]"
+                            style={{ border: "1px solid rgba(37,211,102,0.30)", color: "rgba(255,255,255,0.60)" }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(37,211,102,0.06)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(37,211,102,0.50)"; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(37,211,102,0.30)"; }}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" fill="#25D366"/></svg>
+                            Continue with WhatsApp
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[12px] text-center text-white/28">
+                        {heroAuthAuthMode === "signup" ? "Have an account? " : "New here? "}
+                        <button
+                          type="button"
+                          onClick={() => setHeroAuthAuthMode(heroAuthAuthMode === "signup" ? "login" : "signup")}
+                          className="underline underline-offset-2 text-white/55 hover:text-white/75 transition"
+                        >
+                          {heroAuthAuthMode === "signup" ? "Log in" : "Sign up"}
+                        </button>
+                      </p>
+                    </>
+                  )}
+                  {heroAuthStep === "phone" && (
+                    <HeroPhoneStep
+                      onSubmit={handleHeroPhoneSubmit}
+                      onBack={() => setHeroAuthStep("email")}
+                    />
+                  )}
+                  {heroAuthStep === "otp" && (
+                    <div className="flex flex-col items-center gap-4">
+                      <p className="text-[13px] text-white/45">
+                        {heroAuthOtpVia === "whatsapp"
+                          ? <>Code sent to your WhatsApp at <span className="text-white/65">{heroAuthPhone}</span></>
+                          : <>Code sent to <span className="text-white/65">{heroAuthEmail}</span></>
+                        }
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-full bg-[#0D0D14] ring-1 ring-white/10 p-2 pl-6 pr-6 flex items-center justify-center w-[220px] sm:w-64 min-h-[52px]">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            autoFocus
+                            placeholder="000 000"
+                            className="w-full bg-transparent outline-none text-[22px] text-center text-slate-200 placeholder:text-slate-400/25 tracking-[0.4em] leading-8"
+                            onChange={e => {
+                              const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+                              if (v.length === 6) handleHeroOTPVerify();
+                            }}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setHeroAuthStep(heroAuthOtpVia === "whatsapp" ? "phone" : "email")}
+                          className="text-[12px] text-white/30 hover:text-white/55 transition px-3 py-2"
+                        >
+                          ← Back
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {heroAuthStep === "loading" && (
+                    <HeroInlineLoading onDone={() => setHeroAuthStep("idle")} />
+                  )}
+                </motion.div>
+              ) : mode === "client" ? (
+                <motion.div
+                  key="client-bar"
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1.0] }}
+                  className="space-y-4"
+                >
+                  <HeroBar
+                    mode={mode}
+                    onQueryChange={(q) => { setSearchQuery(q); }}
+                    onRolesChange={(roles) => { setSelectedRoles(roles); }}
+                    onDiscover={openGallery}
+                    showClear={showTalentGallery}
+                    onClear={() => {
+                      setShowTalentGallery(false);
+                      setSearchQuery("");
+                      setSelectedRoles([]);
                     }}
-                    className={cn(
-                      "group flex items-center gap-2 px-4 py-2.5 rounded-full ring-1 transition-all duration-200 text-[12px]",
-                      showPackages
-                        ? "bg-white/[0.08] ring-white/[0.18] text-white/75"
-                        : "bg-white/[0.04] ring-white/[0.08] text-white/35 hover:bg-white/[0.07] hover:text-white/60 hover:ring-white/[0.14]"
-                    )}
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>View pre-vetted, brand-ready teams to deploy</span>
-                    <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", showPackages && "rotate-180")} />
-                  </button>
-                </div>
-              </motion.div>
-            )}
+                  />
 
-            {mode === "talent" && (
-              <motion.div
-                key="talent-bar"
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1.0] }}
-                className="space-y-4"
-              >
-                <HeroBar
-                  mode={mode}
-                  onQueryChange={(q) => setSearchQuery(q)}
-                  onRolesChange={(roles) => setSelectedRoles(roles)}
-                  onDiscover={() => setTalentAuthOpen(true)}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  <div className="pt-1 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = !showPackages;
+                        setShowPackages(next);
+                        if (next) {
+                          setTimeout(() => scrollToRef(packageRef, "start"), 120);
+                        }
+                      }}
+                      className={cn(
+                        "group flex items-center gap-2 px-4 py-2.5 rounded-full ring-1 transition-all duration-200 text-[12px]",
+                        showPackages
+                          ? "bg-white/[0.08] ring-white/[0.18] text-white/75"
+                          : "bg-white/[0.04] ring-white/[0.08] text-white/35 hover:bg-white/[0.07] hover:text-white/60 hover:ring-white/[0.14]"
+                      )}
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>View pre-vetted, brand-ready teams to deploy</span>
+                      <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", showPackages && "rotate-180")} />
+                    </button>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="talent-bar"
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1.0] }}
+                  className="space-y-4"
+                >
+                  <HeroBar
+                    mode={mode}
+                    onQueryChange={(q) => setSearchQuery(q)}
+                    onRolesChange={(roles) => setSelectedRoles(roles)}
+                    onDiscover={() => { setHeroAuthStep("email"); setHeroAuthEmail(""); setHeroAuthError(""); setHeroAuthAuthMode("signup"); }}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
-        {/* Disclaimer pinned to bottom of hero screen */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
-          <p className="text-[11px] text-white/18 tracking-wide whitespace-nowrap">
-            Creator Hive is human-first. Please clearly label any AI-generated media.
-          </p>
-        </div>
+
       </section>
 
       {/* SECTION 2: PACKAGES — full screen */}
@@ -477,9 +761,10 @@ function HomePageContent() {
       />
 
       <HiveAuthModal
-        open={talentAuthOpen}
+        open={talentModalOpen !== null}
         mode="talent"
-        onClose={() => setTalentAuthOpen(false)}
+        initialStep={talentModalOpen ?? "auth"}
+        onClose={() => setTalentModalOpen(null)}
         onSuccess={() => {}}
       />
 

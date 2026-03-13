@@ -22,9 +22,12 @@ interface TalentCarouselProps {
   selectedCardId: string | null;
   onCardSelect: (card: TalentCampaignCard) => void;
   highlightedCardId?: string | null;
+  onContractClick?: () => void;
+  onPayClick?: () => void;
+  onPrimaryAction?: (action: string, card: TalentCampaignCard) => void;
 }
 
-export function TalentCarousel({ cards, selectedCardId, onCardSelect, highlightedCardId }: TalentCarouselProps) {
+export function TalentCarousel({ cards, selectedCardId, onCardSelect, highlightedCardId, onContractClick, onPayClick, onPrimaryAction }: TalentCarouselProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -272,6 +275,9 @@ export function TalentCarousel({ cards, selectedCardId, onCardSelect, highlighte
                 onClick={() => onCardSelect(card)}
                 avatarUrl={`https://i.pravatar.cc/300?img=${(((parseInt(card.talentId.replace(/\D/g, ""), 10) || 1) - 1) % 70) + 1}`}
                 isHighlighted={highlightedCardId === card.id}
+                onContractClick={onContractClick}
+                onPayClick={onPayClick}
+                onPrimaryAction={onPrimaryAction}
               />
             </div>
           ))}

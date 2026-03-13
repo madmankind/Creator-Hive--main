@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { feyTokens } from "@/lib/fey-design-tokens";
 import type { TalentCampaignCard } from "@/components/campaigns/types";
 import {
@@ -37,6 +38,10 @@ interface TalentCardProps {
   onFlip?: () => void;
   avatarUrl: string;
   isHighlighted?: boolean;
+  onOpenProfile?: (talentId: string) => void;
+  onContractClick?: () => void;
+  onPayClick?: () => void;
+  onPrimaryAction?: (action: string, card: TalentCampaignCard) => void;
 }
 
 type ArchetypeName =
@@ -192,7 +197,8 @@ function getRoleTint(role: string): { bg: string; shimmer: string } {
   return ROLE_TINT[role] ?? { bg: "rgba(255,255,255,0.03)", shimmer: "rgba(255,255,255,0.12)" };
 }
 
-export function TalentCard({ card, isSelected, onClick, onFlip, avatarUrl, isHighlighted }: TalentCardProps) {
+export function TalentCard({ card, isSelected, onClick, onFlip, avatarUrl, isHighlighted, onOpenProfile, onContractClick, onPayClick, onPrimaryAction }: TalentCardProps) {
+  const router = useRouter();
   const [isFlipped, setIsFlipped] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -457,7 +463,14 @@ export function TalentCard({ card, isSelected, onClick, onFlip, avatarUrl, isHig
             <div className="flex items-center justify-end gap-2" style={{ marginTop: "auto" }}>
               <Tooltip label="Open profile">
                 <button
-                  onClick={(e) => { e.stopPropagation(); onClick(); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onOpenProfile) {
+                      onOpenProfile(card.talentId);
+                    } else {
+                      router.push(`/creators/${card.talentId}`);
+                    }
+                  }}
                   className="p-1.5 transition-colors"
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", color: feyTokens.colors.text.muted }}
                 >
@@ -477,9 +490,16 @@ export function TalentCard({ card, isSelected, onClick, onFlip, avatarUrl, isHig
                   <MessageSquare className="h-3.5 w-3.5" />
                 </button>
               </Tooltip>
-              <Tooltip label="Files">
+              <Tooltip label="View files & deliverables">
                 <button
-                  onClick={(e) => { e.stopPropagation(); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (card.contractId) {
+                      router.push(`/dashboard/contracts`);
+                    } else {
+                      router.push(`/dashboard/campaigns/${card.campaignId}?tab=files`);
+                    }
+                  }}
                   className="p-1.5 transition-colors"
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", color: feyTokens.colors.text.muted }}
                 >
@@ -688,7 +708,19 @@ export function TalentCard({ card, isSelected, onClick, onFlip, avatarUrl, isHig
             <div className="flex-1" />
 
             <button
-              onClick={onClick}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onPrimaryAction) {
+                  onPrimaryAction(primaryAction, card);
+                } else {
+                  // Default routing based on action
+                  if (primaryAction.startsWith("Secure deposit") || primaryAction.startsWith("Release payment")) {
+                    router.push(`/dashboard/campaigns/${card.campaignId}?mode=pay`);
+                  } else if (primaryAction.startsWith("Approve deliverable") || primaryAction.startsWith("Review deliverable")) {
+                    router.push(`/dashboard/contracts`);
+                  }
+                }
+              }}
               className="w-full rounded-full py-2.5 text-[12px] font-medium mb-3 transition-colors"
               style={{ background: "rgba(255,255,255,0.12)", color: feyTokens.colors.text.primary, border: "1px solid rgba(255,255,255,0.08)" }}
               onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.16)"; }}
@@ -699,13 +731,31 @@ export function TalentCard({ card, isSelected, onClick, onFlip, avatarUrl, isHig
 
             <div className="flex items-center justify-center gap-3 mb-3">
               <Tooltip label="Send contract link">
-                <button className="p-2 rounded-full transition-colors"
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onContractClick) {
+                      onContractClick();
+                    } else {
+                      router.push(`/dashboard/contracts`);
+                    }
+                  }}
+                  className="p-2 rounded-full transition-colors"
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.06)", color: feyTokens.colors.text.muted }}>
                   <FileText className="h-4 w-4" />
                 </button>
               </Tooltip>
               <Tooltip label="Request payment">
-                <button className="p-2 rounded-full transition-colors"
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onPayClick) {
+                      onPayClick();
+                    } else {
+                      router.push(`/dashboard/campaigns/${card.campaignId}?mode=pay`);
+                    }
+                  }}
+                  className="p-2 rounded-full transition-colors"
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.06)", color: feyTokens.colors.text.muted }}>
                   <CreditCard className="h-4 w-4" />
                 </button>

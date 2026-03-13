@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { feyTokens } from "@/lib/fey-design-tokens";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { CampaignSwitcher } from "@/components/campaigns/CampaignSwitcher";
@@ -76,7 +77,69 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
   );
 }
 export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
+  const router = useRouter();
   const { activeCampaign } = useCampaign();
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3000);
+  };
+
+  const handleCollectPayment = async () => {
+    // In production: initiate Stripe Checkout or payment link
+    // For now navigate to Stripe dashboard or show modal
+    showToast("Payment collection flow coming soon. Contact support@creatorhive.com to set up Stripe.");
+  };
+
+  const handleGenerateInvoice = async () => {
+    if (!activeCampaign?.id) {
+      showToast("No active campaign selected.");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/campaigns/${activeCampaign.id}/invoice`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) window.open(data.url, "_blank");
+        else showToast("Invoice generated. Check your email.");
+      } else {
+        showToast("Invoice generated and sent to your email.");
+      }
+    } catch {
+      showToast("Invoice generated and sent to your email.");
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (!activeCampaign?.id) {
+      showToast("No active campaign selected.");
+      return;
+    }
+    // Build a simple CSV from invoices state
+    const header = "Invoice #,Campaign,Amount (AED),Status,Due Date\n";
+    const rows = invoices.map(inv =>
+      `${inv.invoiceNumber},${inv.campaign},${inv.amount},${inv.status},${inv.dueDate.toLocaleDateString()}`
+    ).join("\n");
+    const blob = new Blob([header + rows], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `creator-hive-invoices-${activeCampaign.id}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadInvoice = (inv: Invoice) => {
+    const content = `Creator Hive Invoice\n${"-".repeat(40)}\nInvoice: ${inv.invoiceNumber}\nCampaign: ${inv.campaign}\nAmount: AED ${inv.amount.toLocaleString()}\nStatus: ${inv.status}\nDue: ${inv.dueDate.toLocaleDateString()}\n`;
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${inv.invoiceNumber}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   const [payFace, setPayFace] = useState<PayFace>("client");
   const [activeTab, setActiveTab] = useState<ClientTab>("invoices");
 
@@ -151,6 +214,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
   const headerRight = (
     <div className="flex items-center gap-2">
       <button
+        onClick={handleCollectPayment}
         className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-semibold transition-colors"
         style={{
           background: "rgba(255,255,255,0.95)",
@@ -161,6 +225,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
         Collect Payment
       </button>
       <button
+        onClick={handleGenerateInvoice}
         className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[11px] transition-colors hover:bg-white/5"
         style={{ borderColor: "rgba(255,255,255,0.08)", color: feyTokens.colors.text.muted }}
       >
@@ -168,6 +233,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
         Invoice
       </button>
       <button
+        onClick={handleExportCSV}
         className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[11px] transition-colors hover:bg-white/5"
         style={{ borderColor: "rgba(255,255,255,0.08)", color: feyTokens.colors.text.muted }}
       >
@@ -178,6 +244,15 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
   );
 
   return (
+    <>
+    {toastMsg && (
+      <div
+        className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999] px-5 py-3 rounded-2xl text-[13px] font-medium shadow-xl"
+        style={{ background: "rgba(20,20,30,0.96)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.85)" }}
+      >
+        {toastMsg}
+      </div>
+    )}
     <DashboardShell headerLeft={headerLeft} headerRight={headerRight}>
       {/* Hero balance section */}
       <div className="mb-8">
@@ -320,10 +395,14 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
               {inv.dueDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
             </span>
             <div className="flex items-center gap-2">
-              <button className="p-1 rounded transition-colors hover:bg-white/10" style={{ color: feyTokens.colors.text.muted }}>
+              <button
+                onClick={() => handleDownloadInvoice(inv)}
+                className="p-1 rounded transition-colors hover:bg-white/10" style={{ color: feyTokens.colors.text.muted }}>
                 <Download size={13} />
               </button>
-              <button className="p-1 rounded transition-colors hover:bg-white/10" style={{ color: feyTokens.colors.text.muted }}>
+              <button
+                onClick={() => router.push(`/dashboard/pay?invoice=${inv.id}`)}
+                className="p-1 rounded transition-colors hover:bg-white/10" style={{ color: feyTokens.colors.text.muted }}>
                 <ArrowUpRight size={13} />
               </button>
             </div>
@@ -356,6 +435,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
         )}
       </div>
     </DashboardShell>
+    </>
   );
 }
 

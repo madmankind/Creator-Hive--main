@@ -4,19 +4,22 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ArrowRight, Check, ChevronRight } from "lucide-react";
 import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { feyTokens } from "@/lib/fey-design-tokens";
 
 /* ─────────────────────────────────────────
    TYPES
 ───────────────────────────────────────── */
 type Mode = "client" | "talent";
-type Step = "auth" | "otp" | "phone" | "loading" | "inbox" | "prism-intro" | "prism-q" | "prism-result" | "profile" | "done";
+type TalentAccountType = "independent" | "manager" | "agency";
+type Step = "auth" | "otp" | "phone" | "loading" | "inbox" | "talent-type" | "prism-intro" | "prism-q" | "prism-result" | "profile" | "manager-profile" | "done";
 
 export type HiveAuthModalProps = {
   open: boolean;
   mode: Mode;
   onClose: () => void;
   onSuccess: () => void;
+  initialStep?: Step;
 };
 
 /* ─────────────────────────────────────────
@@ -164,7 +167,7 @@ function AuthStep({
       {/* Static heading — blurs when typing */}
       <div className="text-center space-y-3" style={blurStyle()}>
         <h1 className="text-[30px] sm:text-[36px] font-medium tracking-[-0.025em] text-white leading-[1.12]">
-          Welcome to Creator Hive
+          {mode === "talent" ? "Join Creator Hive" : "Welcome to Creator Hive"}
         </h1>
         {/* Subtitle — swipes horizontally on mode/authMode change */}
         <AnimatePresence mode="wait">
@@ -889,9 +892,348 @@ function Field({ label, hint, required, children }: { label: string; hint?: stri
 }
 
 /* ─────────────────────────────────────────
+   TALENT TYPE SELECTION STEP
+───────────────────────────────────────── */
+function TalentTypeStep({ onSelect }: { onSelect: (type: TalentAccountType) => void }) {
+  const cards: { type: TalentAccountType; emoji: string; title: string; sub: string; description: string; accent: string; accentBg: string; ring: string }[] = [
+    {
+      type: "independent",
+      emoji: "🎨",
+      title: "Independent Creator",
+      sub: "Solo talent",
+      description: "You create content, build your personal brand, and work directly with brands. Manage your own profile, bookings and rates.",
+      accent: "rgba(155,127,255,0.9)",
+      accentBg: "rgba(155,127,255,0.07)",
+      ring: "rgba(155,127,255,0.22)",
+    },
+    {
+      type: "manager",
+      emoji: "👥",
+      title: "Talent Manager",
+      sub: "Represent a roster",
+      description: "You manage a curated group of creators. Add talent to your roster, submit them for campaigns, and handle bookings on their behalf.",
+      accent: "rgba(45,212,191,0.9)",
+      accentBg: "rgba(45,212,191,0.07)",
+      ring: "rgba(45,212,191,0.22)",
+    },
+    {
+      type: "agency",
+      emoji: "🏢",
+      title: "Agency",
+      sub: "Manage at scale",
+      description: "You operate a full-service creator or talent agency. Build your company profile, onboard a large roster, and run multiple campaigns simultaneously.",
+      accent: "rgba(251,191,36,0.9)",
+      accentBg: "rgba(251,191,36,0.07)",
+      ring: "rgba(251,191,36,0.22)",
+    },
+  ];
+
+  return (
+    <div className="w-full max-w-[520px] mx-auto flex flex-col items-center gap-7">
+      <div className="text-center space-y-2">
+        <h1 className="text-[30px] sm:text-[34px] font-medium tracking-[-0.025em] text-white leading-[1.12]">
+          Join Creator Hive
+        </h1>
+        <p className="text-[14px] font-light max-w-[380px] mx-auto" style={{ color: "rgba(255,255,255,0.42)" }}>
+          Tell us how you work — we'll tailor your experience.
+        </p>
+      </div>
+
+      <div className="w-full space-y-3">
+        {cards.map((card) => (
+          <button
+            key={card.type}
+            type="button"
+            onClick={() => onSelect(card.type)}
+            className="w-full text-left p-4 rounded-2xl transition-all duration-150 group"
+            style={{ background: card.accentBg, border: `1px solid ${card.ring}` }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.background = card.accentBg.replace("0.07)", "0.12)");
+              (e.currentTarget as HTMLElement).style.borderColor = card.ring.replace("0.22)", "0.40)");
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.background = card.accentBg;
+              (e.currentTarget as HTMLElement).style.borderColor = card.ring;
+            }}
+          >
+            <div className="flex items-start gap-4">
+              <div
+                className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-[20px]"
+                style={{ background: card.accentBg.replace("0.07)", "0.14)"), border: `1px solid ${card.ring}` }}
+              >
+                {card.emoji}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className="text-[15px] font-medium" style={{ color: "rgba(255,255,255,0.92)" }}>{card.title}</span>
+                  <span className="text-[11px] font-light px-2 py-0.5 rounded-full" style={{ background: card.accentBg.replace("0.07)", "0.15)"), color: card.accent }}>
+                    {card.sub}
+                  </span>
+                </div>
+                <p className="text-[12px] font-light leading-relaxed" style={{ color: "rgba(255,255,255,0.42)" }}>
+                  {card.description}
+                </p>
+              </div>
+              <ChevronRight size={16} className="flex-shrink-0 self-center" style={{ color: "rgba(255,255,255,0.25)" }} />
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────
+   MANAGER / AGENCY PROFILE STEP
+───────────────────────────────────────── */
+const ROSTER_SIZES = [
+  { id: "1-5",   label: "1 – 5",    hint: "Boutique roster" },
+  { id: "6-20",  label: "6 – 20",   hint: "Growing roster" },
+  { id: "21-50", label: "21 – 50",  hint: "Mid-size agency" },
+  { id: "50+",   label: "50+",      hint: "Full-scale agency" },
+];
+
+function ManagerProfileStep({
+  accountType,
+  onSubmit,
+  onBack,
+}: {
+  accountType: TalentAccountType;
+  onSubmit: (data: Record<string, unknown>) => void;
+  onBack: () => void;
+}) {
+  const [companyName, setCompanyName]   = useState("");
+  const [contactName, setContactName]   = useState("");
+  const [whatsapp, setWhatsapp]         = useState("");
+  const [rosterSize, setRosterSize]     = useState("1-5");
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [submitting, setSubmitting]     = useState(false);
+  const [focused, setFocused]           = useState<string | null>(null);
+
+  const toggleRole = (r: string) =>
+    setSelectedRoles(p => p.includes(r) ? p.filter(x => x !== r) : [...p, r]);
+
+  const canSubmit = contactName.trim() && (accountType === "independent" || companyName.trim());
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setSubmitting(true);
+    await new Promise(r => setTimeout(r, 700));
+    onSubmit({ companyName, contactName, whatsapp, rosterSize, roles: selectedRoles, accountType });
+  };
+
+  const isAgency = accountType === "agency";
+  const accentColor = isAgency ? "rgba(251,191,36,0.9)" : "rgba(45,212,191,0.9)";
+  const accentBg    = isAgency ? "rgba(251,191,36,0.07)" : "rgba(45,212,191,0.07)";
+  const accentRing  = isAgency ? "rgba(251,191,36,0.22)" : "rgba(45,212,191,0.22)";
+
+  const fieldStyle: React.CSSProperties = {
+    width: "100%",
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.09)",
+    borderRadius: "12px",
+    padding: "12px 16px",
+    fontSize: "14px",
+    fontWeight: 300,
+    color: "rgba(255,255,255,0.88)",
+    outline: "none",
+    transition: "border-color 0.15s",
+  };
+
+  const focusedField = (id: string): React.CSSProperties => ({
+    ...fieldStyle,
+    borderColor: focused === id ? accentRing.replace("0.22)", "0.55)") : "rgba(255,255,255,0.09)",
+  });
+
+  return (
+    <div className="w-full max-w-[480px] mx-auto space-y-6">
+      {/* Header */}
+      <div>
+        <span
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide mb-3"
+          style={{ background: accentBg, border: `1px solid ${accentRing}`, color: accentColor }}
+        >
+          {isAgency ? "🏢" : "👥"} {isAgency ? "Agency" : "Talent Manager"}
+        </span>
+        <h2 className="text-[22px] font-light tracking-[-0.025em]" style={{ color: "rgba(255,255,255,0.92)" }}>
+          {isAgency ? "Tell us about your agency." : "Tell us about your management."}
+        </h2>
+        <p className="text-[13px] mt-1 font-light" style={{ color: "rgba(255,255,255,0.38)" }}>
+          {isAgency
+            ? "This sets up your agency profile on Creator Hive."
+            : "This creates your talent manager profile so brands know who's behind the roster."}
+        </p>
+      </div>
+
+      {/* Contact name */}
+      <Field label="Your full name" required>
+        <input
+          style={focusedField("contact")}
+          value={contactName}
+          onChange={e => setContactName(e.target.value)}
+          onFocus={() => setFocused("contact")}
+          onBlur={() => setFocused(null)}
+          placeholder="Your name"
+          autoFocus
+        />
+      </Field>
+
+      {/* Company / agency name */}
+      {accountType !== "independent" && (
+        <Field
+          label={isAgency ? "Agency name" : "Management company name"}
+          required
+          hint={accountType === "manager" ? "Or your personal management brand" : undefined}
+        >
+          <input
+            style={focusedField("company")}
+            value={companyName}
+            onChange={e => setCompanyName(e.target.value)}
+            onFocus={() => setFocused("company")}
+            onBlur={() => setFocused(null)}
+            placeholder={isAgency ? "e.g. Hive Agency" : "e.g. Talent Co."}
+          />
+        </Field>
+      )}
+
+      {/* WhatsApp */}
+      <Field label="WhatsApp number" hint="For campaign coordination">
+        <div
+          className="flex items-center rounded-xl overflow-hidden transition-all duration-150"
+          style={{ border: `1px solid ${focused === "wa" ? accentRing.replace("0.22)", "0.55)") : "rgba(255,255,255,0.09)"}`, background: "rgba(255,255,255,0.04)" }}
+        >
+          <span className="px-3 text-[14px]" style={{ color: "rgba(255,255,255,0.28)" }}>+971</span>
+          <input
+            style={{ ...fieldStyle, border: "none", background: "transparent", paddingLeft: 0, borderRadius: 0 }}
+            value={whatsapp}
+            onChange={e => setWhatsapp(e.target.value.replace(/\D/g, ""))}
+            onFocus={() => setFocused("wa")}
+            onBlur={() => setFocused(null)}
+            placeholder="50 123 4567"
+          />
+        </div>
+      </Field>
+
+      {/* Roster size */}
+      <div>
+        <label className="text-[10px] uppercase tracking-[0.12em] font-semibold block mb-3" style={{ color: "rgba(255,255,255,0.28)" }}>
+          Current roster size
+        </label>
+        <div className="grid grid-cols-4 gap-2">
+          {ROSTER_SIZES.map(rs => (
+            <button
+              key={rs.id}
+              type="button"
+              onClick={() => setRosterSize(rs.id)}
+              className="text-center px-2 py-2.5 rounded-xl transition-all"
+              style={{
+                background: rosterSize === rs.id ? accentBg.replace("0.07)", "0.12)") : "rgba(255,255,255,0.03)",
+                border: rosterSize === rs.id ? `1px solid ${accentRing.replace("0.22)", "0.45)")}` : "1px solid rgba(255,255,255,0.07)",
+              }}
+            >
+              <p className="text-[13px] font-medium" style={{ color: rosterSize === rs.id ? accentColor : "rgba(255,255,255,0.65)" }}>
+                {rs.label}
+              </p>
+              <p className="text-[9px] mt-0.5 font-light" style={{ color: "rgba(255,255,255,0.25)" }}>{rs.hint}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Types of talent represented */}
+      <div>
+        <div className="flex items-baseline gap-2 mb-3">
+          <label className="text-[10px] uppercase tracking-[0.12em] font-semibold" style={{ color: "rgba(255,255,255,0.28)" }}>
+            Types of talent you represent
+          </label>
+          <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.22)" }}>Select all that apply</span>
+        </div>
+        {ROLE_GROUPS.map(g => (
+          <div key={g.group} className="mb-3">
+            <p className="text-[9px] uppercase tracking-[0.12em] mb-1.5" style={{ color: "rgba(255,255,255,0.22)" }}>{g.group}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {g.roles.map(r => {
+                const active = selectedRoles.includes(r);
+                return (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => toggleRole(r)}
+                    className="px-3 py-1.5 rounded-xl text-[12px] font-light transition-all duration-100"
+                    style={{
+                      background: active ? accentBg.replace("0.07)", "0.14)") : "rgba(255,255,255,0.04)",
+                      border: active ? `1px solid ${accentRing.replace("0.22)", "0.40)")}` : "1px solid rgba(255,255,255,0.07)",
+                      color: active ? accentColor : "rgba(255,255,255,0.55)",
+                    }}
+                  >
+                    {r}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Submit */}
+      <div className="space-y-3">
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!canSubmit || submitting}
+          className="w-full flex items-center justify-center gap-2 py-4 rounded-full text-[14px] font-medium transition-all"
+          style={{
+            background: canSubmit ? "rgba(255,255,255,0.93)" : "rgba(255,255,255,0.08)",
+            color: canSubmit ? "#07070B" : "rgba(255,255,255,0.30)",
+          }}
+        >
+          {submitting
+            ? <><span className="w-4 h-4 rounded-full border-2 border-current/20 border-t-current animate-spin" /> Setting up your account…</>
+            : <>Create account <ArrowRight size={15} strokeWidth={2.5} /></>
+          }
+        </button>
+        <button
+          type="button"
+          onClick={onBack}
+          className="w-full text-center text-[13px] transition-opacity hover:opacity-60"
+          style={{ color: "rgba(255,255,255,0.28)" }}
+        >
+          ← Back
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────
    DONE STEP
 ───────────────────────────────────────── */
-function DoneStep({ firstName, archetype }: { firstName: string; archetype?: ReturnType<typeof scoreArchetype> }) {
+function DoneStep({
+  firstName,
+  archetype,
+  accountType,
+}: {
+  firstName: string;
+  archetype?: ReturnType<typeof scoreArchetype>;
+  accountType?: TalentAccountType;
+}) {
+  const isManager = accountType === "manager";
+  const isAgency  = accountType === "agency";
+  const isManaged = isManager || isAgency;
+
+  const headline = firstName
+    ? `You're in, ${firstName}.`
+    : isManaged ? "Account created." : "Application received.";
+
+  const body = isAgency
+    ? "Your agency account is ready. We're setting up your dashboard — you'll be redirected to complete your agency profile."
+    : isManager
+    ? "Your manager account is set up. Head to your dashboard to add talent to your roster and start submitting them for campaigns."
+    : "Your profile is under review. Our team will reach out within 48 hours to confirm your spot in the Hive.";
+
+  const badgeAccent = isAgency ? "rgba(251,191,36,0.9)" : isManager ? "rgba(45,212,191,0.9)" : null;
+  const badgeLabel  = isAgency ? "🏢 Agency" : isManager ? "👥 Talent Manager" : null;
+
   return (
     <div className="w-full max-w-[440px] mx-auto flex flex-col items-center gap-7 text-center">
       <motion.div className="w-16 h-16 rounded-full flex items-center justify-center"
@@ -902,14 +1244,21 @@ function DoneStep({ firstName, archetype }: { firstName: string; archetype?: Ret
 
       <div className="space-y-2">
         <h2 className="text-[28px] font-light tracking-[-0.03em]" style={{ color: "rgba(255,255,255,0.92)" }}>
-          {firstName ? `You're in, ${firstName}.` : "Application received."}
+          {headline}
         </h2>
         <p className="text-[14px] font-light max-w-[320px] mx-auto" style={{ color: "rgba(255,255,255,0.40)" }}>
-          Your profile is under review. Our team will reach out within 48 hours to confirm your spot in the Hive.
+          {body}
         </p>
       </div>
 
-      {archetype && (
+      {badgeLabel && badgeAccent && (
+        <div className="px-5 py-3 rounded-2xl" style={{ background: `${badgeAccent.replace("0.9)", "0.07)")}`, border: `1px solid ${badgeAccent.replace("0.9)", "0.25)")}` }}>
+          <p className="text-[12px] font-medium" style={{ color: badgeAccent }}>{badgeLabel}</p>
+          <p className="text-[11px] mt-0.5 font-light" style={{ color: "rgba(255,255,255,0.40)" }}>Setting up your workspace…</p>
+        </div>
+      )}
+
+      {archetype && !isManaged && (
         <div className="px-5 py-3 rounded-2xl" style={{ background: archetype.accentBg, border: `1px solid ${archetype.ring}` }}>
           <p className="text-[10px] uppercase tracking-[0.12em]" style={{ color: archetype.accent }}>{archetype.emoji} {archetype.name}</p>
           <p className="text-[11px] mt-0.5 font-light" style={{ color: "rgba(255,255,255,0.40)" }}>"{archetype.tagline}"</p>
@@ -922,7 +1271,8 @@ function DoneStep({ firstName, archetype }: { firstName: string; archetype?: Ret
 /* ─────────────────────────────────────────
    ROOT MODAL COMPONENT
 ───────────────────────────────────────── */
-export function HiveAuthModal({ open, mode, onClose, onSuccess }: HiveAuthModalProps) {
+export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: HiveAuthModalProps) {
+  const router = useRouter();
   const [step, setStep]           = useState<Step>("auth");
   const [authMode, setAuthMode]   = useState<"signup" | "login">("signup");
   const [email, setEmail]         = useState("");
@@ -934,13 +1284,18 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess }: HiveAuthModalP
   const [qIndex, setQIndex]       = useState(0);
   const [archetype, setArchetype] = useState<ReturnType<typeof scoreArchetype> | null>(null);
   const [profileFirstName, setProfileFirstName] = useState("");
+  const [talentAccountType, setTalentAccountType] = useState<TalentAccountType | null>(null);
 
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      setStep(initialStep ?? "auth");
+    } else {
       setStep("auth"); setAuthMode("signup"); setEmail(""); setPhone(""); setOtpVia("email");
       setSubmitting(false); setError("");
       setPrismAnswers({}); setQIndex(0); setArchetype(null); setProfileFirstName("");
+      setTalentAccountType(null);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const handleEmailSubmit = async () => {
@@ -993,9 +1348,31 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess }: HiveAuthModalP
     if (authMode === "login" || mode === "client") {
       setStep("loading");
     } else {
-      // talent new signup — go through prism
-      setStep("prism-intro");
+      // talent new signup — first choose account type
+      setStep("talent-type");
     }
+  };
+
+  const handleTalentTypeSelect = (type: TalentAccountType) => {
+    setTalentAccountType(type);
+    if (type === "independent") {
+      // Independent creators go through the Prism archetype quiz
+      setStep("prism-intro");
+    } else {
+      // Manager / Agency go through dedicated profile setup
+      setStep("manager-profile");
+    }
+  };
+
+  const handleManagerProfileSubmit = (data: Record<string, unknown>) => {
+    setProfileFirstName((data.contactName as string).split(" ")[0]);
+    setStep("done");
+    // Redirect manager/agency to agency onboarding after modal closes
+    setTimeout(() => {
+      onSuccess();
+      onClose();
+      router.push("/onboarding/agency");
+    }, 2000);
   };
 
   const handlePrismAnswer = (key: "A" | "B") => {
@@ -1016,7 +1393,7 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess }: HiveAuthModalP
     setTimeout(() => { onSuccess(); onClose(); }, 2000);
   };
 
-  const SIMPLE_STEPS = ["auth", "otp", "phone", "loading"];
+  const SIMPLE_STEPS = ["auth", "otp", "phone", "loading", "talent-type"];
   const isSimple = SIMPLE_STEPS.includes(step);
 
   return (
@@ -1062,7 +1439,7 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess }: HiveAuthModalP
                (landing page heading sits ~53px below screen center due to toggle pill above it;
                 adding pt=2×53px to the flex container shifts center by exactly 53px) */}
           {isSimple && (
-            <div className="absolute inset-0 flex items-center justify-center px-6 pt-[106px]">
+            <div className={`absolute inset-0 flex items-center justify-center px-6 ${step === "talent-type" ? "py-20 overflow-y-auto" : "pt-[106px]"}`}>
               <div className="w-full max-w-[520px]">
                 <AnimatePresence mode="wait">
                   {step === "auth" && (
@@ -1096,6 +1473,11 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess }: HiveAuthModalP
                       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                       transition={{ duration: 0.35 }}>
                       <LoadingStep onDone={() => { onSuccess(); onClose(); }} />
+                    </motion.div>
+                  )}
+                  {step === "talent-type" && (
+                    <motion.div key="talent-type" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.3 }}>
+                      <TalentTypeStep onSelect={handleTalentTypeSelect} />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1134,9 +1516,22 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess }: HiveAuthModalP
                         <ProfileStep archetype={archetype} onSubmit={handleProfileSubmit} />
                       </motion.div>
                     )}
+                    {step === "manager-profile" && talentAccountType && talentAccountType !== "independent" && (
+                      <motion.div key="manager-profile" {...SLIDE}>
+                        <ManagerProfileStep
+                          accountType={talentAccountType}
+                          onSubmit={handleManagerProfileSubmit}
+                          onBack={() => setStep("talent-type")}
+                        />
+                      </motion.div>
+                    )}
                     {step === "done" && (
                       <motion.div key="done" {...SLIDE}>
-                        <DoneStep firstName={profileFirstName} archetype={archetype ?? undefined} />
+                        <DoneStep
+                          firstName={profileFirstName}
+                          archetype={archetype ?? undefined}
+                          accountType={talentAccountType ?? undefined}
+                        />
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -1146,7 +1541,7 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess }: HiveAuthModalP
           )}
 
           {/* Bottom bar — Fey-style (only on auth/phone steps) */}
-          {(step === "auth" || step === "phone") && (
+          {(step === "auth" || step === "phone" || step === "talent-type") && (
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
               className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-between px-6 py-4"

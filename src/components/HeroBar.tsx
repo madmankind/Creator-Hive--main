@@ -83,7 +83,7 @@ export function HeroBar({
     <motion.div
       layout
       ref={wrapperRef}
-      className="flex w-full items-center justify-between rounded-full bg-neutral-900/60 px-3 py-2 shadow-lg shadow-black/40 backdrop-blur"
+      className="flex w-full items-center justify-between"
     >
       <AnimatePresence mode="wait">
         {mode === "client" ? (
@@ -97,7 +97,7 @@ export function HeroBar({
           >
             <div className="relative flex-1">
               <div
-                className="rounded-full bg-[#0F141A] ring-1 ring-white/10 hover:ring-white/20 transition p-2 pl-5 pr-14"
+                className="rounded-full bg-[#0D0D14] ring-1 ring-white/10 hover:ring-white/15 transition p-2 pl-5 pr-14"
               >
                 {selected.length > 0 && (
                   <div className="mb-1 -mt-1 flex flex-wrap gap-1">
@@ -240,25 +240,18 @@ export function HeroBar({
             transition={{ duration: 0.18 }}
             className="flex flex-1 items-center gap-3"
           >
-            <div className="flex w-full items-center justify-between rounded-full bg-[rgba(255,255,255,0.06)] border border-white/10 px-4 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
-              <div className="flex-1 min-w-0">
-                <div className="text-[14px] font-semibold text-white">Apply to join</div>
-                <div className="text-[12px] text-white/60">Showcase your work to top brands across the Gulf.</div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (session?.user) {
-                    router.push("/onboarding/step-1");
-                    return;
-                  }
-                  onDiscover?.();
-                }}
-                className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-white/90 transition"
-              >
-                Continue
-              </button>
+            <div className="rounded-full bg-[#0D0D14] ring-1 ring-white/10 hover:ring-white/15 transition p-2 pl-5 pr-3 flex-1">
+              <span className={"w-full block text-[15px] leading-8 " + (session?.user ? "text-slate-200" : "text-slate-400/40")}>
+                {session?.user ? "Welcome back" : "Apply to join as a creator or talent"}
+              </span>
             </div>
+            <button
+              type="button"
+              onClick={() => session?.user ? router.push("/dashboard/creator") : onDiscover?.()}
+              className="rounded-full bg-white px-5 py-2 text-xs font-semibold text-black hover:bg-white/90 transition"
+            >
+              {session?.user ? "Dashboard" : "Continue"}
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

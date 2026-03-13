@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/server/db";
-import AdminTalentClient from "./AdminTalentClient";
+import AdminDashboardClient from "./AdminDashboardClient";
 
 export default async function AdminPage() {
   const session = await auth();
@@ -31,5 +31,5 @@ export default async function AdminPage() {
     },
   });
 
-  return <AdminTalentClient creators={creators} />;
+  return <AdminDashboardClient creators={creators} />;
 }
