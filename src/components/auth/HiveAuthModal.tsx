@@ -797,6 +797,8 @@ function ProfileStep({
   const [rateType, setRateType] = useState("day_rate");
   const [rateAmount, setRateAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [legalAccepted, setLegalAccepted] = useState(false);
+  const [legalError, setLegalError] = useState("");
 
   const toggleRole = (r: string) =>
     setRoles(p => p.includes(r) ? p.filter(x => x !== r) : p.length < 3 ? [...p, r] : p);
@@ -806,12 +808,28 @@ function ProfileStep({
     setNiches(p => p.includes(n) ? p.filter(x => x !== n) : p.length < 4 ? [...p, n] : p);
 
   const generatedBio = buildBio(outputs, niches);
-  const canSubmit = name.trim() && igHandle.trim() && roles.length > 0 && outputs.length > 0;
+  const canSubmit = name.trim() && igHandle.trim() && roles.length > 0 && outputs.length > 0 && legalAccepted;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 700));
+    setLegalError("");
+    try {
+      const res = await fetch("/api/legal-acceptance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error || "Could not record legal acceptance.");
+      }
+    } catch (e) {
+      setLegalError(e instanceof Error ? e.message : "Could not complete. Please try again.");
+      setSubmitting(false);
+      return;
+    }
+    await new Promise(r => setTimeout(r, 300));
     onSubmit({ name, igHandle, platform, handle, portfolio, roles, outputs, niches, bio: generatedBio, rateType, rateAmount, archetypeName: archetype.name });
   };
 
@@ -1013,6 +1031,26 @@ function ProfileStep({
         </p>
       </div>
 
+      {/* Legal acceptance */}
+      <div className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          id="legal-accept"
+          checked={legalAccepted}
+          onChange={e => setLegalAccepted(e.target.checked)}
+          className="mt-1 rounded border-white/20"
+          style={{ accentColor: "rgba(155,127,255,0.8)" }}
+        />
+        <label htmlFor="legal-accept" className="text-[13px] font-light leading-snug cursor-pointer" style={{ color: "rgba(255,255,255,0.72)" }}>
+          I accept the{" "}
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline" style={{ color: "rgba(155,127,255,0.9)" }}>User Agreement</a>
+          {" "}and{" "}
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline" style={{ color: "rgba(155,127,255,0.9)" }}>Privacy Policy</a>
+          .
+        </label>
+      </div>
+      {legalError && <p className="text-[12px]" style={{ color: "rgba(251,113,133,0.9)" }}>{legalError}</p>}
+
       {/* Submit */}
       <button type="button" onClick={handleSubmit} disabled={!canSubmit || submitting}
         className="w-full flex items-center justify-center gap-2 py-4 rounded-full text-[14px] font-medium transition-all"
@@ -1161,16 +1199,34 @@ function ManagerProfileStep({
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [submitting, setSubmitting]     = useState(false);
   const [focused, setFocused]           = useState<string | null>(null);
+  const [legalAccepted, setLegalAccepted] = useState(false);
+  const [legalError, setLegalError]     = useState("");
 
   const toggleRole = (r: string) =>
     setSelectedRoles(p => p.includes(r) ? p.filter(x => x !== r) : [...p, r]);
 
-  const canSubmit = contactName.trim() && (accountType === "independent" || companyName.trim());
+  const canSubmit = contactName.trim() && (accountType === "independent" || companyName.trim()) && legalAccepted;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 700));
+    setLegalError("");
+    try {
+      const res = await fetch("/api/legal-acceptance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err && err.error) || "Could not record legal acceptance.");
+      }
+    } catch (e) {
+      setLegalError(e instanceof Error ? e.message : "Could not complete. Please try again.");
+      setSubmitting(false);
+      return;
+    }
+    await new Promise(r => setTimeout(r, 300));
     onSubmit({ companyName, contactName, whatsapp, rosterSize, roles: selectedRoles, accountType });
   };
 
@@ -1326,6 +1382,26 @@ function ManagerProfileStep({
           </div>
         ))}
       </div>
+
+      {/* Legal acceptance */}
+      <div className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          id="legal-accept-mgr"
+          checked={legalAccepted}
+          onChange={e => setLegalAccepted(e.target.checked)}
+          className="mt-1 rounded border-white/20"
+          style={{ accentColor: isAgency ? "rgba(251,191,36,0.8)" : "rgba(45,212,191,0.8)" }}
+        />
+        <label htmlFor="legal-accept-mgr" className="text-[13px] font-light leading-snug cursor-pointer" style={{ color: "rgba(255,255,255,0.72)" }}>
+          I accept the{" "}
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline" style={{ color: accentColor }}>User Agreement</a>
+          {" "}and{" "}
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline" style={{ color: accentColor }}>Privacy Policy</a>
+          .
+        </label>
+      </div>
+      {legalError && <p className="text-[12px]" style={{ color: "rgba(251,113,133,0.9)" }}>{legalError}</p>}
 
       {/* Submit */}
       <div className="space-y-3">

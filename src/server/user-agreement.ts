@@ -90,6 +90,20 @@ export async function generateUserAgreement(
   userId: string,
   forceRegenerate = false
 ): Promise<GenerateResult> {
+  // Guard: user must have accepted legal terms before generating an agreement
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { legalAcceptedAt: true },
+  });
+
+  if (!user?.legalAcceptedAt) {
+    return {
+      ok: false,
+      error:
+        "Legal acceptance required. Please accept the Privacy Policy and User Agreement before generating agreements.",
+    };
+  }
+
   const dataResult = await getAgreementData(userId);
   if (!dataResult.ok) return dataResult;
 

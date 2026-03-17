@@ -4,20 +4,16 @@ import { DashboardShell } from '@/components/dashboard/DashboardShell';
 import { feyTokens } from '@/lib/fey-design-tokens';
 import { TrendingUp, Clock, CheckCircle2 } from 'lucide-react';
 
-const MOCK = [
-  { id: 'REV-001', talent: 'Sarah Chen', campaign: 'Summer Product Launch', revenue: 8500, commission: 1700, net: 6800, date: '2024-03-10', status: 'COMPLETED' },
-  { id: 'REV-002', talent: 'Marcus Johnson', campaign: 'Brand Awareness', revenue: 6200, commission: 1240, net: 4960, date: '2024-03-12', status: 'PENDING' },
-  { id: 'REV-003', talent: 'Sarah Chen', campaign: 'Holiday Video Series', revenue: 4800, commission: 960, net: 3840, date: '2024-02-28', status: 'COMPLETED' },
-  { id: 'REV-004', talent: 'Emma Rodriguez', campaign: 'Product Unboxing Series', revenue: 3200, commission: 640, net: 2560, date: '2024-03-05', status: 'COMPLETED' },
-];
+type RevenueItem = { id: string; talent: string; campaign: string; revenue: number; commission: number; net: number; date: string; status: string };
+const REVENUE_ITEMS: RevenueItem[] = [];
 
 export default function Revenue() {
-  const [selected, setSelected] = useState<string | null>(MOCK[0].id);
-  const item = MOCK.find((m) => m.id === selected);
-  const total = MOCK.reduce((s, m) => s + m.revenue, 0);
-  const net = MOCK.reduce((s, m) => s + m.net, 0);
-  const completed = MOCK.filter((m) => m.status === 'COMPLETED').reduce((s, m) => s + m.revenue, 0);
-  const pending = MOCK.filter((m) => m.status === 'PENDING').reduce((s, m) => s + m.revenue, 0);
+  const [selected, setSelected] = useState<string | null>(REVENUE_ITEMS[0]?.id ?? null);
+  const item = REVENUE_ITEMS.find((m) => m.id === selected);
+  const total = REVENUE_ITEMS.reduce((s, m) => s + m.revenue, 0);
+  const net = REVENUE_ITEMS.reduce((s, m) => s + m.net, 0);
+  const completed = REVENUE_ITEMS.filter((m) => m.status === 'COMPLETED').reduce((s, m) => s + m.revenue, 0);
+  const pending = REVENUE_ITEMS.filter((m) => m.status === 'PENDING').reduce((s, m) => s + m.revenue, 0);
 
   const headerLeft = (
     <span className="text-[14px] font-medium tracking-[-0.01em]" style={{ color: feyTokens.colors.text.primary }}>Revenue</span>
@@ -47,7 +43,7 @@ export default function Revenue() {
         <div className="flex gap-5 min-h-[420px]">
           {/* Left: list */}
           <div className="w-[280px] flex-shrink-0 space-y-1.5">
-            {MOCK.map((m) => {
+            {REVENUE_ITEMS.map((m) => {
               const active = m.id === selected;
               return (
                 <button key={m.id} type="button" onClick={() => setSelected(m.id)}
@@ -74,7 +70,7 @@ export default function Revenue() {
           </div>
 
           {/* Right: detail */}
-          {item && (
+          {item ? (
             <div className="flex-1 rounded-2xl px-6 py-5"
               style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
               <div className="mb-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
@@ -98,7 +94,20 @@ export default function Revenue() {
                 </div>
               </div>
             </div>
-          )}
+          ) : REVENUE_ITEMS.length === 0 ? (
+            <div className="flex-1 rounded-2xl px-6 py-5 flex flex-col items-center justify-center gap-4 text-center min-h-[300px]"
+              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(124,92,255,0.08)', border: '1px solid rgba(124,92,255,0.2)' }}>
+                <TrendingUp size={24} style={{ color: 'rgba(155,127,255,0.7)' }} />
+              </div>
+              <div>
+                <p className="text-[15px] font-medium" style={{ color: feyTokens.colors.text.primary }}>No revenue yet</p>
+                <p className="text-[13px] mt-1 font-light max-w-[280px]" style={{ color: feyTokens.colors.text.muted }}>
+                  Revenue from completed campaigns will appear here once you start earning.
+                </p>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </DashboardShell>

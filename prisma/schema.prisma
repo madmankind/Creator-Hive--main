@@ -41,6 +41,10 @@ model User {
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
 
+  // Legal acceptance — captured at onboarding with version + timestamp
+  legalAcceptedAt      DateTime?
+  legalVersion         String?             // e.g. "2026-03"
+
   // Relations
   agencyAccount   AgencyAccount?
   creatorProfile  CreatorProfile?

@@ -8,7 +8,8 @@ type RouteRule = {
 };
 
 const rules: RouteRule[] = [
-  // /dashboard auth is handled by DashboardLayout (server-side) — not middleware
+  { prefix: "/dashboard", roles: ["AGENCY", "CREATOR", "ADMIN"] },
+  { prefix: "/admin", roles: ["ADMIN"] },
   { prefix: "/discovery", roles: ["AGENCY", "ADMIN"] },
   { prefix: "/onboarding", roles: ["AGENCY", "CREATOR", "ADMIN"] },
   { prefix: "/creator", roles: ["CREATOR", "ADMIN"] },
@@ -68,11 +69,15 @@ export default auth((req: RequestWithAuth) => {
     return NextResponse.redirect(new URL("/", req.nextUrl));
   }
 
-  return NextResponse.next();
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-pathname", pathname);
+  return NextResponse.next({ request: { headers: requestHeaders } });
 });
 
 export const config = {
   matcher: [
+    "/dashboard/:path*",
+    "/admin/:path*",
     "/discovery/:path*",
     "/onboarding/:path*",
     "/creator/:path*",

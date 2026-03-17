@@ -6,19 +6,15 @@ import { feyTokens } from '@/lib/fey-design-tokens';
 import { Send, Pencil, X, ArrowRight } from 'lucide-react';
 import { Suspense } from 'react';
 
-const MOCK_MESSAGES = [
-  { id: '1', from: 'Sarah Chen', subject: 'Deliverables ready for review', preview: 'Hi! The first set of campaign photos are ready…', time: '2h ago', unread: true, body: "Hi! I've completed the first set of photos for the summer campaign. They're ready for review. Let me know if you need any adjustments or want to proceed to the next batch." },
-  { id: '2', from: 'Marcus Johnson', subject: 'Question about video specs', preview: 'Quick question on resolution requirements…', time: '1d ago', unread: false, body: 'Quick question about the video resolution requirements. Should I deliver in 4K or is 1080p sufficient for the campaign deliverables?' },
-  { id: '3', from: 'Emma Rodriguez', subject: 'Available for new campaigns', preview: 'Just wrapped my last project, open for work…', time: '3d ago', unread: false, body: 'Just finished my current project and am now available for new campaigns. Looking forward to collaborating on something new if you have any upcoming briefs!' },
-];
+const MESSAGES: Array<{ id: string; from: string; subject: string; preview: string; time: string; unread: boolean; body: string }> = [];
 
 function MessagesContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const selectedId = searchParams.get('id') || MOCK_MESSAGES[0].id;
+  const selectedId = searchParams.get('id') ?? MESSAGES[0]?.id ?? '';
   const toParam = searchParams.get('to');   // ?to=[creatorId] from "Message" action
-  const selected = MOCK_MESSAGES.find((m) => m.id === selectedId);
+  const selected = MESSAGES.find((m) => m.id === selectedId);
 
   // When ?to=[creatorId] is present, show compose panel for that creator
   const [composeOpen, setComposeOpen] = useState(false);
@@ -67,7 +63,7 @@ function MessagesContent() {
       <div className="flex gap-5 min-h-[60vh]">
         {/* Message list */}
         <div className="w-[280px] flex-shrink-0 space-y-1">
-          {MOCK_MESSAGES.map((m) => {
+          {MESSAGES.map((m) => {
             const active = m.id === selectedId && !composeOpen;
             return (
               <button
@@ -208,6 +204,26 @@ function MessagesContent() {
                 {selected.body}
               </p>
             </>
+          ) : MESSAGES.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-4 text-center">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "rgba(124,92,255,0.08)", border: "1px solid rgba(124,92,255,0.2)" }}>
+                <Send size={24} style={{ color: "rgba(155,127,255,0.7)" }} />
+              </div>
+              <div>
+                <p className="text-[15px] font-medium" style={{ color: feyTokens.colors.text.primary }}>No conversations yet</p>
+                <p className="text-[13px] mt-1 font-light max-w-[280px]" style={{ color: feyTokens.colors.text.muted }}>
+                  Messaging with talent and agencies will appear here once you start collaborating on campaigns.
+                </p>
+              </div>
+              <button
+                onClick={() => setComposeOpen(true)}
+                className="flex items-center gap-2 rounded-full px-5 py-2.5 text-[13px] font-medium transition-all"
+                style={{ background: "rgba(124,92,255,0.15)", border: "1px solid rgba(124,92,255,0.35)", color: "rgba(167,139,250,0.95)" }}
+              >
+                <Pencil size={14} />
+                Compose message
+              </button>
+            </div>
           ) : (
             <div className="flex items-center justify-center h-full">
               <p className="text-[13px]" style={{ color: feyTokens.colors.text.label }}>Select a message</p>

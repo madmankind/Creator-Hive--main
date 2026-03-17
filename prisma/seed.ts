@@ -26,6 +26,13 @@ const CREATOR_USER: SeedUser = {
   role: "CREATOR",
 };
 
+// Admin for /admin access (email from SEED_ADMIN_EMAIL env, or admin@creatorhive.test for local)
+const ADMIN_USER: SeedUser = {
+  email: process.env.SEED_ADMIN_EMAIL ?? "admin@creatorhive.test",
+  name: "Seed Admin",
+  role: "ADMIN",
+};
+
 async function upsertUser(user: SeedUser) {
   return prisma.user.upsert({
     where: { email: user.email },
@@ -46,6 +53,7 @@ async function main() {
 
   const agencyUser = await upsertUser(AGENCY_USER);
   const creatorUser = await upsertUser(CREATOR_USER);
+  await upsertUser(ADMIN_USER);
 
   const agency = await prisma.agencyAccount.upsert({
     where: { userId: agencyUser.id },

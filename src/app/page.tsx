@@ -9,7 +9,7 @@ import { HiveAuthModal } from "@/components/auth/HiveAuthModal";
 import { PodSetupOverlay } from "@/features/pod-setup/PodSetupOverlay";
 import { CampaignSetupBoard } from "@/features/campaign/CampaignSetupBoard";
 import { PackageSelector } from "@/features/campaign/PackageSelector";
-import { curatedTalent } from "@/lib/curatedTalent";
+import { curatedTalent, getTalentDisplayName } from "@/lib/curatedTalent";
 import { PACKAGES, type PackageConfig } from "@/lib/packages";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
@@ -246,7 +246,7 @@ function HomePageContent() {
     .filter(Boolean)
     .map((t) => {
       const talent = curatedLookup.get(t!.id)!;
-      return { id: t!.id, name: t!.name, primaryRole: talent.primaryRole };
+      return { id: t!.id, name: t!.displayName ?? getTalentDisplayName(t!.name) ?? t!.name, primaryRole: talent.primaryRole };
     });
 
   const addToPod = (talentId: string) =>

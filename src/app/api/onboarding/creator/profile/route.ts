@@ -41,6 +41,74 @@ const mapHourlyRate = (value?: string | null): number | null => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+// Modal onboarding payload schema (accepts rateType/rateAmount + portfolioUrl)
+const modalProfileSchema = z.object({
+  name: z.string().min(2),
+  instagram: z.string().min(2),
+  bio: z.string().max(280).optional().default(""),
+  location: z.string().min(2).optional().default("Dubai, UAE"),
+  skills: z.array(z.string().min(1)).min(1),
+  niches: z.array(z.string().min(1)).optional().default([]),
+  prismArchetype: z.string().optional(),
+  portfolioUrl: z.string().url().optional().or(z.literal("")),
+  rateType: z.string().optional(),
+  rateAmount: z.string().optional(),
+});
+
+function mapRateToHourly(rateType?: string, rateAmount?: string): number | null {
+  if (!rateAmount) return null;
+  const n = parseInt(rateAmount.replace(/[^0-9]/g, ""), 10);
+  if (!Number.isFinite(n)) return null;
+  if (rateType === "day_rate") return Math.round(n / 8);
+  return mapHourlyRate(rateAmount) ?? n;
+}
+
+export async function POST(req: Request) {
+  const authResult = await requireUser({ roles: ["CREATOR", "ADMIN"] });
+  if ("error" in authResult) return authResult.error;
+  const { user } = authResult;
+
+  let payload: unknown;
+  try { payload = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
+
+  const parsed = modalProfileSchema.safeParse(payload);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues.map((i) => i.message).join(", ") }, { status: 400 });
+  }
+  const data = parsed.data;
+  const hourlyRateValue = mapRateToHourly(data.rateType, data.rateAmount) ?? mapHourlyRate(data.rateAmount);
+
+  const updateData = {
+    userId: user.id,
+    name: data.name,
+    instagram: data.instagram.replace(/^@+/, ""),
+    bio: data.bio || null,
+    location: data.location || "Dubai, UAE",
+    skills: data.skills.filter(Boolean).slice(0, 5),
+    niches: (data.niches || []).filter(Boolean).slice(0, 8),
+    portfolioUrl: data.portfolioUrl || null,
+    hourlyRate: hourlyRateValue ?? undefined,
+    prismArchetype: data.prismArchetype || null,
+    isActive: true,
+  };
+
+  const profile = await db.creatorProfile.upsert({
+    where: { userId: user.id },
+    update: updateData,
+    create: updateData,
+  });
+
+  if (user.role !== "CREATOR") {
+    await db.user.update({ where: { id: user.id }, data: { role: "CREATOR" } });
+  }
+  try {
+    const { generateUserAgreement } = await import("@/server/user-agreement");
+    await generateUserAgreement(user.id, false);
+  } catch { /* non-blocking */ }
+
+  return NextResponse.json({ ok: true, profile: { id: profile.id, name: profile.name } });
+}
+
 export async function GET() {
   const authResult = await requireUser({ roles: ["CREATOR", "ADMIN"] });
   if ("error" in authResult) return authResult.error;

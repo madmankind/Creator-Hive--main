@@ -71,7 +71,7 @@ if (USE_MOCK_AUTH_IN_DEV) {
 // @ts-expect-error - NextAuth v5 beta types may not be fully compatible
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: authSecret,
-  trustHost: true, // Required for NextAuth v5 in development
+  trustHost: process.env.NODE_ENV === "development" || process.env.AUTH_TRUST_HOST === "true",
   basePath: "/api/auth", // Explicitly set the base path
   session: {
     strategy: "jwt",

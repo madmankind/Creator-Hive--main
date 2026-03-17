@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/server/db";
 import AdminDashboardClient from "./AdminDashboardClient";
+import { ensureLegalAccepted } from "@/server/legal-gate";
+import { headers } from "next/headers";
 
 export default async function AdminPage() {
   const session = await auth();
@@ -10,6 +12,9 @@ export default async function AdminPage() {
   if (!user || user.role !== "ADMIN") {
     redirect("/");
   }
+
+  const pathname = (await headers()).get("x-pathname") ?? "/admin";
+  await ensureLegalAccepted(pathname);
 
   const creators = await db.creatorProfile.findMany({
     orderBy: { createdAt: "desc" },
