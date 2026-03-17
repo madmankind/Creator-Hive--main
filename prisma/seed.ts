@@ -2,8 +2,10 @@
  * Deterministic, idempotent seed for local/Supabase DB.
  *
  * Run with: pnpm db:seed
+ * Or directly: npx tsx prisma/seed.ts
  */
 
+import "dotenv/config";
 import { PrismaClient, type UserRole } from "@prisma/client";
 
 const prisma = new PrismaClient();
