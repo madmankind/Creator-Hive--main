@@ -713,6 +713,37 @@ export const curatedTalent: CuratedTalent[] = [
   },
 
 
+  // ── HIVE SIGNATURE — Sound Design & Music Production ────────────────────
+
+  {
+    id: "talent-kss",
+    name: "Kerberos & Styx",
+    displayTitle: "Sound Design · Music Production · Sonic Branding",
+    instagramHandle: "kerberos.and.styx",
+    instagramUrl: "https://instagram.com/kerberos.and.styx",
+    avatarUrl: "https://ui-avatars.com/api/?name=KSS&background=0d0d1a&color=a78bfa&size=512",
+    primaryRole: "Producer",
+    roleTags: ["Producer", "Creative Director", "Strategist", "Other"],
+    platformTags: ["Instagram"],
+    shortBio: "Designs original music and custom sounds for sonic branding, film, documentaries, and app/software UX. Experienced in brand audio, art installations, and product sound design.",
+    nicheSummary: "Netherlands and UAE-based sound design and music production studio founded by Nisham Olakara. Specialises in sonic branding, original scores for film and documentaries, and custom UX sound for apps and devices.",
+    availability: ["Hourly", "Monthly"],
+    prismArchetype: "The Auteur",
+    location: "Dubai, UAE",
+    tier: "Tier 1",
+    brandPartners: ["Sonic branding", "Film production", "Software & app companies"],
+    portfolio: [
+      { type: "video", src: "/portfolio/work-3.svg", poster: "/portfolio/work-3.svg", title: "Sonic Branding Reel" },
+      { type: "image", src: "/portfolio/work-1.svg", title: "Sound Design" },
+      { type: "image", src: "/portfolio/work-2.svg", title: "Film Score" },
+    ],
+    profileImageUrl: "https://ui-avatars.com/api/?name=KSS&background=0d0d1a&color=a78bfa&size=512",
+    links: {
+      instagram: "https://instagram.com/kerberos.and.styx",
+      website: "https://www.kerberosandstyx.com",
+    },
+  },
+
   // ── HIVE SELECT — Strategists & Operators ────────────────────────────────
 
   {
