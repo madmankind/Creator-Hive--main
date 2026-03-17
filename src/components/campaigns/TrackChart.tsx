@@ -26,8 +26,9 @@ export interface TrackChartProps {
   timeRange: TimeRange;
   campaignIds: string[];
   metrics: string[];
-  objective?: CampaignObjective; // Optional - defaults to internal state
-  onObjectiveChange?: (objective: CampaignObjective) => void; // Callback when objective changes
+  talentNames?: string[];
+  objective?: CampaignObjective;
+  onObjectiveChange?: (objective: CampaignObjective) => void;
   plannedData?: KPIData | null;
   actualData?: KPIData | null;
   onPlannedChange?: (data: KPIData) => void;
@@ -36,65 +37,47 @@ export interface TrackChartProps {
 
 const ACCENT_RED = "#F63148";
 
-// Mock assets for demo
-const MOCK_ASSETS: Asset[] = [
-  {
-    id: "asset-1",
-    title: "Reel 01 — Launch Teaser",
-    platform: "IG",
-    postingAccount: {
-      id: "creator-1",
-      name: "Sarah Chen",
-      role: "UGC Creator",
-    },
-    contributors: [
-      { id: "contrib-1", name: "John Doe", role: "Videographer" },
-      { id: "contrib-2", name: "Jane Smith", role: "Editor" },
-    ],
-    metrics: {
-      impressions: 600000,
-      reach: 450000,
-      views: 360000,
-      engagements: 16200,
-      clicks: 12000,
-      conversions: 45,
-    },
-    postedDate: "2025-12-09",
-  },
-  {
-    id: "asset-2",
-    title: "TikTok — Product Demo",
-    platform: "TikTok",
-    postingAccount: {
-      id: "creator-2",
-      name: "Mike Johnson",
-      role: "Content Creator",
-    },
+// Build demo assets — uses real talent names from campaign context when available
+function buildDemoAssets(talentNames?: string[]): Asset[] {
+  const names = talentNames && talentNames.length > 0 ? talentNames : ["Dan", "Camila"];
+  const platforms: Array<Asset["platform"]> = ["IG", "TikTok", "YouTube", "IG"];
+  return names.slice(0, 3).map((name, i): Asset => ({
+    id: `asset-${i + 1}`,
+    title: i === 0 ? "Reel 01 — Brand Launch" : i === 1 ? "Short-form — Product Demo" : "Story Series",
+    platform: platforms[i % platforms.length],
+    postingAccount: { id: `talent-${name.toLowerCase().replace(/\s/g, "-")}`, name, role: "Content Creator" },
     contributors: [],
     metrics: {
-      impressions: 800000,
-      reach: 620000,
-      views: 580000,
-      engagements: 24000,
-      clicks: 18000,
-      conversions: 72,
+      impressions: 680000 - i * 80000,
+      reach:       490000 - i * 60000,
+      views:       390000 - i * 50000,
+      engagements: 18200  - i * 2000,
+      clicks:      13400  - i * 1500,
+      conversions: 52     - i * 6,
     },
-    postedDate: "2025-12-10",
-  },
-];
+    postedDate: new Date(Date.now() - (8 - i * 2) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+  }));
+}
 
-export function TrackChart({ timeRange, campaignIds, metrics, objective: propObjective, onObjectiveChange, plannedData: propPlannedData, actualData: propActualData, onPlannedChange, onActualChange }: TrackChartProps) {
+export function TrackChart({ timeRange, campaignIds, metrics, talentNames, objective: propObjective, onObjectiveChange, plannedData: propPlannedData, actualData: propActualData, onPlannedChange, onActualChange }: TrackChartProps) {
   const [data, setData] = useState<CampaignDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [internalObjective, setInternalObjective] = useState<CampaignObjective>("awareness");
-  // Use prop if provided, otherwise use internal state
   const objective = propObjective || internalObjective;
   const [internalPlannedData, setInternalPlannedData] = useState<KPIData | null>(null);
   const [internalActualData, setInternalActualData] = useState<KPIData | null>(null);
   const plannedData = propPlannedData !== undefined ? propPlannedData : internalPlannedData;
   const actualData = propActualData !== undefined ? propActualData : internalActualData;
+
+  // Build assets from real talent names (updates when campaign changes)
+  const MOCK_ASSETS = useMemo(() => buildDemoAssets(talentNames), [talentNames]);
   const [visibleAssets, setVisibleAssets] = useState<Set<string>>(new Set(MOCK_ASSETS.map(a => a.id)));
   const [hoveredAsset, setHoveredAsset] = useState<string | null>(null);
+
+  // Reset visible assets when talent list changes
+  useEffect(() => {
+    setVisibleAssets(new Set(MOCK_ASSETS.map(a => a.id)));
+  }, [MOCK_ASSETS]);
   const [hoveredXIndex, setHoveredXIndex] = useState<number | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
   

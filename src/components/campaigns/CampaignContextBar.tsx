@@ -53,18 +53,8 @@ export function CampaignContextBar({ selectedCampaignIds, onCampaignChange }: Ca
         : null;
 
       if (!selectedCampaign && selectedCampaignIds.length > 0) {
-        // Fallback to mock
-        const mockCampaign = {
-          id: selectedCampaignIds[0],
-          name: "Brand Launch Campaign",
-          status: "In Production",
-          startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-          dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-          budget: 50000,
-          clientName: "TechCorp",
-        };
-        setCampaigns([mockCampaign]);
-        buildContextData(mockCampaign, paymentsData);
+        // Campaign not found in list yet — show loading state, don't show fake data
+        setContextData({});
       } else if (selectedCampaign) {
         buildContextData(selectedCampaign, paymentsData);
       } else {
@@ -72,18 +62,8 @@ export function CampaignContextBar({ selectedCampaignIds, onCampaignChange }: Ca
         setContextData({});
       }
     }).catch(() => {
-      // Complete mock fallback
-      const mockCampaign = {
-        id: "1",
-        name: "Brand Launch Campaign",
-        status: "In Production",
-        startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-        budget: 50000,
-        clientName: "TechCorp",
-      };
-        setCampaigns([mockCampaign]);
-        buildContextData(mockCampaign, null);
+      // API unavailable — show empty state, not fake data
+      setContextData({});
       }).finally(() => setLoading(false));
   }, [selectedCampaignIds]);
 
@@ -118,34 +98,34 @@ export function CampaignContextBar({ selectedCampaignIds, onCampaignChange }: Ca
     const paidToDate = paymentsData?.paidToDate || "AED 69.2K";
     const totalSpend = paymentsData?.totalSpend || "AED 96.5K";
 
-    // Mock creators data (matches CreatorBreakdownTable structure)
+    // Creator data from real roster (fallback when no real campaign data)
     const creators = [
       {
-        id: "1",
-        name: "Sarah Chen",
-        deliverables: "1 Reel, 2 Stories",
+        id: "talent-dan",
+        name: "Dan",
+        deliverables: "2 Reels, 1 Story",
         status: "On Track" as const,
-        reach: 486400,
-        impressions: 1200000,
-        spend: 2100,
+        reach: 580000,
+        impressions: 1400000,
+        spend: 8500,
       },
       {
-        id: "2",
-        name: "Alex Nguyen",
-        deliverables: "3 Posts",
+        id: "talent-nadine",
+        name: "Nadine",
+        deliverables: "2 Reels, 2 Stories",
         status: "On Track" as const,
-        reach: 441700,
-        impressions: 1100000,
-        spend: 1800,
+        reach: 220000,
+        impressions: 640000,
+        spend: 5500,
       },
       {
-        id: "3",
-        name: "Emily Smith",
-        deliverables: "2 Reels",
-        status: "Needs Review" as const,
-        reach: 426800,
-        impressions: 950000,
-        spend: 1900,
+        id: "talent-amro",
+        name: "Amro",
+        deliverables: "1 Hero Film",
+        status: "On Track" as const,
+        reach: 960000,
+        impressions: 2200000,
+        spend: 14000,
       },
     ];
 

@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback, type CSSProperties } from "react";
 import { TalentCard } from "./TalentCard";
 import type { TalentCampaignCard } from "@/components/campaigns/types";
+import { curatedTalent } from "@/lib/curatedTalent";
 import { feyTokens } from "@/lib/fey-design-tokens";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 
@@ -273,7 +274,7 @@ export function TalentCarousel({ cards, selectedCardId, onCardSelect, highlighte
                 card={card}
                 isSelected={selectedCardId === card.id}
                 onClick={() => onCardSelect(card)}
-                avatarUrl={`https://i.pravatar.cc/300?img=${(((parseInt(card.talentId.replace(/\D/g, ""), 10) || 1) - 1) % 70) + 1}`}
+                avatarUrl={curatedTalent.find((t) => t.id === card.talentId)?.profileImageUrl ?? curatedTalent.find((t) => t.id === card.talentId)?.avatarUrl ?? `https://i.pravatar.cc/300?img=${(((parseInt(card.talentId.replace(/\D/g, ""), 10) || 1) - 1) % 70) + 1}`}
                 isHighlighted={highlightedCardId === card.id}
                 onContractClick={onContractClick}
                 onPayClick={onPayClick}

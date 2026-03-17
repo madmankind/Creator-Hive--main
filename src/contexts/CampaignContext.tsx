@@ -48,6 +48,8 @@ function mapApiCampaign(c: {
   budget?: number | null;
   startDate?: string | null;
   dueDate?: string | null;
+  talentNames?: string[];
+  talentIds?: string[];
 }): Campaign {
   return {
     id: c.id,
@@ -58,6 +60,8 @@ function mapApiCampaign(c: {
     status: c.status,
     startDate: c.startDate ?? undefined,
     endDate: c.dueDate ?? undefined,
+    talentNames: c.talentNames,
+    talentIds: c.talentIds,
   };
 }
 

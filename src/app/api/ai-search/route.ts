@@ -1,79 +1,37 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/api/ai-search/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { curatedTalent } from "@/lib/curatedTalent";
 
 export const runtime = "nodejs";
 
 // Generate mock talent results based on AI interpretation
 function generateMockResults(aiData: any, roles: string[] = []): any[] {
-  // Mock talent pool - in production, this would query your database
-  const mockTalents = [
-    {
-      creator: {
-        id: "talent-1",
-        name: "Sarah Al-Mansoori",
-        roles: ["UGC Creator", "Content Creator", "Influencer"],
-        niches: ["Luxury Fashion", "Beauty", "Lifestyle"],
-      },
-      score: 0.92,
+  // Build pool from real curatedTalent roster
+  const pool = curatedTalent.map(t => ({
+    creator: {
+      id: t.id,
+      name: t.name,
+      roles: t.roleTags,
+      niches: t.brandPartners ?? t.platformTags,
+      location: t.location ?? "Dubai, UAE",
+      followers: t.followers,
+      bio: t.shortBio,
     },
-    {
-      creator: {
-        id: "talent-2",
-        name: "Ahmed Hassan",
-        roles: ["Videographer", "Editor", "Producer"],
-        niches: ["Tech", "SaaS", "Brand Films"],
-      },
-      score: 0.88,
-    },
-    {
-      creator: {
-        id: "talent-3",
-        name: "Layla Khoury",
-        roles: ["Photographer", "Content Creator", "Designer"],
-        niches: ["Hospitality", "Real Estate", "Fashion"],
-      },
-      score: 0.85,
-    },
-    {
-      creator: {
-        id: "talent-4",
-        name: "Omar Al-Rashid",
-        roles: ["Copywriter", "Strategist", "Content Creator"],
-        niches: ["B2B", "Fintech", "SaaS"],
-      },
-      score: 0.82,
-    },
-    {
-      creator: {
-        id: "talent-5",
-        name: "Maya Patel",
-        roles: ["Social Media Manager", "Strategist", "Content Creator"],
-        niches: ["E-commerce", "D2C", "Growth"],
-      },
-      score: 0.79,
-    },
-    {
-      creator: {
-        id: "talent-6",
-        name: "Zain Malik",
-        roles: ["Videographer", "UGC Creator", "Editor"],
-        niches: ["Food & Beverage", "Consumer Electronics", "Mobile Apps"],
-      },
-      score: 0.76,
-    },
-  ];
+    score: 0.75 + Math.random() * 0.24,
+  }));
 
-  // Filter and score based on roles if provided
-  let filtered = mockTalents;
+  // Filter by roles if provided
+  let filtered = pool;
   if (roles && roles.length > 0) {
-    filtered = mockTalents.filter((t) =>
-      roles.some((role) =>
+    filtered = pool.filter(t =>
+      roles.some(role =>
         t.creator.roles.some((r: string) =>
           r.toLowerCase().includes(role.toLowerCase())
         )
       )
     );
+    if (filtered.length === 0) filtered = pool;
   }
 
   // If AI data has primaryRoles, boost those matches

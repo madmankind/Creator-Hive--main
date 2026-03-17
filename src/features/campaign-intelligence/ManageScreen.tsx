@@ -20,40 +20,37 @@ interface ManageScreenProps {
   selectedCampaignIds: string[];
 }
 
-// Demo cards shown when no real talent has been added to a campaign yet
+// Demo cards built from real curatedTalent roster
+import { curatedTalent } from "@/lib/curatedTalent";
+
+function makeDemoCard(talentId: string, role: string, rate: number, status: string, bookingState: string, daysAgo: number): TalentCampaignCard {
+  const t = curatedTalent.find(c => c.id === talentId);
+  return {
+    id: `demo-${talentId}`,
+    campaignId: "demo",
+    talentId,
+    talentName: t?.name ?? "Creator",
+    talentRole: role,
+    deliverables: [
+      { id: `d-${talentId}-1`, type: "Reel", files: [], status: "Pending", revisionCount: 0 },
+      { id: `d-${talentId}-2`, type: "Story", files: [], status: "Pending", revisionCount: 0 },
+    ],
+    agreedRate: rate,
+    currency: "AED",
+    engagementRate: t?.engagementRate ? parseFloat((t.engagementRate * 100).toFixed(1)) : 3.8,
+    status: status as TalentCampaignCard["status"],
+    paymentStatus: "UNFUNDED",
+    bookingState: bookingState as TalentCampaignCard["bookingState"],
+    createdAt: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString(),
+  };
+}
+
 const DEMO_CARDS: TalentCampaignCard[] = [
-  {
-    id: "demo-1", campaignId: "demo", talentId: "demo-1",
-    talentName: "Layla Al Hashmi", talentRole: "UGC Creator",
-    deliverables: [
-      { id: "d1", type: "Reel", files: [], status: "Pending", revisionCount: 0 },
-      { id: "d2", type: "Story", files: [], status: "Pending", revisionCount: 0 },
-    ],
-    agreedRate: 4500, currency: "AED", engagementRate: 4.2,
-    status: "SHORTLISTED", paymentStatus: "UNFUNDED", bookingState: "PENDING",
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "demo-2", campaignId: "demo", talentId: "demo-2",
-    talentName: "Sara Mansour", talentRole: "Growth Strategist",
-    deliverables: [
-      { id: "d3", type: "Post", files: [], status: "Pending", revisionCount: 0 },
-    ],
-    agreedRate: 6000, currency: "AED", engagementRate: 5.8,
-    status: "BOOKED", paymentStatus: "UNFUNDED", bookingState: "CONFIRMED",
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "demo-3", campaignId: "demo", talentId: "demo-3",
-    talentName: "Omar Khalil", talentRole: "Video Producer",
-    deliverables: [
-      { id: "d4", type: "Video", files: [], status: "Pending", revisionCount: 0 },
-      { id: "d5", type: "Reel", files: [], status: "Pending", revisionCount: 0 },
-    ],
-    agreedRate: 8500, currency: "AED", engagementRate: 3.9,
-    status: "IN_PRODUCTION", paymentStatus: "PARTIALLY_FUNDED", bookingState: "CONFIRMED",
-    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-  },
+  makeDemoCard("talent-nadine",   "Content Creator",    5500, "SHORTLISTED",   "PENDING",    2),
+  makeDemoCard("talent-dan",      "Content Creator",    8500, "BOOKED",         "CONFIRMED",  5),
+  makeDemoCard("talent-amro",     "Videographer",      14000, "IN_PRODUCTION",  "CONFIRMED", 10),
+  makeDemoCard("talent-altamash", "Photographer",       6000, "BOOKED",         "CONFIRMED",  3),
+  makeDemoCard("talent-cheb",     "Creative Director",  9500, "SHORTLISTED",   "PENDING",    1),
 ];
 
 // Feature flag: enable V2 layout

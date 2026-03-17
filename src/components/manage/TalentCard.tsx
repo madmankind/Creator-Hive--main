@@ -29,6 +29,7 @@ import {
   Compass,
 } from "lucide-react";
 import { Tooltip } from "./Tooltip";
+import { getTalentDisplayName } from "@/lib/curatedTalent";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface TalentCardProps {
@@ -75,6 +76,7 @@ const ROLE_TO_ARCHETYPE: Record<string, ArchetypeName> = {
   "Video Producer":       "The Auteur",
   "Photographer":         "The Auteur",
   "Copywriter":           "The Translator",
+  "Creative Director":     "The Conductor",
   "Editor":               "The Architect",
   "Growth Strategist":    "The Architect",
   "Influencer":           "The Amplifier",
@@ -82,6 +84,10 @@ const ROLE_TO_ARCHETYPE: Record<string, ArchetypeName> = {
   "Strategist":           "The Architect",
   "Producer":             "The Conductor",
   "Social Media Manager": "The Maverick",
+  "Project Manager":       "The Architect",
+  "Account Manager":       "The Conductor",
+  "Account Director":      "The Conductor",
+  "Talent Manager":        "The Conductor",
 };
 
 function PrismArchetypeIcon({ role }: { role: string }) {
@@ -411,11 +417,11 @@ export function TalentCard({ card, isSelected, onClick, onFlip, avatarUrl, isHig
                   flexShrink: 0,
                 }}
               >
-                <img src={avatarUrl} alt={card.talentName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <img src={avatarUrl} alt={getTalentDisplayName(card.talentName)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               </div>
               <div className="min-w-0">
                 <div className="text-[17px] font-semibold truncate" style={{ color: feyTokens.colors.text.primary }}>
-                  {card.talentName}
+                  {getTalentDisplayName(card.talentName)}
                 </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <div style={{ color: "rgba(255,255,255,0.55)" }}>
@@ -540,11 +546,11 @@ export function TalentCard({ card, isSelected, onClick, onFlip, avatarUrl, isHig
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <img
                       src={avatarUrl}
-                      alt={card.talentName}
+                      alt={getTalentDisplayName(card.talentName)}
                       style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover", opacity: 0.9 }}
                     />
                     <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.90)" }}>
-                      {card.talentName}
+                      {getTalentDisplayName(card.talentName)}
                     </span>
                   </div>
                   <button

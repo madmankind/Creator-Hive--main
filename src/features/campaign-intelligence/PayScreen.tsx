@@ -147,6 +147,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);
+  const [contractTotal, setContractTotal] = useState<number>(0);
 
   const fetchLedger = useCallback(async (campaignId: string) => {
     const res = await fetch(`/api/campaigns/${campaignId}/ledger`);
@@ -160,15 +161,29 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
     })));
   }, []);
 
+  // Fetch contracts to get committed amounts
+  const fetchContracts = useCallback(async () => {
+    try {
+      const res = await fetch("/api/contracts");
+      if (!res.ok) return;
+      const data = await res.json();
+      const contracts: Array<{ totalAmount?: number | null; currency: string }> = data.contracts ?? [];
+      const sum = contracts.reduce((s, c) => s + (c.totalAmount ?? 0), 0);
+      setContractTotal(Math.round(sum / 100)); // stored in cents
+    } catch { /* silent */ }
+  }, []);
+
   useEffect(() => {
     if (currentCampaignId) fetchLedger(currentCampaignId);
-  }, [currentCampaignId, fetchLedger]);
+    fetchContracts();
+  }, [currentCampaignId, fetchLedger, fetchContracts]);
 
   const paid = invoices.filter((i) => i.status === "Paid").reduce((s, i) => s + i.amount, 0);
   const outstanding = invoices.filter((i) => i.status !== "Paid").reduce((s, i) => s + i.amount, 0);
-  // Fall back to campaign budget when no API ledger data exists yet
+  // Use contract total if available, else fall back to campaign budget
   const budgetFromCampaign = activeCampaign?.budget ?? 0;
-  const total = (paid + outstanding) > 0 ? paid + outstanding : budgetFromCampaign;
+  const committed = contractTotal > 0 ? contractTotal : budgetFromCampaign;
+  const total = (paid + outstanding) > 0 ? paid + outstanding : committed;
   const upcomingPayouts = payouts.filter((p) => p.status !== "Paid").reduce((s, p) => s + p.amount, 0);
   const spendPct = total > 0 ? Math.round((paid / total) * 100) : 0;
 
@@ -310,7 +325,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
         </div>
         {/* 4 tiles */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <BalanceTile label="Total Spend" value={fmt(total)} />
+          <BalanceTile label="Total Committed" value={fmt(committed)} />
           <BalanceTile label="Outstanding" value={fmt(outstanding)} accent="#E3A23A" note="Due this cycle" />
           <BalanceTile label="Paid to Date" value={fmt(paid)} accent="#10B981" note="Released to talent" />
           <BalanceTile label="Upcoming Payouts" value={fmt(upcomingPayouts)} accent="#8B5CF6" />

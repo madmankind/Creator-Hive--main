@@ -12,7 +12,7 @@ import { useLocalCampaignStore } from "@/store/useLocalCampaignStore";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Talent = { id: string; name: string; primaryRole?: string };
+type Talent = { id: string; name: string; primaryRole?: string; bookedRole?: string; roles?: string[] };
 
 type CampaignObjective = "awareness" | "engagement" | "traffic" | "conversions";
 type BookingType = "campaign" | "retainer";
@@ -209,21 +209,24 @@ export function CampaignSetupBoard({
   };
 
   const handleConfirm = async () => {
-    // Gate on session — dashboard nav requires auth
     if (!session?.user) {
       if (onRequestAuth) onRequestAuth();
       return;
     }
     setSubmitted(true);
     const userEmail = (session?.user as { email?: string } | undefined)?.email ?? "pending@creatorhive.ae";
-    // Persist campaign locally so dashboard screens see it immediately
     const localId = `local-${Date.now()}`;
+    const budgetNum = parseInt(state.totalBudget.replace(/,/g, "")) || 0;
+    const vat = Math.round(budgetNum * 0.05);
+    const perTalent = talents.length > 0 ? Math.round(budgetNum / talents.length) : budgetNum;
+
+    // Persist locally for immediate dashboard visibility
     useLocalCampaignStore.getState().addCampaign({
       id: localId,
       name: state.campaignName || "Untitled Campaign",
       objective: state.objectives[0] ?? "awareness",
       objectives: state.objectives,
-      budget: parseInt(state.totalBudget.replace(/,/g, "")) || 0,
+      budget: budgetNum,
       spend: 0,
       status: "active",
       startDate: state.startDate || undefined,
@@ -234,18 +237,91 @@ export function CampaignSetupBoard({
       talentIds: talents.map((t) => t.id),
       talentNames: talents.map((t) => t.name),
     });
-    fetch("/api/bookings", {
+
+    // Build SOW text for contract
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("en-AE", { year: "numeric", month: "long", day: "numeric" });
+    const contentLines = [
+      `CREATOR HIVE — STATEMENT OF WORK`,
+      ``,
+      `Campaign: ${state.campaignName || "Untitled Campaign"}`,
+      `Date: ${dateStr}`,
+      `Client: ${userEmail}`,
+      `Booking Type: ${state.bookingType === "retainer" ? "Monthly Retainer" : "Campaign"}`,
+      ``,
+      `BUDGET`,
+      `Subtotal: AED ${budgetNum.toLocaleString()}`,
+      `VAT (5%): AED ${vat.toLocaleString()}`,
+      `Total: AED ${(budgetNum + vat).toLocaleString()}`,
+      `Payment Schedule: ${state.paymentSchedule ?? "50% upfront, 50% on completion"}`,
+      state.startDate ? `Start Date: ${state.startDate}` : "",
+      state.endDate   ? `End Date: ${state.endDate}` : "",
+      ``,
+      `TALENT`,
+      ...talents.map((t, i) => `${i + 1}. ${t.name} — ${t.bookedRole ?? t.roles?.[0] ?? "Creator"}`),
+      ``,
+      `SCOPE`,
+      `Deliverables, usage rights, and per-talent add-ons to be configured in your dashboard.`,
+      state.notes ? `\nNOTES\n${state.notes}` : "",
+    ].filter(l => l !== undefined).join("\n");
+
+    // Milestone structure based on payment schedule
+    const milestones = state.paymentSchedule === "upfront_100"
+      ? [{ title: "Full payment", description: "100% upfront payment", amount: Math.round(budgetNum * 100) }]
+      : state.paymentSchedule === "monthly"
+        ? [
+            { title: "Month 1", description: "Monthly retainer payment", amount: Math.round(budgetNum * 100 / 3) },
+            { title: "Month 2", description: "Monthly retainer payment", amount: Math.round(budgetNum * 100 / 3) },
+            { title: "Month 3", description: "Monthly retainer payment", amount: Math.round(budgetNum * 100 / 3) },
+          ]
+        : [
+            { title: "Deposit (50%)", description: "Upfront deposit to begin production", amount: Math.round(budgetNum * 50), dueDate: state.startDate || undefined },
+            { title: "Completion (50%)", description: "Final payment on delivery approval", amount: Math.round(budgetNum * 50), dueDate: state.endDate || undefined },
+          ];
+
+    // Fire-and-forget: booking API + contract creation per talent
+    const bookingPromise = fetch("/api/bookings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         campaignDescription: state.campaignName || "Untitled Campaign",
         email: userEmail,
         talentIds: talents.map((t) => t.id),
+        talentRoles: talents.map((t) => t.bookedRole ?? t.roles?.[0] ?? "Creator"),
         budgetRange: state.totalBudget,
         bookingType: state.bookingType === "retainer" ? "long" : "short",
         startDate: state.startDate || undefined,
       }),
-    }).catch((e) => console.warn("[BookingAPI] background save failed:", e));
+    });
+
+    // After booking, create one contract per talent
+    bookingPromise
+      .then(res => res.ok ? res.json() : null)
+      .then(async (bookingData) => {
+        const campaignId = bookingData?.data?.campaignId ?? null;
+        await Promise.allSettled(
+          talents.map(async (talent) => {
+            try {
+              await fetch("/api/contracts", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  creatorProfileId: talent.id,
+                  campaignId,
+                  title: `${state.campaignName || "Campaign"} — ${talent.name} (${talent.bookedRole ?? talent.roles?.[0] ?? "Creator"})`,
+                  content: contentLines,
+                  totalAmount: Math.round(perTalent * 100), // store in cents
+                  currency: "AED",
+                  milestones,
+                }),
+              });
+            } catch (e) {
+              console.warn("[ContractAPI] failed for", talent.name, e);
+            }
+          })
+        );
+      })
+      .catch(e => console.warn("[BookingAPI] background save failed:", e));
   };
 
   // ── SOW download ──────────────────────────────────────────────────────────

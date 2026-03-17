@@ -196,6 +196,7 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
             timeRange={timeRange}
             campaignIds={activeCampaign ? [activeCampaign.id] : []}
             metrics={[]}
+            talentNames={activeCampaign?.talentNames ?? []}
             objective={objective}
             onObjectiveChange={setObjective}
             plannedData={plannedData}

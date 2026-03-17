@@ -118,11 +118,13 @@ export function CreatorBreakdownTable({ campaignIds }: CreatorBreakdownTableProp
         }
       }
 
-      // Final fallback: mock data (only shown when no real campaign)
+      // Final fallback: real Creator Hive roster (only shown when no real campaign)
       const mockData: CreatorData[] = [
-        { id: "1", name: "Sarah Chen",   role: "UGC Creator",       deliverables: "1 Reel, 2 Stories", reach: 486400,  impressions: 1200000, er: 4.2, spend: 2100, status: "On Track" },
-        { id: "2", name: "Alex Nguyen",  role: "Content Creator",   deliverables: "3 Posts",           reach: 441700,  impressions: 1100000, er: 3.5, spend: 1800, status: "On Track" },
-        { id: "3", name: "Emily Smith",  role: "Videographer",      deliverables: "2 Reels",           reach: 426800,  impressions: 950000,  er: 3.4, spend: 1900, status: "Needs Review" },
+        { id: "talent-dan",      name: "Dan",      role: "Content Creator",  deliverables: "2 Reels, 1 Story",  reach: 580000, impressions: 1400000, er: 2.9, spend: 8500,  status: "On Track" },
+        { id: "talent-nadine",   name: "Nadine",   role: "Content Creator",  deliverables: "2 Reels, 2 Stories",reach: 220000, impressions: 640000,  er: 4.8, spend: 5500,  status: "On Track" },
+        { id: "talent-amro",     name: "Amro",     role: "Videographer",     deliverables: "1 Hero Film",       reach: 960000, impressions: 2200000, er: 3.2, spend: 14000, status: "On Track" },
+        { id: "talent-altamash", name: "Altamash", role: "Photographer",     deliverables: "8 Stills, 1 Reel",  reach: 230000, impressions: 580000,  er: 3.5, spend: 6000,  status: "Needs Review" },
+        { id: "talent-cheb",     name: "Cheb",     role: "Art Director",     deliverables: "Campaign Direction", reach: 0,     impressions: 0,       er: 0,   spend: 9500,  status: "On Track" },
       ];
       applyData(mockData);
     });

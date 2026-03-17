@@ -92,6 +92,74 @@ const ROLE_GROUPS = [
   { group: "Operations", roles: ["Campaign Manager", "Producer", "Project Manager"] },
 ];
 
+// Output statements grouped by role — talent picks up to 4, bio is assembled automatically
+const OUTPUTS_BY_ROLE: Record<string, string[]> = {
+  "Video & Content": [
+    "Shoot and direct brand films",
+    "Produce short-form social reels",
+    "Edit long-form video content",
+    "Create UGC product content",
+    "Shoot and edit vlogs and travel content",
+    "Produce motion graphics and animations",
+    "Direct and shoot music videos",
+    "Shoot product and commercial photography",
+    "Create TikTok-native content",
+    "Produce YouTube content and series",
+  ],
+  "Social & Strategy": [
+    "Manage social media accounts",
+    "Write social captions and copy",
+    "Build content calendars and strategies",
+    "Write Arabic-language content",
+    "Create and manage paid social campaigns",
+    "Grow organic social audiences",
+    "Handle community management",
+    "Produce monthly content reports",
+  ],
+  "Production": [
+    "Art direct brand campaigns",
+    "Lead creative concept development",
+    "Design visual identities and brand assets",
+    "Create 3D and CGI visuals",
+    "Design social media templates",
+    "Direct and oversee shoot productions",
+    "Build mood boards and campaign decks",
+    "Design print and digital collateral",
+  ],
+  "Operations": [
+    "Manage campaigns end-to-end",
+    "Coordinate talent and production teams",
+    "Build project timelines and briefs",
+    "Handle client communication and reporting",
+    "Manage budgets and vendor relations",
+    "Oversee deliverable review and approvals",
+  ],
+};
+
+const NICHES_LIST = [
+  "F&B", "Beauty", "Fashion", "Fitness & Wellness",
+  "Travel", "Automotive", "Technology", "Real Estate",
+  "Hospitality", "Entertainment", "Finance", "Healthcare",
+  "Retail", "Sport", "Education", "Sustainability",
+];
+
+function buildBio(outputs: string[], niches: string[]): string {
+  if (outputs.length === 0) return "";
+  const last = outputs[outputs.length - 1];
+  const rest = outputs.slice(0, -1);
+  const outputStr = rest.length > 0
+    ? rest.join(", ") + ", and " + last
+    : last;
+  const nicheStr = niches.length > 0
+    ? " Experienced in " + (niches.length === 1
+        ? niches[0]
+        : niches.slice(0, -1).join(", ") + " and " + niches[niches.length - 1]) + "."
+    : "";
+  // Capitalise first letter
+  const bio = outputStr.charAt(0).toUpperCase() + outputStr.slice(1) + "." + nicheStr;
+  return bio;
+}
+
 const PLATFORMS = ["Instagram", "TikTok", "YouTube", "X / Twitter", "LinkedIn", "Snapchat", "YouTube Shorts", "Website / Blog"];
 
 const RATE_TYPES = [
@@ -724,20 +792,27 @@ function ProfileStep({
   const [handle, setHandle]     = useState("");
   const [portfolio, setPortfolio] = useState("");
   const [roles, setRoles]       = useState<string[]>([]);
+  const [outputs, setOutputs]   = useState<string[]>([]);
+  const [niches, setNiches]     = useState<string[]>([]);
   const [rateType, setRateType] = useState("day_rate");
   const [rateAmount, setRateAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const toggleRole = (r: string) =>
     setRoles(p => p.includes(r) ? p.filter(x => x !== r) : p.length < 3 ? [...p, r] : p);
+  const toggleOutput = (o: string) =>
+    setOutputs(p => p.includes(o) ? p.filter(x => x !== o) : p.length < 4 ? [...p, o] : p);
+  const toggleNiche = (n: string) =>
+    setNiches(p => p.includes(n) ? p.filter(x => x !== n) : p.length < 4 ? [...p, n] : p);
 
-  const canSubmit = name.trim() && igHandle.trim() && roles.length > 0;
+  const generatedBio = buildBio(outputs, niches);
+  const canSubmit = name.trim() && igHandle.trim() && roles.length > 0 && outputs.length > 0;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
     await new Promise(r => setTimeout(r, 700));
-    onSubmit({ name, igHandle, platform, handle, portfolio, roles, rateType, rateAmount, archetypeName: archetype.name });
+    onSubmit({ name, igHandle, platform, handle, portfolio, roles, outputs, niches, bio: generatedBio, rateType, rateAmount, archetypeName: archetype.name });
   };
 
   const fieldStyle: React.CSSProperties = {
@@ -825,6 +900,83 @@ function ProfileStep({
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Outputs — generates standardised bio */}
+      <div>
+        <div className="flex items-baseline gap-2 mb-1">
+          <label className="text-[10px] uppercase tracking-[0.12em] font-semibold" style={{ color: "rgba(255,255,255,0.28)" }}>
+            What will brands get from working with you? <span style={{ color: "rgba(155,127,255,0.7)" }}>*</span>
+          </label>
+          <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.22)" }}>Pick up to 4</span>
+        </div>
+        <p className="text-[11px] mb-3 font-light" style={{ color: "rgba(255,255,255,0.30)" }}>
+          Select the outputs you deliver. We'll build your public profile from these.
+        </p>
+        {Object.entries(OUTPUTS_BY_ROLE).map(([group, items]) => (
+          <div key={group} className="mb-3">
+            <p className="text-[9px] uppercase tracking-[0.12em] mb-1.5" style={{ color: "rgba(255,255,255,0.20)" }}>{group}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {items.map(o => {
+                const active = outputs.includes(o);
+                const maxed  = !active && outputs.length >= 4;
+                return (
+                  <button key={o} type="button" onClick={() => toggleOutput(o)} disabled={maxed}
+                    className="px-3 py-1.5 rounded-xl text-[12px] font-light transition-all duration-100"
+                    style={{
+                      background: active ? "rgba(34,211,238,0.10)" : "rgba(255,255,255,0.04)",
+                      border: active ? "1px solid rgba(34,211,238,0.35)" : "1px solid rgba(255,255,255,0.07)",
+                      color: active ? "rgba(103,232,249,0.95)" : maxed ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.55)",
+                      opacity: maxed ? 0.45 : 1,
+                    }}>
+                    {o}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        {/* Niches */}
+        <div className="mt-4">
+          <div className="flex items-baseline gap-2 mb-1.5">
+            <label className="text-[10px] uppercase tracking-[0.12em] font-semibold" style={{ color: "rgba(255,255,255,0.28)" }}>
+              Industries you work in
+            </label>
+            <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.22)" }}>Pick up to 4</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {NICHES_LIST.map(n => {
+              const active = niches.includes(n);
+              const maxed  = !active && niches.length >= 4;
+              return (
+                <button key={n} type="button" onClick={() => toggleNiche(n)} disabled={maxed}
+                  className="px-3 py-1.5 rounded-xl text-[12px] font-light transition-all duration-100"
+                  style={{
+                    background: active ? "rgba(167,139,250,0.10)" : "rgba(255,255,255,0.04)",
+                    border: active ? "1px solid rgba(167,139,250,0.35)" : "1px solid rgba(255,255,255,0.07)",
+                    color: active ? "rgba(196,174,255,0.95)" : maxed ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.55)",
+                    opacity: maxed ? 0.45 : 1,
+                  }}>
+                  {n}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Live bio preview */}
+        {generatedBio && (
+          <div className="mt-4 rounded-xl px-4 py-3"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <p className="text-[9px] uppercase tracking-[0.12em] mb-1.5 font-semibold" style={{ color: "rgba(255,255,255,0.25)" }}>
+              Your public profile bio
+            </p>
+            <p className="text-[13px] font-light leading-relaxed" style={{ color: "rgba(255,255,255,0.75)" }}>
+              {generatedBio}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Rate structure */}
@@ -1389,6 +1541,23 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
 
   const handleProfileSubmit = (data: Record<string, unknown>) => {
     setProfileFirstName((data.name as string).split(" ")[0]);
+    // Persist profile data to onboarding API (fire-and-forget)
+    fetch("/api/onboarding/creator/profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: data.name,
+        instagram: data.igHandle,
+        bio: data.bio,
+        location: "Dubai, UAE",
+        skills: data.roles,
+        niches: data.niches,
+        prismArchetype: data.archetypeName,
+        portfolioUrl: data.portfolio,
+        rateType: data.rateType,
+        rateAmount: data.rateAmount,
+      }),
+    }).catch(() => {});
     setStep("done");
     setTimeout(() => { onSuccess(); onClose(); }, 2000);
   };

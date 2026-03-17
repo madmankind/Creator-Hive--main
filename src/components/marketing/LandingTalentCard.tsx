@@ -14,7 +14,9 @@ import { PrismBadge } from "@/components/prism/PrismBadge";
 type LandingTalentCardProps = {
   talent: Talent;
   isAdded?: boolean;
-  onAdd?: (talent: Talent) => void;
+  selectedRole?: string | null;
+  onAdd?: (talent: Talent, role?: string) => void;
+  onRemove?: (talent: Talent, role?: string) => void;
   onBook?: (talent: Talent) => void;
   curatedTalent: CuratedTalent;
   matchScore?: MatchScore;
@@ -28,7 +30,10 @@ function getTalentTier(talent: CuratedTalent): "HIVE_SELECT" | "HIVE_SIGNATURE" 
 
 const TIER_STYLES = {
   HIVE_SELECT: { bg: "bg-white/5", text: "text-white/70", ring: "ring-white/20", label: "Hive Select" },
-  HIVE_SIGNATURE: { bg: "bg-purple-500/10", text: "text-purple-300", ring: "ring-purple-400/40", label: "Hive Signature" },
+  HIVE_SIGNATURE: {
+    bg: "bg-amber-500/10", text: "text-amber-300", ring: "ring-amber-400/40", label: "Hive Signature",
+    glow: "0 0 14px rgba(251,191,36,0.22), 0 0 28px rgba(251,191,36,0.08)",
+  },
 };
 
 type BackTab = "about" | "portfolio" | "links";
@@ -115,6 +120,7 @@ function CardFront({
   curatedTalent,
   isAdded,
   onAdd,
+  onRemove,
   onBook,
   packageMatch,
   matchScore,
@@ -124,7 +130,8 @@ function CardFront({
   talent: Talent;
   curatedTalent: CuratedTalent;
   isAdded?: boolean;
-  onAdd?: (t: Talent) => void;
+  onAdd?: (t: Talent, role?: string) => void;
+  onRemove?: (t: Talent, role?: string) => void;
   onBook?: (t: Talent) => void;
   packageMatch?: { packageName: string; packageEmoji: string };
   matchScore?: MatchScore;
@@ -134,6 +141,9 @@ function CardFront({
   const tier = getTalentTier(curatedTalent);
   const styles = TIER_STYLES[tier];
   const hasAvatar = !!(curatedTalent.profileImageUrl || curatedTalent.avatarUrl);
+  const [selectedBookRole, setSelectedBookRole] = useState<string | null>(null);
+  // isAdded reflects the default role; if a specific role is selected, check that
+  const effectiveAdded = isAdded;
 
   return (
     <div className="w-full h-full flex flex-col">
@@ -190,56 +200,88 @@ function CardFront({
         </div>
       </div>
 
-      {/* Bio blurb */}
-      {(curatedTalent.nicheSummary || curatedTalent.shortBio) && (
-        <p className="mb-3 text-[13px] text-white/65 leading-[1.5] line-clamp-2 select-none flex-shrink-0">
-          {getFrontSummary(curatedTalent)}
+      {/* Bio — use shortBio first, fall back to nicheSummary fragment */}
+      {(curatedTalent.shortBio || curatedTalent.nicheSummary) && (
+        <p className="mb-3 text-[12.5px] text-white/60 leading-[1.55] line-clamp-2 select-none flex-shrink-0">
+          {curatedTalent.shortBio || getFrontSummary(curatedTalent)}
         </p>
       )}
 
-      {/* Tags */}
+      {/* Role chips — all roles visible, primary highlighted */}
       <div className="flex flex-wrap gap-1.5 mb-3 flex-1 content-start overflow-hidden">
-        {talent.roles.slice(0, 3).map((r) => (
-          <span key={r} className="rounded-full bg-white/[0.06] px-2.5 py-0.5 text-[12px] text-white/65 ring-1 ring-white/[0.10] select-none shrink-0">
+        {(curatedTalent.roleTags ?? []).slice(0, 4).map((r) => (
+          <span key={r}
+            className={cn(
+              "rounded-full px-2.5 py-0.5 text-[11px] ring-1 select-none shrink-0 transition-colors cursor-pointer",
+              r === curatedTalent.primaryRole
+                ? "bg-white/[0.10] text-white/90 ring-white/[0.18]"
+                : selectedBookRole === r
+                  ? "bg-purple-500/20 text-purple-300 ring-purple-400/40"
+                  : "bg-white/[0.05] text-white/55 ring-white/[0.08] hover:bg-white/[0.10] hover:text-white/80"
+            )}
+            onClick={(e) => { e.stopPropagation(); setSelectedBookRole(selectedBookRole === r ? null : r); }}
+          >
             {r}
           </span>
         ))}
-        {talent.platforms.slice(0, 2).map((p) => (
-          <span key={p} className="rounded-full bg-white/[0.04] px-2.5 py-0.5 text-[12px] text-white/48 ring-1 ring-white/[0.07] select-none shrink-0">
-            {p}
-          </span>
+        {curatedTalent.platformTags?.slice(0, 2).map((p) => (
+          <span key={p} className="rounded-full bg-white/[0.03] px-2.5 py-0.5 text-[11px] text-white/40 ring-1 ring-white/[0.06] select-none shrink-0">{p}</span>
         ))}
-        <Tooltip content={PRICING_TIER_DESCRIPTIONS[tier]}>
-          <span className={cn("rounded-full px-2.5 py-0.5 text-[12px] ring-1 select-none shrink-0 cursor-help", styles.bg, styles.text, styles.ring)}>
+        <Tooltip content={(PRICING_TIER_DESCRIPTIONS as any)[tier] ?? tier}>
+          <span className={cn("rounded-full px-2.5 py-0.5 text-[11px] ring-1 select-none shrink-0 cursor-help", styles.bg, styles.text, styles.ring)}
+            style={(tier === 'HIVE_SIGNATURE' && (styles as any).glow) ? { boxShadow: (styles as any).glow } : undefined}>
             {styles.label}
           </span>
         </Tooltip>
       </div>
 
+      {/* Role selector hint */}
+      {selectedBookRole && selectedBookRole !== curatedTalent.primaryRole && (
+        <p className="text-[10px] text-purple-300/70 mb-2 select-none">
+          Booking as: <span className="font-medium text-purple-300">{selectedBookRole}</span>
+        </p>
+      )}
+
       {/* Actions */}
       <div className="mt-auto shrink-0 pt-3 border-t border-white/[0.08] flex items-center gap-2">
-        <Tooltip content={isAdded ? "In pod" : "Add to pod"}>
+        <Tooltip content={effectiveAdded && !selectedBookRole ? "Remove from pod" : selectedBookRole ? `Add as ${selectedBookRole}` : "Add to pod"}>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); if (!isAdded) onAdd?.(talent); }}
-            disabled={isAdded}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (effectiveAdded && !selectedBookRole) {
+                onRemove?.(talent);
+              } else {
+                onAdd?.(talent, selectedBookRole ?? undefined);
+              }
+            }}
             className={cn(
               "flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-medium transition flex-1 justify-center",
-              isAdded
-                ? "bg-white/[0.14] text-white/65 cursor-default ring-1 ring-white/20"
-                : "bg-white/[0.07] text-white/80 hover:bg-white/[0.14] hover:text-white ring-1 ring-white/10"
+              effectiveAdded && !selectedBookRole
+                ? "bg-white/[0.10] text-white/55 ring-1 ring-white/15 hover:bg-red-500/10 hover:text-red-400 hover:ring-red-400/30"
+                : selectedBookRole
+                  ? "bg-purple-500/20 text-purple-300 ring-1 ring-purple-400/40 hover:bg-purple-500/30"
+                  : "bg-white/[0.07] text-white/80 hover:bg-white/[0.14] hover:text-white ring-1 ring-white/10"
             )}
           >
-            {isAdded ? "Added" : "+ Add"}
+            {effectiveAdded && !selectedBookRole ? "✓ Added" : selectedBookRole ? `+ ${selectedBookRole.split(' ')[0]}` : "+ Add"}
           </button>
         </Tooltip>
-        <Tooltip content="Book now">
+        <Tooltip content={selectedBookRole ? `Book as ${selectedBookRole}` : "Book now"}>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onBook?.(talent); }}
-            className="flex-1 rounded-full bg-white/[0.07] text-white/80 ring-1 ring-white/10 px-4 py-2 text-[13px] font-medium hover:bg-white/[0.14] hover:text-white transition"
+            onClick={(e) => {
+              e.stopPropagation();
+              onBook?.({ ...talent, bookedRole: selectedBookRole ?? talent.roles[0], headline: selectedBookRole ? `${selectedBookRole} · ${curatedTalent.location ?? 'Dubai'}` : talent.headline });
+            }}
+            className={cn(
+              "flex-1 rounded-full px-4 py-2 text-[13px] font-medium transition",
+              selectedBookRole
+                ? "bg-purple-500/20 text-purple-300 ring-1 ring-purple-400/40 hover:bg-purple-500/30"
+                : "bg-white/[0.07] text-white/80 ring-1 ring-white/10 hover:bg-white/[0.14] hover:text-white"
+            )}
           >
-            Book now
+            {selectedBookRole ? `Book · ${selectedBookRole.split(' ')[0]}` : "Book now"}
           </button>
         </Tooltip>
       </div>
@@ -301,8 +343,8 @@ function CardBack({
           {backTab === "about" && (
             <motion.div key="about" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
               <div className="space-y-3">
-                <p className="text-[13px] leading-relaxed text-white/65 select-none">
-                  {getAboutSummary(curatedTalent)}
+                <p className="text-[12.5px] leading-[1.6] text-white/70 select-none">
+                  {curatedTalent.nicheSummary || curatedTalent.shortBio || ""}
                 </p>
                 {(curatedTalent.location || curatedTalent.timezone || curatedTalent.languages) && (
                   <div className="pt-2 border-t border-white/[0.07] space-y-1">
@@ -386,9 +428,10 @@ function CardBack({
 
 // ── Main Export ──────────────────────────────────────────────────────────────
 
-export function LandingTalentCard({ talent, isAdded, onAdd, onBook, curatedTalent, matchScore, packageMatch }: LandingTalentCardProps) {
+export function LandingTalentCard({ talent, isAdded, onAdd, onRemove, onBook, curatedTalent, matchScore, packageMatch }: LandingTalentCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [showExpandModal, setShowExpandModal] = useState(false);
+  const tier = getTalentTier(curatedTalent);
 
   useEffect(() => {
     if (!showExpandModal) return;
@@ -401,13 +444,18 @@ export function LandingTalentCard({ talent, isAdded, onAdd, onBook, curatedTalen
     <TooltipProvider>
       <motion.article
         className={cn(
-          "group relative rounded-2xl bg-white/[0.05] p-5 ring-1 ring-white/[0.09]",
+          "group relative rounded-2xl bg-white/[0.05] p-5 ring-1",
           "w-[380px] h-[300px] flex-shrink-0 cursor-pointer select-none overflow-hidden",
           "transition-shadow duration-300",
           packageMatch
             ? "ring-white/[0.15] hover:shadow-[0_0_32px_rgba(255,255,255,0.07)]"
-            : "hover:ring-white/[0.16] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
+            : tier === "HIVE_SIGNATURE"
+              ? "ring-amber-400/[0.18] hover:ring-amber-400/[0.30]"
+              : "ring-white/[0.09] hover:ring-white/[0.16] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
         )}
+        style={tier === "HIVE_SIGNATURE" ? {
+          boxShadow: "0 0 0 1px rgba(251,191,36,0.12), 0 4px 24px rgba(251,191,36,0.06)",
+        } : undefined}
       >
         {/* Package shimmer */}
         {packageMatch && (
@@ -432,7 +480,7 @@ export function LandingTalentCard({ talent, isAdded, onAdd, onBook, curatedTalen
                 transition={{ duration: 0.18 }}
                 className="absolute inset-0"
               >
-                <CardFront talent={talent} curatedTalent={curatedTalent} isAdded={isAdded} onAdd={onAdd} onBook={onBook} packageMatch={packageMatch} matchScore={matchScore} onFlip={() => setIsFlipped(true)} onExpand={() => setShowExpandModal(true)} />
+                <CardFront talent={talent} curatedTalent={curatedTalent} isAdded={isAdded} onAdd={onAdd} onRemove={onRemove} onBook={onBook} packageMatch={packageMatch} matchScore={matchScore} onFlip={() => setIsFlipped(true)} onExpand={() => setShowExpandModal(true)} />
               </motion.div>
             ) : (
               <motion.div
