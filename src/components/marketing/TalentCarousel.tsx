@@ -2,9 +2,10 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { CuratedTalent, TalentCategoryTag } from '@/lib/curatedTalent'
+import { getTalentDisplayName } from '@/lib/curatedTalent'
 import { LandingTalentCard } from '@/components/marketing/LandingTalentCard'
 import { useCampaignPodStore, type Talent as PodTalent } from '@/store/useCampaignPodStore'
-import { ChevronLeft, ChevronRight, Search, X, Sparkles, SlidersHorizontal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, X, Sparkles, SlidersHorizontal, Globe, MapPin } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { PackageConfig } from '@/lib/packages'
 
@@ -42,6 +43,12 @@ const ROLE_LABELS: Partial<Record<TalentCategoryTag, string>> = {
 }
 
 type TierFilter = 'all' | 'signature' | 'select'
+type LocationFilter = 'global' | 'uae'
+
+function isInUAE(t: CuratedTalent): boolean {
+  const loc = (t.location ?? '').toLowerCase()
+  return loc.includes('uae') || loc.includes('dubai') || loc.includes('abu dhabi') || loc.includes('sharjah') || loc.includes('ajman') || loc.includes('ras al-khaimah') || loc.includes('fujairah')
+}
 
 function getTier(t: CuratedTalent): 'signature' | 'select' {
   if (t.tier === 'Tier 1') return 'signature'
@@ -87,6 +94,7 @@ export function TalentCarousel({
   const [internalQuery, setInternalQuery] = useState('')
   const [tierFilter, setTierFilter] = useState<TierFilter>('all')
   const [roleFilter, setRoleFilter] = useState<TalentCategoryTag | null>(null)
+  const [locationFilter, setLocationFilter] = useState<LocationFilter>('global')
   const [roleDropOpen, setRoleDropOpen] = useState(false)
 
   const effectiveQuery = externalQuery ?? internalQuery
@@ -119,6 +127,10 @@ export function TalentCarousel({
     if (effectiveRoles.length > 0)
       list = list.filter(t => effectiveRoles.includes(t.primaryRole) || t.roleTags.some(r => effectiveRoles.includes(r as string)))
 
+    // Location filter
+    if (locationFilter === 'uae')
+      list = list.filter(isInUAE)
+
     // Fuzzy search across name + bio + roles + location + brands
     if (effectiveQuery.trim()) {
       const searchable = (t: CuratedTalent) => [
@@ -130,7 +142,7 @@ export function TalentCarousel({
     }
 
     return list
-  }, [talents, tierFilter, effectiveRoles, effectiveQuery])
+  }, [talents, tierFilter, effectiveRoles, effectiveQuery, locationFilter])
 
   // Group by primaryRole in defined order, roles as section headers
   const grouped = useMemo(() => {
@@ -183,7 +195,7 @@ export function TalentCarousel({
   }
 
   const toPod = (t: CuratedTalent): PodTalent => ({
-    id: t.id, name: t.name, headline: t.displayTitle,
+    id: t.id, name: t.displayName ?? getTalentDisplayName(t.name) ?? t.name, headline: t.displayTitle,
     avatarUrl: t.profileImageUrl ?? t.avatarUrl,
     roles: t.roleTags, platforms: t.platformTags,
     availabilityTags: t.availability, bio: t.shortBio,
@@ -193,7 +205,7 @@ export function TalentCarousel({
   const handleRemove = (t: PodTalent, role?: string) => { removeFromPod(t.id, role) }
   const handleBook = (t: PodTalent) => { onBook ? onBook(t) : onTalentClick?.(t.id) }
 
-  const activeFilters = tierFilter !== 'all' || roleFilter !== null || internalQuery.trim() !== ''
+  const activeFilters = tierFilter !== 'all' || roleFilter !== null || locationFilter !== 'global' || internalQuery.trim() !== ''
   const roleOptions = useMemo(() => [...new Set(talents.map(t => t.primaryRole))].sort(), [talents])
 
   return (
@@ -244,6 +256,27 @@ export function TalentCarousel({
               } : undefined}
             >
               <span className="text-[10px]">🟣</span> Select
+            </button>
+          </div>
+
+          {/* Location filter — Global / UAE */}
+          <div className="flex items-center gap-1 rounded-full p-0.5"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <button
+              onClick={() => setLocationFilter('global')}
+              className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all',
+                locationFilter === 'global' ? 'bg-white/10 text-white ring-1 ring-white/20' : 'text-white/40 hover:text-white/65')}
+            >
+              <Globe className="w-3 h-3" />
+              Global
+            </button>
+            <button
+              onClick={() => setLocationFilter('uae')}
+              className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all',
+                locationFilter === 'uae' ? 'bg-white/10 text-white ring-1 ring-white/20' : 'text-white/40 hover:text-white/65')}
+            >
+              <MapPin className="w-3 h-3" />
+              UAE
             </button>
           </div>
 
@@ -327,7 +360,7 @@ export function TalentCarousel({
 
           {/* Clear all filters */}
           {activeFilters && (
-            <button onClick={() => { setTierFilter('all'); setRoleFilter(null); setInternalQuery(''); setSearchOpen(false) }}
+            <button onClick={() => { setTierFilter('all'); setRoleFilter(null); setLocationFilter('global'); setInternalQuery(''); setSearchOpen(false) }}
               className="text-[11px] text-white/30 hover:text-white/60 transition-colors px-1">
               Clear filters
             </button>
@@ -354,7 +387,7 @@ export function TalentCarousel({
         <div className="text-center py-12">
           <p className="text-[14px] text-white/35">No matches. Try adjusting your filters.</p>
           {activeFilters && (
-            <button onClick={() => { setTierFilter('all'); setRoleFilter(null); setInternalQuery('') }}
+            <button onClick={() => { setTierFilter('all'); setRoleFilter(null); setLocationFilter('global'); setInternalQuery('') }}
               className="mt-3 text-[12px] text-purple-400/70 hover:text-purple-400 transition-colors">
               Clear all filters
             </button>
@@ -382,15 +415,7 @@ export function TalentCarousel({
                     className={cn('flex-shrink-0 snap-start py-2 relative',
                       isGroupStart && 'before:content-[\'\'] before:absolute before:left-[-12px] before:top-[15%] before:bottom-[15%] before:w-px before:bg-white/[0.06] before:pointer-events-none'
                     )}>
-                    {/* Role label on first card of new group */}
-                    {isGroupStart && (
-                      <div className="absolute -top-0.5 left-0 z-10">
-                        <span className="text-[9px] font-semibold uppercase tracking-widest text-white/20 select-none">
-                          {ROLE_LABELS[item.primaryRole] ?? item.primaryRole}
-                        </span>
-                      </div>
-                    )}
-                    <motion.div
+<motion.div
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.025, duration: 0.28 }}>

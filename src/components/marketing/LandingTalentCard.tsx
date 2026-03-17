@@ -209,41 +209,6 @@ function CardFront({
         </p>
       )}
 
-      {/* Role chips — all roles visible, primary highlighted */}
-      <div className="flex flex-wrap gap-1.5 mb-3 flex-1 content-start overflow-hidden">
-        {(curatedTalent.roleTags ?? []).slice(0, 4).map((r) => (
-          <span key={r}
-            className={cn(
-              "rounded-full px-2.5 py-0.5 text-[11px] ring-1 select-none shrink-0 transition-colors cursor-pointer",
-              r === curatedTalent.primaryRole
-                ? "bg-white/[0.10] text-white/90 ring-white/[0.18]"
-                : selectedBookRole === r
-                  ? "bg-purple-500/20 text-purple-300 ring-purple-400/40"
-                  : "bg-white/[0.05] text-white/55 ring-white/[0.08] hover:bg-white/[0.10] hover:text-white/80"
-            )}
-            onClick={(e) => { e.stopPropagation(); setSelectedBookRole(selectedBookRole === r ? null : r); }}
-          >
-            {r}
-          </span>
-        ))}
-        {curatedTalent.platformTags?.slice(0, 2).map((p) => (
-          <span key={p} className="rounded-full bg-white/[0.03] px-2.5 py-0.5 text-[11px] text-white/40 ring-1 ring-white/[0.06] select-none shrink-0">{p}</span>
-        ))}
-        <Tooltip content={(PRICING_TIER_DESCRIPTIONS as any)[tier] ?? tier}>
-          <span className={cn("rounded-full px-2.5 py-0.5 text-[11px] ring-1 select-none shrink-0 cursor-help", styles.bg, styles.text, styles.ring)}
-            style={(tier === 'HIVE_SIGNATURE' && (styles as any).glow) ? { boxShadow: (styles as any).glow } : undefined}>
-            {styles.label}
-          </span>
-        </Tooltip>
-      </div>
-
-      {/* Role selector hint */}
-      {selectedBookRole && selectedBookRole !== curatedTalent.primaryRole && (
-        <p className="text-[10px] text-purple-300/70 mb-2 select-none">
-          Booking as: <span className="font-medium text-purple-300">{selectedBookRole}</span>
-        </p>
-      )}
-
       {/* Actions */}
       <div className="mt-auto shrink-0 pt-3 border-t border-white/[0.08] flex items-center gap-2">
         <Tooltip content={effectiveAdded && !selectedBookRole ? "Remove from pod" : selectedBookRole ? `Add as ${selectedBookRole}` : "Add to pod"}>
@@ -528,11 +493,7 @@ export function LandingTalentCard({ talent, isAdded, onAdd, onRemove, onBook, cu
                     <p className="text-[12px] text-white/45">{talent.headline}</p>
                   </div>
                 </div>
-                <p className="text-[13px] text-white/65 leading-relaxed mb-4">{curatedTalent.shortBio || curatedTalent.nicheSummary}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {talent.roles.map((r) => <span key={r} className="rounded-full bg-white/[0.06] px-2.5 py-0.5 text-[11px] text-white/65 ring-1 ring-white/[0.10]">{r}</span>)}
-                  {talent.platforms.map((p) => <span key={p} className="rounded-full bg-white/[0.04] px-2.5 py-0.5 text-[11px] text-white/45 ring-1 ring-white/[0.07]">{p}</span>)}
-                </div>
+                <p className="text-[13px] text-white/65 leading-relaxed">{curatedTalent.shortBio || curatedTalent.nicheSummary}</p>
               </motion.div>
             </motion.div>
           )}

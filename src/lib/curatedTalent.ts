@@ -58,6 +58,8 @@ export function getTalentDisplayName(fullName: string): string {
 export interface CuratedTalent {
   id: string;
   name: string;
+  /** Client-facing display name (e.g. "Shay" for "Shay Thomas"). Falls back to first name if not set. */
+  displayName?: string;
   displayTitle: string;
   instagramHandle: string;
   instagramUrl: string;
@@ -606,7 +608,7 @@ export const curatedTalent: CuratedTalent[] = [
     instagramUrl: "https://instagram.com/maisoon_styling",
     avatarUrl: "https://ui-avatars.com/api/?name=Maisoon&background=0d0d1a&color=f9a8d4&size=512",
     primaryRole: "Content Creator",
-    roleTags: ["Content Creator", "Influencer", "Social Media Manager", "Photographer"],
+    roleTags: ["Content Creator", "Social Media Manager", "Photographer"],
     platformTags: ["Instagram"],
     shortBio: "Styles outfits for brand shoots, creates fashion UGC content, and consults on wardrobe direction. Experienced in fashion, lifestyle, and campaign styling.",
     nicheSummary: "Wardrobe stylist based in Dubai with Dubai Fashion Week experience. Covers brand shoot wardrobing, fashion UGC, and styling consultation.",
@@ -770,6 +772,57 @@ export const curatedTalent: CuratedTalent[] = [
     profileImageUrl: "https://ui-avatars.com/api/?name=Reem&background=111827&color=c4b5fd&size=512",
     links: { instagram: "https://instagram.com/reemaloteibi" },
   },
+  {
+    id: "talent-aziza",
+    name: "Aziza",
+    displayTitle: "Brand Strategist · Account Manager",
+    instagramHandle: "",
+    instagramUrl: "",
+    avatarUrl: "https://ui-avatars.com/api/?name=Aziza&background=111827&color=c4b5fd&size=512",
+    primaryRole: "Strategist",
+    roleTags: ["Strategist", "Account Manager", "Account Director", "Project Manager"],
+    platformTags: ["LinkedIn"],
+    shortBio: "Develops brand strategy, guides campaign direction, and manages creative projects. Experienced in brand positioning, campaign management, and creative operations.",
+    nicheSummary: "Brand strategist and account manager based in Dubai. Dual role across strategy and account management at Creator Hive.",
+    availability: ["Monthly"],
+    prismArchetype: "The Conductor",
+    location: "Dubai, UAE",
+    tier: "Tier 1",
+    portfolio: [
+      { type: "image", src: "/portfolio/work-1.svg", title: "Strategy Work" },
+      { type: "image", src: "/portfolio/work-2.svg", title: "Account Management" },
+      { type: "video", src: "/portfolio/work-3.svg", poster: "/portfolio/work-3.svg", title: "Campaign Coordination" },
+    ],
+    profileImageUrl: "https://ui-avatars.com/api/?name=Aziza&background=111827&color=c4b5fd&size=512",
+    links: {},
+  },
+
+
+  {
+    id: "talent-shay-thomas",
+    name: "Shay Thomas",
+    displayName: "Shay",
+    displayTitle: "PR Manager",
+    instagramHandle: "",
+    instagramUrl: "",
+    avatarUrl: "https://ui-avatars.com/api/?name=Shay+Thomas&background=111827&color=c4b5fd&size=512",
+    primaryRole: "Other",
+    roleTags: ["Other", "Strategist", "Social Media Manager", "Account Manager"],
+    platformTags: ["LinkedIn"],
+    shortBio: "Manages public relations, coordinates media outreach, and oversees brand communications. Experienced in PR, media relations, and brand reputation.",
+    nicheSummary: "PR manager based in Dubai. Handles public relations management at Creator Hive.",
+    availability: ["Monthly"],
+    prismArchetype: "The Conductor",
+    location: "Dubai, UAE",
+    tier: "Tier 1",
+    portfolio: [
+      { type: "image", src: "/portfolio/work-1.svg", title: "PR Campaigns" },
+      { type: "image", src: "/portfolio/work-2.svg", title: "Media Relations" },
+      { type: "video", src: "/portfolio/work-3.svg", poster: "/portfolio/work-3.svg", title: "Brand Comms" },
+    ],
+    profileImageUrl: "https://ui-avatars.com/api/?name=Shay+Thomas&background=111827&color=c4b5fd&size=512",
+    links: {},
+  },
 
   {
     id: "talent-tony",
@@ -796,6 +849,7 @@ export const curatedTalent: CuratedTalent[] = [
     links: { instagram: "https://instagram.com/tonyeich" },
   },
 
+
   {
     id: "talent-ajil",
     name: "Ajil",
@@ -819,6 +873,79 @@ export const curatedTalent: CuratedTalent[] = [
     ],
     profileImageUrl: "https://ui-avatars.com/api/?name=Ajil&background=111827&color=c4b5fd&size=512",
     links: { instagram: "https://instagram.com/madmankind" },
+  },
+
+
+  {
+    id: "talent-vruksha",
+    name: "Vruksha",
+    displayTitle: "Account Manager · Campaign Manager",
+    instagramHandle: "",
+    instagramUrl: "",
+    avatarUrl: "https://ui-avatars.com/api/?name=Vruksha&background=111827&color=c4b5fd&size=512",
+    primaryRole: "Account Manager",
+    roleTags: ["Account Manager", "Project Manager", "Strategist", "Creative Director"],
+    platformTags: ["LinkedIn"],
+    shortBio: "Manages client accounts, coordinates campaigns, and oversees project delivery. Experienced in creative agency operations, campaign management, and client relations.",
+    nicheSummary: "Account manager and campaign manager based in Dubai. Handles AM, PM, and campaign management at Creator Hive.",
+    availability: ["Monthly"],
+    prismArchetype: "The Conductor",
+    location: "Dubai, UAE",
+    tier: "Tier 1",
+    portfolio: [
+      { type: "image", src: "/portfolio/work-1.svg", title: "Campaign Management" },
+      { type: "image", src: "/portfolio/work-2.svg", title: "Account Work" },
+      { type: "video", src: "/portfolio/work-3.svg", poster: "/portfolio/work-3.svg", title: "Project Delivery" },
+    ],
+    profileImageUrl: "https://ui-avatars.com/api/?name=Vruksha&background=111827&color=c4b5fd&size=512",
+    links: {},
+  },{
+    id: "talent-abir",
+    name: "Abir",
+    displayTitle: "Talent Manager",
+    instagramHandle: "",
+    instagramUrl: "",
+    avatarUrl: "https://ui-avatars.com/api/?name=Abir&background=111827&color=c4b5fd&size=512",
+    primaryRole: "Talent Manager",
+    roleTags: ["Talent Manager", "Account Manager", "Strategist", "Project Manager"],
+    platformTags: ["LinkedIn"],
+    shortBio: "Sources talent, manages creator relationships, and oversees onboarding. Experienced in talent management, creator operations, and roster development.",
+    nicheSummary: "Talent manager based in Dubai. Handles talent sourcing, management, and onboarding at Creator Hive.",
+    availability: ["Monthly"],
+    prismArchetype: "The Conductor",
+    location: "Dubai, UAE",
+    tier: "Tier 1",
+    portfolio: [
+      { type: "image", src: "/portfolio/work-1.svg", title: "Talent Sourcing" },
+      { type: "image", src: "/portfolio/work-2.svg", title: "Creator Management" },
+      { type: "video", src: "/portfolio/work-3.svg", poster: "/portfolio/work-3.svg", title: "Onboarding" },
+    ],
+    profileImageUrl: "https://ui-avatars.com/api/?name=Abir&background=111827&color=c4b5fd&size=512",
+    links: {},
+  },
+{
+    id: "talent-fils",
+    name: "Fils",
+    displayTitle: "Music Producer",
+    instagramHandle: "",
+    instagramUrl: "",
+    avatarUrl: "https://ui-avatars.com/api/?name=Fils&background=0d0d1a&color=a78bfa&size=512",
+    primaryRole: "Producer",
+    roleTags: ["Producer", "Creative Director", "Strategist", "Other"],
+    platformTags: ["LinkedIn"],
+    shortBio: "Produces original music, composes scores, and delivers production work. Experienced in music production, composition, and studio work.",
+    nicheSummary: "Music producer based in Dubai. LinkedIn profile for production and composition work.",
+    availability: ["Hourly", "Monthly"],
+    prismArchetype: "The Auteur",
+    location: "Dubai, UAE",
+    tier: "Tier 1",
+    portfolio: [
+      { type: "video", src: "/portfolio/work-3.svg", poster: "/portfolio/work-3.svg", title: "Music Reel" },
+      { type: "image", src: "/portfolio/work-1.svg", title: "Production Work" },
+      { type: "image", src: "/portfolio/work-2.svg", title: "Composition" },
+    ],
+    profileImageUrl: "https://ui-avatars.com/api/?name=Fils&background=0d0d1a&color=a78bfa&size=512",
+    links: { website: "https://linkedin.com/in/anurag-ajith" },
   },
 
 ];
