@@ -24,6 +24,8 @@ type LandingTalentCardProps = {
 };
 
 function getTalentTier(talent: CuratedTalent): "HIVE_SELECT" | "HIVE_SIGNATURE" {
+  // Explicit tier field takes precedence over follower count heuristic
+  if (talent.tier === "Tier 1") return "HIVE_SIGNATURE";
   const followers = talent.followers || 0;
   return followers >= 50000 ? "HIVE_SIGNATURE" : "HIVE_SELECT";
 }

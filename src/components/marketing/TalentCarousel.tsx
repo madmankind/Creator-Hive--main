@@ -44,6 +44,7 @@ const ROLE_LABELS: Partial<Record<TalentCategoryTag, string>> = {
 type TierFilter = 'all' | 'signature' | 'select'
 
 function getTier(t: CuratedTalent): 'signature' | 'select' {
+  if (t.tier === 'Tier 1') return 'signature'
   return (t.followers ?? 0) >= 50000 ? 'signature' : 'select'
 }
 

@@ -672,6 +672,7 @@ export const curatedTalent: CuratedTalent[] = [
     availability: ["Hourly", "Monthly"],
     prismArchetype: "The Alchemist",
     location: "Dubai, UAE",
+    tier: "Tier 1",
     followers: 38100,
     engagementRate: 0.051,
     brandPartners: ["Dior Sport", "Carhartt", "Nike", "Mercurial"],
@@ -699,6 +700,7 @@ export const curatedTalent: CuratedTalent[] = [
     availability: ["Hourly", "Monthly"],
     prismArchetype: "The Alchemist",
     location: "Dubai, UAE",
+    tier: "Tier 1",
     followers: 19700,
     engagementRate: 0.043,
     portfolio: [
