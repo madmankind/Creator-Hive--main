@@ -30,6 +30,7 @@ enum UsageRightsTier {
 
 model User {
   campaignFilesUploaded CampaignFile[]
+  userAgreements        UserAgreement[]
   walletTransactions    WalletTransaction[]
   id                    String              @id @default(cuid())
   email                 String              @unique
@@ -51,6 +52,26 @@ model User {
   @@index([email])
   @@map("users")
 }
+
+model UserAgreement {
+  id           String              @id @default(cuid())
+  userId       String
+  agreementRef String              @unique
+  version      Int                 @default(1)
+  status       UserAgreementStatus @default(GENERATED)
+  storagePath  String?
+  storageUrl   String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([agreementRef])
+  @@index([status])
+  @@map("user_agreements")
+}
+
 
 model Account {
   id                String  @id @default(cuid())
@@ -790,3 +811,11 @@ enum ReferralStatus {
   COMPLETED
   REWARDED
 }
+
+enum UserAgreementStatus {
+  DRAFT
+  GENERATED
+  SENT
+  SIGNED
+}
+

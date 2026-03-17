@@ -27,6 +27,15 @@ export async function POST(req: Request) {
     update: { name, website: website || null, location: location || null },
     create: { userId: auth.user.id, name, website: website || null, location: location || null },
   });
+
+  // Generate User Agreement (idempotent; skips if already exists)
+  try {
+    const { generateUserAgreement } = await import("@/server/user-agreement");
+    await generateUserAgreement(auth.user.id, false);
+  } catch {
+    // Non-blocking: agreement can be generated later via dashboard
+  }
+
   return NextResponse.json({ agency });
 }
 

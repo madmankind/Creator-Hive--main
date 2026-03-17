@@ -16,6 +16,11 @@ export async function GET() {
       createdAt: true,
       agencyAccount: { select: { id: true, name: true } },
       creatorProfile: { select: { id: true, talentStatus: true, isActive: true, qualityScore: true } },
+      userAgreements: {
+        take: 1,
+        orderBy: { createdAt: "desc" },
+        select: { id: true, agreementRef: true, status: true, storageUrl: true, createdAt: true },
+      },
     },
   });
 

@@ -119,6 +119,14 @@ export async function PUT(req: Request) {
     });
   }
 
+  // Generate User Agreement (idempotent; skips if already exists)
+  try {
+    const { generateUserAgreement } = await import("@/server/user-agreement");
+    await generateUserAgreement(user.id, false);
+  } catch {
+    // Non-blocking: agreement can be generated later via dashboard
+  }
+
   return NextResponse.json({
     ok: true,
     profile: {

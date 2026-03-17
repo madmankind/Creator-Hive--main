@@ -5,7 +5,7 @@ import {
   LayoutDashboard, BookOpen, Megaphone, Users, UserCheck,
   CheckCircle2, XCircle, ArrowRight, RefreshCw,
   ChevronDown, ChevronUp, ExternalLink, Zap,
-  AlertTriangle, Activity,
+  AlertTriangle, Activity, FileText, Download,
 } from "lucide-react";
 
 type Stats = {
@@ -57,8 +57,9 @@ type Creator = {
 
 type AppUser = {
   id: string; name: string | null; email: string | null; role: string; createdAt: string;
-  agencyAccount: { id: string; name: string; contactEmail: string } | null;
+  agencyAccount: { id: string; name: string } | null;
   creatorProfile: { id: string; talentStatus: string; isActive: boolean; qualityScore: number | null } | null;
+  userAgreements: { id: string; agreementRef: string; status: string; storageUrl: string | null; createdAt: string }[];
 };
 
 const CAMPAIGN_STATUS_COLORS: Record<string, string> = {
@@ -600,13 +601,27 @@ function UsersTab() {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState("all");
+  const [regenUserId, setRegenUserId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
     fetch("/api/admin/users")
       .then((r) => r.json())
       .then((d) => setUsers(d.users ?? []))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const regenerate = async (userId: string) => {
+    setRegenUserId(userId);
+    try {
+      const res = await fetch(`/api/admin/user-agreement/${userId}?force=true`, { method: "POST" });
+      if (res.ok) load();
+    } finally {
+      setRegenUserId(null);
+    }
+  };
 
   const filtered = roleFilter === "all" ? users : users.filter((u) => u.role === roleFilter);
 
@@ -630,7 +645,7 @@ function UsersTab() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-white/[0.07]">
-                {["User", "Email", "Role", "Agency / Creator", "Joined", "Actions"].map((h) => (
+                {["User", "Email", "Role", "Agency / Creator", "Agreement", "Joined", "Actions"].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-wider text-white/30">{h}</th>
                 ))}
               </tr>
@@ -667,7 +682,7 @@ function UsersTab() {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-white/25">No users found.</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-white/25">No users found.</td></tr>
               )}
             </tbody>
           </table>

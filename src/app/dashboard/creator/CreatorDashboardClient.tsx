@@ -7,7 +7,7 @@ import {
   Clock, AlertCircle, Plus,
   ExternalLink, TrendingUp, Eye, DollarSign,
   ChevronRight, Edit2, CheckCircle2, X, Link2,
-  Upload, Play,
+  Upload, Play, FileText,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 
@@ -240,6 +240,7 @@ export function CreatorDashboardClient({ profile }: { profile: Profile; userId: 
                 {profile.invites.length > 0 && (<div className="rounded-xl p-4" style={GLASS}><p className="text-[12px] uppercase tracking-wider text-white/35 mb-3">Recent invites</p><div className="space-y-2">{profile.invites.slice(0, 3).map(inv => (<div key={inv.id} className="flex items-center justify-between"><div><p className="text-[13px] text-white/80">{inv.campaign.title}</p><p className="text-[11px] text-white/40">{fmtDate(inv.createdAt)}</p></div><span className="rounded-full px-2.5 py-0.5 text-[10px] capitalize" style={{ background: inv.status === "ACCEPTED" ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.06)", color: inv.status === "ACCEPTED" ? "#10B981" : "rgba(255,255,255,0.55)" }}>{inv.status.toLowerCase()}</span></div>))}</div></div>)}
                 {activeContracts.length > 0 && (<div className="rounded-xl p-4" style={GLASS}><div className="flex items-center justify-between mb-3"><p className="text-[12px] uppercase tracking-wider text-white/35">Active contracts</p><a href="/dashboard/contracts" className="text-[12px] text-purple-400">View all →</a></div><div className="space-y-2">{activeContracts.slice(0, 2).map(c => (<div key={c.id} className="flex items-center justify-between"><p className="text-[13px] text-white/75">{c.title}</p><span className="text-[11px] text-white/40 capitalize">{c.status.toLowerCase().replace("_", " ")}</span></div>))}</div></div>)}
                 <a href={`/creators/${profile.id}`} className="flex items-center justify-between rounded-xl p-4 transition group" style={{ background: "rgba(124,92,255,0.08)", border: "1px solid rgba(124,92,255,0.20)" }}><div><p className="text-[13px] font-medium text-white/80">Your public profile</p><p className="text-[12px] text-white/40">creatorhive.app/creators/{profile.id.slice(0, 8)}…</p></div><ExternalLink className="w-4 h-4 text-purple-400 group-hover:text-purple-300 transition" /></a>
+                <a href="/dashboard/documents" className="flex items-center justify-between rounded-xl p-4 transition group" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}><div className="flex items-center gap-2"><FileText className="w-4 h-4 text-white/50" /><div><p className="text-[13px] font-medium text-white/80">Documents</p><p className="text-[12px] text-white/40">User Agreement & legal docs</p></div></div><ChevronRight className="w-4 h-4 text-white/30 group-hover:text-white/50 transition" /></a>
               </div>
             )}
             {tab === "portfolio" && <PortfolioManager items={profile.portfolioItems} />}

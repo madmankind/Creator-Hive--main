@@ -55,7 +55,14 @@ export default function PrivacyPage() {
           <h1 className="text-[36px] font-semibold tracking-[-0.025em] text-white/90 leading-[1.15] mb-3">
             Privacy Policy
           </h1>
-          <p className="text-[14px] text-white/35">Last updated: January 2025</p>
+          <p className="text-[14px] text-white/35 mb-4">Last updated: January 2025</p>
+          <a
+            href="/legal/contracts/Creator_Hive_Privacy_Policy_FINAL.pdf"
+            download="Creator_Hive_Privacy_Policy_FINAL.pdf"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 ring-1 ring-white/20 text-[13px] font-medium text-white/90 transition-colors"
+          >
+            Download PDF
+          </a>
         </div>
 
         <div className="space-y-10">
