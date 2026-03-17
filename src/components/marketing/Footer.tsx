@@ -9,8 +9,8 @@ export function Footer() {
     { href: "/for-brands", label: "For Brands" },
     { href: "/docs", label: "Docs" },
     { href: "/talent", label: "Talent" },
-    { href: "/privacy", label: "Privacy" },
-    { href: "/terms", label: "Terms" }
+    { href: "/privacy", label: "Privacy Policy" },
+    { href: "/terms", label: "Terms & Conditions" }
   ];
 
   return (
@@ -20,7 +20,7 @@ export function Footer() {
           <div className="flex items-center gap-4">
             <Logo height={24} />
             <span className="text-sm text-[color:var(--color-muted-foreground)]">
-              © Creator Hive
+              © {new Date().getFullYear()} Creator Hive FZE-LLC
             </span>
           </div>
           <nav className="flex flex-wrap gap-6 text-sm text-[color:var(--color-muted-foreground)]">
