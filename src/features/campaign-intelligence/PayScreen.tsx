@@ -87,9 +87,8 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
   };
 
   const handleCollectPayment = async () => {
-    // In production: initiate Stripe Checkout or payment link
-    // For now navigate to Stripe dashboard or show modal
-    showToast("Payment collection flow coming soon. Contact support@creatorhive.com to set up Stripe.");
+    // Open Stripe dashboard or contact for setup
+    window.open("mailto:support@creatorhive.ae?subject=Payment%20Setup&body=Please%20help%20me%20set%20up%20payment%20collection%20for%20my%20campaign.", "_blank");
   };
 
   const handleGenerateInvoice = async () => {

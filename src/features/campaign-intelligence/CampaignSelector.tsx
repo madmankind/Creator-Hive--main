@@ -29,12 +29,8 @@ export function CampaignSelector({ selectedIds, onChange }: CampaignSelectorProp
         }
       })
       .catch(() => {
-        // Mock data for now
-        setCampaigns([
-          { id: "1", name: "Brand Launch Campaign" },
-          { id: "2", name: "Holiday Promo Series" },
-          { id: "3", name: "New Product Initiative" },
-        ]);
+        // API unavailable — show empty list, not fake campaigns
+        setCampaigns([]);
       });
   }, []);
 

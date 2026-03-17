@@ -41,12 +41,8 @@ export function LeftRail({ selectedCampaignIds, onCampaignChange, onCampaignTogg
         }
       })
       .catch(() => {
-        // Mock data
-        setCampaigns([
-          { id: "1", name: "Brand Launch Campaign" },
-          { id: "2", name: "Holiday Promo Series" },
-          { id: "3", name: "New Product Initiative" },
-        ]);
+        // API unavailable — show empty list
+        setCampaigns([]);
       });
   }, []);
 

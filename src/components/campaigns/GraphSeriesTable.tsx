@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { X } from "lucide-react";
 import { motion } from "framer-motion";
+import { useCampaign } from "@/contexts/CampaignContext";
 import type { DashboardMode, TimeRange } from "@/features/campaign-intelligence/CampaignIntelligenceDashboard";
 
 interface GraphSeriesTableProps {
@@ -86,13 +87,17 @@ export function GraphSeriesTable({
   metrics,
   timeRange,
 }: GraphSeriesTableProps) {
-  // Generate mock series data
+  const { campaigns: allCampaigns } = useCampaign();
+
   const seriesData: SeriesData[] = useMemo(() => {
-    const campaigns = [
-      { id: "1", name: "Brand Launch Campaign" },
-      { id: "2", name: "Holiday Promo Series" },
-      { id: "3", name: "New Product Initiative" },
-    ].filter((c) => campaignIds.length === 0 || campaignIds.includes(c.id));
+    // Use real campaigns from context; fall back to selected IDs with placeholder names
+    const campaigns = allCampaigns.length > 0
+      ? allCampaigns
+          .filter(c => campaignIds.length === 0 || campaignIds.includes(c.id))
+          .map(c => ({ id: c.id, name: c.name }))
+      : campaignIds.map(id => ({ id, name: "Campaign" }));
+
+    if (campaigns.length === 0) return [];
 
     const days = timeRange === "1D" ? 1 : timeRange === "7D" ? 7 : timeRange === "30D" ? 30 : 90;
     const dataPoints: number[] = [];
@@ -121,7 +126,7 @@ export function GraphSeriesTable({
         };
       })
     );
-  }, [campaignIds, metrics, timeRange]);
+  }, [allCampaigns, campaignIds, metrics, timeRange]);
 
   const formatValue = (value: number, metric: string) => {
     if (metric.includes("Budget") || metric.includes("amount") || metric.includes("Balance")) {

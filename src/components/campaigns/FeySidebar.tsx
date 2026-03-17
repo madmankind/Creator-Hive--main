@@ -72,11 +72,7 @@ export function FeySidebar({ selectedCampaignIds, onCampaignChange }: FeySidebar
         }
       })
       .catch(() => {
-        setCampaigns([
-          { id: "1", name: "Brand Launch Campaign" },
-          { id: "2", name: "Holiday Promo Series" },
-          { id: "3", name: "New Product Initiative" },
-        ]);
+        setCampaigns([]);
       });
   }, []);
 
