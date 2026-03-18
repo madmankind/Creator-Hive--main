@@ -175,6 +175,7 @@ export function CampaignSetupBoard({
   onRequestAuth?: () => void;
 }) {
   const { data: session } = useSession();
+  const router = useRouter();
 
   const [state, setState] = useState<CampaignBoardState>(() => ({
     campaignName: "",
@@ -550,7 +551,7 @@ export function CampaignSetupBoard({
               </button>
               <button
                 type="button"
-                onClick={() => { window.location.href = "/api/goto-dashboard?mode=manage"; }}
+                onClick={() => router.push("/dashboard/campaigns?mode=manage")}
                 className="px-6 py-2.5 rounded-xl bg-white text-[#0B0F14] text-[13px] font-semibold hover:bg-white/90 transition-colors shadow-[0_4px_28px_rgba(255,255,255,0.12)]"
               >
                 Go to dashboard →
