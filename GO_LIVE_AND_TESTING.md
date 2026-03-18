@@ -69,15 +69,10 @@ Run these after every deploy, in order:
 - Refresh `/dashboard` — must NOT redirect again (acceptance persisted)
 
 ### 3. Agreement generation (blocked without legal acceptance)
-```bash
-# Should return 500 with "Legal acceptance required"
-curl -X POST https://your-domain/api/user-agreement/generate \
-  -H "Cookie: [session cookie from unauthenticated or pre-acceptance user]"
-
-# Should return 201 after legal acceptance
-curl -X POST https://your-domain/api/user-agreement/generate \
-  -H "Cookie: [session cookie from post-acceptance user]"
-```
+- Agreement generation is **admin-only**. Endpoint: `POST /api/admin/user-agreement/[userId]`.
+- The **target user** (the userId in the path) must have `legalAcceptedAt` set before an agreement can be generated.
+- Test via Admin panel: Users → select user → generate agreement. If target has not accepted legal → 500 "Legal acceptance required". After target accepts via `/legal/accept`, retry → 201.
+- Or via API: sign in as admin, then `POST https://your-domain/api/admin/user-agreement/[userId]` with admin session cookie.
 
 ### 4. Booking flow
 - Homepage → add talent to pod → confirm campaign

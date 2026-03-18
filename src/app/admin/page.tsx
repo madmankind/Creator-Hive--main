@@ -3,7 +3,6 @@ import { auth } from "@/auth";
 import { db } from "@/server/db";
 import AdminDashboardClient from "./AdminDashboardClient";
 import { ensureLegalAccepted } from "@/server/legal-gate";
-import { headers } from "next/headers";
 
 export default async function AdminPage() {
   const session = await auth();
@@ -13,8 +12,7 @@ export default async function AdminPage() {
     redirect("/");
   }
 
-  const pathname = (await headers()).get("x-pathname") ?? "/admin";
-  await ensureLegalAccepted(pathname);
+  await ensureLegalAccepted("/admin");
 
   const creators = await db.creatorProfile.findMany({
     orderBy: { createdAt: "desc" },
