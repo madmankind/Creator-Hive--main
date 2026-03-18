@@ -30,7 +30,7 @@ const ROLE_ORDER: TalentCategoryTag[] = [
   "Project Manager",
   "Account Director",
   "Talent Manager",
-  "Other",
+  // "Other" intentionally omitted — handled by leftover catch below
 ]
 
 const ROLE_LABELS: Partial<Record<TalentCategoryTag, string>> = {
@@ -153,9 +153,16 @@ export function TalentCarousel({
       items.forEach(t => seen.add(t.id))
       if (items.length > 0) result.push({ role, items })
     })
-    // Catch any with unrecognised roles
+    // Catch any with unrecognised/unlisted primaryRole — merge into existing Other group or create one
     const leftover = filtered.filter(t => !seen.has(t.id))
-    if (leftover.length > 0) result.push({ role: 'Other', items: leftover })
+    if (leftover.length > 0) {
+      const existing = result.find(g => g.role === 'Other')
+      if (existing) {
+        existing.items.push(...leftover)
+      } else {
+        result.push({ role: 'Other', items: leftover })
+      }
+    }
     return result
   }, [filtered])
 

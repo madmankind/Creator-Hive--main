@@ -146,13 +146,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               ? displayNameInput
               : email.split("@")[0];
 
-          // Lazy import db only when we actually need it (avoid connection attempt in dev mode with placeholder URL)
           const { db } = await import("@/server/db");
           
           const user = await db.user.upsert({
             where: { email },
             update: {
-              role,
+              // Never downgrade an existing role — only update name
               name: defaultName,
             },
             create: {

@@ -202,6 +202,31 @@ function CardFront({
         </div>
       </div>
 
+      {/* Role chips — primary role bold/white, others tappable to select booking role */}
+      <div className="flex flex-wrap gap-1.5 mb-3 flex-1 content-start overflow-hidden">
+        {(curatedTalent.roleTags ?? []).slice(0, 4).map((r) => (
+          <span
+            key={r}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (r !== curatedTalent.primaryRole) {
+                setSelectedBookRole(prev => prev === r ? null : r);
+              }
+            }}
+            className={cn(
+              "rounded-full px-2.5 py-0.5 text-[11px] ring-1 select-none shrink-0 transition-colors",
+              r === curatedTalent.primaryRole
+                ? "bg-white/[0.10] text-white/90 ring-white/[0.18]"
+                : selectedBookRole === r
+                  ? "bg-purple-500/20 text-purple-300 ring-purple-400/40 cursor-pointer"
+                  : "bg-white/[0.05] text-white/55 ring-white/[0.08] hover:bg-white/[0.10] hover:text-white/80 cursor-pointer"
+            )}
+          >
+            {r}
+          </span>
+        ))}
+      </div>
+
       {/* Bio — use shortBio first, fall back to nicheSummary fragment */}
       {(curatedTalent.shortBio || curatedTalent.nicheSummary) && (
         <p className="mb-3 text-[12.5px] text-white/60 leading-[1.55] line-clamp-2 select-none flex-shrink-0">
