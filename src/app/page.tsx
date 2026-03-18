@@ -781,10 +781,10 @@ function HomePageContent() {
         onSuccess={() => {}}
       />
 
-      {/* Bottom dock + logout — shown when logged in */}
+      {/* Bottom dock — always visible; sign-out only shown when logged in */}
+      <BottomDock />
       {session?.user && (
         <>
-          <BottomDock />
           <button
             type="button"
             onClick={() => signOut({ callbackUrl: "/" })}
