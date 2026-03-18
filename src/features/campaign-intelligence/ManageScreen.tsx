@@ -182,7 +182,6 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
           onPayClick={handlePayClick}
           onPrimaryAction={handlePrimaryAction}
         />
-        <BottomDock />
         <ContractDrawer
           isOpen={isContractDrawerOpen}
           onClose={() => setIsContractDrawerOpen(false)}
@@ -411,9 +410,6 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
           </div>
         </div>
       </div>
-
-      {/* Bottom Dock Navigation */}
-      <BottomDock />
 
       {/* Contract Drawer */}
       <ContractDrawer

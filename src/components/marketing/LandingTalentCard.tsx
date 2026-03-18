@@ -31,10 +31,7 @@ function getTalentTier(talent: CuratedTalent): "HIVE_SELECT" | "HIVE_SIGNATURE" 
 }
 
 const TIER_STYLES = {
-  HIVE_SELECT: {
-    bg: "bg-purple-500/10", text: "text-purple-300", ring: "ring-purple-400/30", label: "Hive Select",
-    glow: "0 0 14px rgba(124,92,255,0.18), 0 0 28px rgba(124,92,255,0.07)",
-  },
+  HIVE_SELECT: { bg: "bg-white/5", text: "text-white/70", ring: "ring-white/20", label: "Hive Select" },
   HIVE_SIGNATURE: {
     bg: "bg-amber-500/10", text: "text-amber-300", ring: "ring-amber-400/40", label: "Hive Signature",
     glow: "0 0 14px rgba(251,191,36,0.22), 0 0 28px rgba(251,191,36,0.08)",
@@ -151,104 +148,107 @@ function CardFront({
   const effectiveAdded = isAdded;
 
   return (
-    <div className="w-full h-full flex flex-col gap-0">
-
-      {/* 1 ── HEADER: avatar · name · role · controls */}
-      <div className="flex items-center gap-2.5 shrink-0 mb-3">
-        {hasAvatar ? (
-          <img
-            src={curatedTalent.profileImageUrl || curatedTalent.avatarUrl}
-            alt={talent.name}
-            className="h-9 w-9 rounded-full object-cover ring-1 ring-white/10 shrink-0"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-          />
-        ) : (
-          <div className="h-9 w-9 rounded-full bg-white/10 flex items-center justify-center text-[12px] font-semibold text-white/70 shrink-0">
-            {talent.name.charAt(0) || "C"}
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-semibold text-white/90 leading-tight truncate select-none">
-            {talent.name}
-          </p>
-          <p className="text-[11px] text-white/42 leading-tight truncate select-none mt-[2px]">
-            {curatedTalent.primaryRole}{curatedTalent.location ? ` · ${curatedTalent.location.split(",")[0]}` : ""}
-          </p>
+    <div className="w-full h-full flex flex-col">
+      {/* Top: avatar + name + actions */}
+      <div className="flex items-center gap-3 mb-3 shrink-0">
+        <div className="relative shrink-0">
+          {hasAvatar ? (
+            <img
+              src={curatedTalent.profileImageUrl || curatedTalent.avatarUrl}
+              alt={talent.name}
+              className="h-11 w-11 rounded-full object-cover ring-1 ring-white/10"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+          ) : (
+            <div className="h-11 w-11 rounded-full bg-white/10 flex items-center justify-center text-sm font-medium text-white/80">
+              {talent.name.charAt(0) || "C"}
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          {curatedTalent.prismArchetype && <PrismBadge archetypeName={curatedTalent.prismArchetype} size={24} />}
+        <div className="flex-1 min-w-0">
+          <span className="text-[15px] font-semibold text-white/92 block leading-tight select-none">
+            {talent.name}
+          </span>
+          {talent.headline && (
+            <span className="text-[12px] text-white/50 block leading-tight select-none truncate mt-0.5">
+              {talent.headline}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {curatedTalent.prismArchetype && (
+            <PrismBadge archetypeName={curatedTalent.prismArchetype} size={28} />
+          )}
           <Tooltip content="Details">
-            <button type="button" onClick={(e) => { e.stopPropagation(); onFlip(); }}
-              className="w-6 h-6 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] transition text-white/28 hover:text-white/70">
-              <RotateCcw className="w-[10px] h-[10px]" />
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onFlip(); }}
+              className="w-7 h-7 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] transition text-white/35 hover:text-white/80"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
             </button>
           </Tooltip>
           <Tooltip content="Expand">
-            <button type="button" onClick={(e) => { e.stopPropagation(); onExpand(); }}
-              className="w-6 h-6 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] transition text-white/28 hover:text-white/70">
-              <Maximize2 className="w-[10px] h-[10px]" />
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onExpand(); }}
+              className="w-7 h-7 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] transition text-white/35 hover:text-white/80"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
             </button>
           </Tooltip>
         </div>
       </div>
 
-      {/* 2 ── BIO: wrapper gets flex-1, inner <p> gets the clamp — these cannot be on the same element */}
-      <div className="flex-1 min-h-0 overflow-hidden mb-3">
-        <p className="text-[11.5px] text-white/55 leading-[1.6] select-none"
-          style={{ display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-          {curatedTalent.shortBio || getFrontSummary(curatedTalent) || ""}
+      {/* Bio — use shortBio first, fall back to nicheSummary fragment */}
+      {(curatedTalent.shortBio || curatedTalent.nicheSummary) && (
+        <p className="mb-3 text-[12.5px] text-white/60 leading-[1.55] line-clamp-2 select-none flex-shrink-0">
+          {curatedTalent.shortBio || getFrontSummary(curatedTalent)}
         </p>
-      </div>
+      )}
 
-      {/* 3 ── TAGS: single row, no wrap, shrink-0 so it never pushes buttons */}
-      <div className="flex items-center gap-1 shrink-0 overflow-hidden mb-2.5" style={{ height: 22 }}>
-        <Tooltip content={PRICING_TIER_DESCRIPTIONS[tier]}>
-          <span className={cn("rounded-full px-2 py-[1px] text-[10px] font-medium ring-1 select-none cursor-help whitespace-nowrap shrink-0", styles.bg, styles.text, styles.ring)}>
-            {styles.label}
-          </span>
-        </Tooltip>
-        {(curatedTalent.roleTags ?? []).slice(0, 3).map((r) => (
-          <span key={r}
-            onClick={(e) => { e.stopPropagation(); if (r !== curatedTalent.primaryRole) setSelectedBookRole(p => p === r ? null : r); }}
-            className={cn(
-              "rounded-full px-2 py-[1px] text-[10px] ring-1 select-none whitespace-nowrap shrink-0 transition-colors",
-              r === curatedTalent.primaryRole
-                ? "bg-white/[0.08] text-white/75 ring-white/[0.13]"
-                : selectedBookRole === r
-                  ? "bg-purple-500/20 text-purple-300 ring-purple-400/40 cursor-pointer"
-                  : "bg-white/[0.04] text-white/40 ring-white/[0.07] hover:text-white/65 cursor-pointer"
-            )}>
-            {r}
-          </span>
-        ))}
-      </div>
-
-      {/* 4 ── ACTIONS: always flush to bottom */}
-      <div className="shrink-0 pt-2.5 border-t border-white/[0.07] flex items-center gap-2">
+      {/* Actions */}
+      <div className="mt-auto shrink-0 pt-3 border-t border-white/[0.08] flex items-center gap-2">
         <Tooltip content={effectiveAdded && !selectedBookRole ? "Remove from pod" : selectedBookRole ? `Add as ${selectedBookRole}` : "Add to pod"}>
-          <button type="button"
-            onClick={(e) => { e.stopPropagation(); effectiveAdded && !selectedBookRole ? onRemove?.(talent) : onAdd?.(talent, selectedBookRole ?? undefined); }}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (effectiveAdded && !selectedBookRole) {
+                onRemove?.(talent);
+              } else {
+                onAdd?.(talent, selectedBookRole ?? undefined);
+              }
+            }}
             className={cn(
-              "flex items-center gap-1 rounded-full px-3.5 py-1.5 text-[12px] font-medium transition flex-1 justify-center",
+              "flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-medium transition flex-1 justify-center",
               effectiveAdded && !selectedBookRole
-                ? "bg-white/[0.07] text-white/48 ring-1 ring-white/10 hover:bg-red-500/10 hover:text-red-400 hover:ring-red-400/25"
+                ? "bg-white/[0.10] text-white/55 ring-1 ring-white/15 hover:bg-red-500/10 hover:text-red-400 hover:ring-red-400/30"
                 : selectedBookRole
-                  ? "bg-purple-500/15 text-purple-300 ring-1 ring-purple-400/35 hover:bg-purple-500/25"
-                  : "bg-white/[0.06] text-white/72 hover:bg-white/[0.11] hover:text-white ring-1 ring-white/10"
-            )}>
-            {effectiveAdded && !selectedBookRole ? "✓ Added" : selectedBookRole ? `+ ${selectedBookRole.split(" ")[0]}` : "+ Add"}
+                  ? "bg-purple-500/20 text-purple-300 ring-1 ring-purple-400/40 hover:bg-purple-500/30"
+                  : "bg-white/[0.07] text-white/80 hover:bg-white/[0.14] hover:text-white ring-1 ring-white/10"
+            )}
+          >
+            {effectiveAdded && !selectedBookRole ? "✓ Added" : selectedBookRole ? `+ ${selectedBookRole.split(' ')[0]}` : "+ Add"}
           </button>
         </Tooltip>
         <Tooltip content={selectedBookRole ? `Book as ${selectedBookRole}` : "Book now"}>
-          <button type="button"
-            onClick={(e) => { e.stopPropagation(); onBook?.({ ...talent, bookedRole: selectedBookRole ?? talent.roles[0], headline: selectedBookRole ? `${selectedBookRole} · ${curatedTalent.location ?? "Dubai"}` : talent.headline }); }}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onBook?.({ ...talent, bookedRole: selectedBookRole ?? talent.roles[0], headline: selectedBookRole ? `${selectedBookRole} · ${curatedTalent.location ?? 'Dubai'}` : talent.headline });
+            }}
             className={cn(
-              "flex-1 rounded-full px-3.5 py-1.5 text-[12px] font-medium transition",
+              "flex-1 rounded-full px-4 py-2 text-[13px] font-medium transition",
               selectedBookRole
-                ? "bg-purple-500/15 text-purple-300 ring-1 ring-purple-400/35 hover:bg-purple-500/25"
-                : "bg-white/[0.06] text-white/72 ring-1 ring-white/10 hover:bg-white/[0.11] hover:text-white"
-            )}>
-            {selectedBookRole ? `Book · ${selectedBookRole.split(" ")[0]}` : "Book now"}
+                ? "bg-purple-500/20 text-purple-300 ring-1 ring-purple-400/40 hover:bg-purple-500/30"
+                : "bg-white/[0.07] text-white/80 ring-1 ring-white/10 hover:bg-white/[0.14] hover:text-white"
+            )}
+          >
+            {selectedBookRole ? `Book · ${selectedBookRole.split(' ')[0]}` : "Book now"}
           </button>
         </Tooltip>
       </div>
@@ -418,14 +418,11 @@ export function LandingTalentCard({ talent, isAdded, onAdd, onRemove, onBook, cu
             ? "ring-white/[0.15] hover:shadow-[0_0_32px_rgba(255,255,255,0.07)]"
             : tier === "HIVE_SIGNATURE"
               ? "ring-amber-400/[0.18] hover:ring-amber-400/[0.30]"
-              : "ring-purple-400/[0.14] hover:ring-purple-400/[0.25]"
+              : "ring-white/[0.09] hover:ring-white/[0.16] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
         )}
-        style={tier === "HIVE_SIGNATURE"
-          ? { boxShadow: "0 0 0 1px rgba(251,191,36,0.12), 0 4px 24px rgba(251,191,36,0.06)" }
-          : tier === "HIVE_SELECT"
-            ? { boxShadow: "0 0 0 1px rgba(124,92,255,0.10), 0 4px 20px rgba(124,92,255,0.05)" }
-            : undefined
-        }
+        style={tier === "HIVE_SIGNATURE" ? {
+          boxShadow: "0 0 0 1px rgba(251,191,36,0.12), 0 4px 24px rgba(251,191,36,0.06)",
+        } : undefined}
       >
         {/* Package shimmer */}
         {packageMatch && (

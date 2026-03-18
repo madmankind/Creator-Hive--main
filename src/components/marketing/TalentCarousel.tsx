@@ -136,7 +136,8 @@ export function TalentCarousel({
     // Fuzzy search across name + bio + roles + location + brands
     if (effectiveQuery.trim()) {
       const searchable = (t: CuratedTalent) => [
-        t.name, t.shortBio, t.nicheSummary, t.displayTitle,
+        t.name, t.displayName, t.shortBio, t.nicheSummary, t.displayTitle,
+        t.primaryRole, t.instagramHandle ?? '',
         ...(t.roleTags ?? []), ...(t.platformTags ?? []),
         t.location ?? '', ...(t.brandPartners ?? []),
       ].join(' ')
