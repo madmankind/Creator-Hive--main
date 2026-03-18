@@ -754,8 +754,14 @@ function HomePageContent() {
         mode="client"
         onClose={() => { setClientAuthOpen(false); setPendingDiscover(false); }}
         onSuccess={() => {
+          // Check if there's a stored post-auth redirect (e.g. from "Go to dashboard" after booking)
+          const redirect = sessionStorage.getItem("ch_post_auth_redirect");
+          if (redirect) {
+            sessionStorage.removeItem("ch_post_auth_redirect");
+            window.location.href = redirect;
+            return;
+          }
           if (pendingConfirm) {
-            // Re-open the campaign board so user can confirm after signing in
             setShowTalentGallery(true);
             setShowCampaignBoard(true);
             setPendingConfirm(false);

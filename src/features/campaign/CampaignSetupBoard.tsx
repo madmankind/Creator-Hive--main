@@ -551,7 +551,15 @@ export function CampaignSetupBoard({
               </button>
               <button
                 type="button"
-                onClick={() => router.push("/dashboard/campaigns?mode=manage")}
+                onClick={() => {
+                  if (session?.user) {
+                    router.push("/dashboard/campaigns?mode=manage");
+                  } else {
+                    // Not signed in — store intent then trigger auth
+                    sessionStorage.setItem("ch_post_auth_redirect", "/dashboard/campaigns?mode=manage");
+                    onRequestAuth?.();
+                  }
+                }}
                 className="px-6 py-2.5 rounded-xl bg-white text-[#0B0F14] text-[13px] font-semibold hover:bg-white/90 transition-colors shadow-[0_4px_28px_rgba(255,255,255,0.12)]"
               >
                 Go to dashboard →
