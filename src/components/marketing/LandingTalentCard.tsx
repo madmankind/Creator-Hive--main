@@ -152,68 +152,82 @@ function CardFront({
 
   return (
     <div className="w-full h-full flex flex-col">
-      {/* Top: avatar + name + actions */}
-      <div className="flex items-center gap-3 mb-3 shrink-0">
-        <div className="relative shrink-0">
+
+      {/* ── 1. Header: avatar · name · subtitle · controls ── */}
+      <div className="flex items-start gap-3 mb-2.5 shrink-0">
+        {/* Avatar */}
+        <div className="shrink-0 mt-0.5">
           {hasAvatar ? (
             <img
               src={curatedTalent.profileImageUrl || curatedTalent.avatarUrl}
               alt={talent.name}
-              className="h-11 w-11 rounded-full object-cover ring-1 ring-white/10"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-              }}
+              className="h-10 w-10 rounded-full object-cover ring-1 ring-white/10"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
             />
           ) : (
-            <div className="h-11 w-11 rounded-full bg-white/10 flex items-center justify-center text-sm font-medium text-white/80">
+            <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center text-[13px] font-semibold text-white/75">
               {talent.name.charAt(0) || "C"}
             </div>
           )}
         </div>
+
+        {/* Name + subtitle */}
         <div className="flex-1 min-w-0">
-          <span className="text-[15px] font-semibold text-white/92 block leading-tight select-none">
+          <span className="text-[15px] font-semibold text-white/92 block leading-tight select-none truncate">
             {talent.name}
           </span>
-          {talent.headline && (
-            <span className="text-[12px] text-white/50 block leading-tight select-none truncate mt-0.5">
-              {talent.headline}
-            </span>
-          )}
+          {/* Primary role as subtitle — stronger signal than headline */}
+          <span className="text-[11.5px] text-white/48 block leading-tight select-none truncate mt-0.5">
+            {curatedTalent.primaryRole}
+            {curatedTalent.location ? ` · ${curatedTalent.location.split(",")[0]}` : ""}
+          </span>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+
+        {/* Controls: prism + flip + expand */}
+        <div className="flex items-center gap-1 shrink-0">
           {curatedTalent.prismArchetype && (
-            <PrismBadge archetypeName={curatedTalent.prismArchetype} size={28} />
+            <PrismBadge archetypeName={curatedTalent.prismArchetype} size={26} />
           )}
           <Tooltip content="Details">
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onFlip(); }}
-              className="w-7 h-7 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] transition text-white/35 hover:text-white/80"
+              className="w-6 h-6 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] transition text-white/30 hover:text-white/75"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcw className="w-3 h-3" />
             </button>
           </Tooltip>
           <Tooltip content="Expand">
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onExpand(); }}
-              className="w-7 h-7 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] transition text-white/35 hover:text-white/80"
+              className="w-6 h-6 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] transition text-white/30 hover:text-white/75"
             >
-              <Maximize2 className="w-3.5 h-3.5" />
+              <Maximize2 className="w-3 h-3" />
             </button>
           </Tooltip>
         </div>
       </div>
 
-      {/* Role chips + tier badge */}
-      <div className="flex flex-wrap gap-1.5 mb-3 flex-1 content-start overflow-hidden">
-        {/* Tier badge first */}
+      {/* ── 2. Description — promoted, gets flex-1 so it anchors consistently ── */}
+      <div className="flex-1 min-h-0 mb-2.5">
+        {(curatedTalent.shortBio || curatedTalent.nicheSummary) && (
+          <p className="text-[12px] text-white/58 leading-[1.55] line-clamp-3 select-none">
+            {curatedTalent.shortBio || getFrontSummary(curatedTalent)}
+          </p>
+        )}
+      </div>
+
+      {/* ── 3. Tags row: tier badge + role chips — anchored above actions ── */}
+      <div className="flex flex-wrap gap-1 mb-2.5 shrink-0 overflow-hidden max-h-[28px]">
         <Tooltip content={PRICING_TIER_DESCRIPTIONS[tier]}>
-          <span className={cn("rounded-full px-2.5 py-0.5 text-[11px] ring-1 select-none shrink-0 cursor-help", styles.bg, styles.text, styles.ring)}>
+          <span className={cn(
+            "rounded-full px-2 py-[2px] text-[10px] font-medium ring-1 select-none shrink-0 cursor-help leading-none",
+            styles.bg, styles.text, styles.ring
+          )}>
             {styles.label}
           </span>
         </Tooltip>
-        {/* Role tags — primary bold/white, others tappable */}
         {(curatedTalent.roleTags ?? []).slice(0, 3).map((r) => (
           <span
             key={r}
@@ -224,12 +238,12 @@ function CardFront({
               }
             }}
             className={cn(
-              "rounded-full px-2.5 py-0.5 text-[11px] ring-1 select-none shrink-0 transition-colors",
+              "rounded-full px-2 py-[2px] text-[10px] ring-1 select-none shrink-0 leading-none transition-colors",
               r === curatedTalent.primaryRole
-                ? "bg-white/[0.10] text-white/90 ring-white/[0.18]"
+                ? "bg-white/[0.09] text-white/80 ring-white/[0.15]"
                 : selectedBookRole === r
                   ? "bg-purple-500/20 text-purple-300 ring-purple-400/40 cursor-pointer"
-                  : "bg-white/[0.05] text-white/55 ring-white/[0.08] hover:bg-white/[0.10] hover:text-white/80 cursor-pointer"
+                  : "bg-white/[0.04] text-white/45 ring-white/[0.07] hover:bg-white/[0.09] hover:text-white/70 cursor-pointer"
             )}
           >
             {r}
@@ -237,15 +251,8 @@ function CardFront({
         ))}
       </div>
 
-      {/* Bio — use shortBio first, fall back to nicheSummary fragment */}
-      {(curatedTalent.shortBio || curatedTalent.nicheSummary) && (
-        <p className="mb-3 text-[12.5px] text-white/60 leading-[1.55] line-clamp-2 select-none flex-shrink-0">
-          {curatedTalent.shortBio || getFrontSummary(curatedTalent)}
-        </p>
-      )}
-
-      {/* Actions */}
-      <div className="mt-auto shrink-0 pt-3 border-t border-white/[0.08] flex items-center gap-2">
+      {/* ── 4. Actions — always at the very bottom ── */}
+      <div className="shrink-0 pt-2.5 border-t border-white/[0.07] flex items-center gap-2">
         <Tooltip content={effectiveAdded && !selectedBookRole ? "Remove from pod" : selectedBookRole ? `Add as ${selectedBookRole}` : "Add to pod"}>
           <button
             type="button"
@@ -258,15 +265,15 @@ function CardFront({
               }
             }}
             className={cn(
-              "flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-medium transition flex-1 justify-center",
+              "flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[12.5px] font-medium transition flex-1 justify-center",
               effectiveAdded && !selectedBookRole
-                ? "bg-white/[0.10] text-white/55 ring-1 ring-white/15 hover:bg-red-500/10 hover:text-red-400 hover:ring-red-400/30"
+                ? "bg-white/[0.08] text-white/50 ring-1 ring-white/12 hover:bg-red-500/10 hover:text-red-400 hover:ring-red-400/25"
                 : selectedBookRole
-                  ? "bg-purple-500/20 text-purple-300 ring-1 ring-purple-400/40 hover:bg-purple-500/30"
-                  : "bg-white/[0.07] text-white/80 hover:bg-white/[0.14] hover:text-white ring-1 ring-white/10"
+                  ? "bg-purple-500/18 text-purple-300 ring-1 ring-purple-400/35 hover:bg-purple-500/28"
+                  : "bg-white/[0.06] text-white/75 hover:bg-white/[0.12] hover:text-white ring-1 ring-white/10"
             )}
           >
-            {effectiveAdded && !selectedBookRole ? "✓ Added" : selectedBookRole ? `+ ${selectedBookRole.split(' ')[0]}` : "+ Add"}
+            {effectiveAdded && !selectedBookRole ? "✓ Added" : selectedBookRole ? `+ ${selectedBookRole.split(" ")[0]}` : "+ Add"}
           </button>
         </Tooltip>
         <Tooltip content={selectedBookRole ? `Book as ${selectedBookRole}` : "Book now"}>
@@ -274,16 +281,22 @@ function CardFront({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onBook?.({ ...talent, bookedRole: selectedBookRole ?? talent.roles[0], headline: selectedBookRole ? `${selectedBookRole} · ${curatedTalent.location ?? 'Dubai'}` : talent.headline });
+              onBook?.({
+                ...talent,
+                bookedRole: selectedBookRole ?? talent.roles[0],
+                headline: selectedBookRole
+                  ? `${selectedBookRole} · ${curatedTalent.location ?? "Dubai"}`
+                  : talent.headline,
+              });
             }}
             className={cn(
-              "flex-1 rounded-full px-4 py-2 text-[13px] font-medium transition",
+              "flex-1 rounded-full px-4 py-1.5 text-[12.5px] font-medium transition",
               selectedBookRole
-                ? "bg-purple-500/20 text-purple-300 ring-1 ring-purple-400/40 hover:bg-purple-500/30"
-                : "bg-white/[0.07] text-white/80 ring-1 ring-white/10 hover:bg-white/[0.14] hover:text-white"
+                ? "bg-purple-500/18 text-purple-300 ring-1 ring-purple-400/35 hover:bg-purple-500/28"
+                : "bg-white/[0.06] text-white/75 ring-1 ring-white/10 hover:bg-white/[0.12] hover:text-white"
             )}
           >
-            {selectedBookRole ? `Book · ${selectedBookRole.split(' ')[0]}` : "Book now"}
+            {selectedBookRole ? `Book · ${selectedBookRole.split(" ")[0]}` : "Book now"}
           </button>
         </Tooltip>
       </div>
