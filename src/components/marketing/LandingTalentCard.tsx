@@ -151,151 +151,103 @@ function CardFront({
   const effectiveAdded = isAdded;
 
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="w-full h-full flex flex-col gap-0">
 
-      {/* ── 1. Header: avatar · name · subtitle · controls ── */}
-      <div className="flex items-start gap-3 mb-2.5 shrink-0">
-        {/* Avatar */}
-        <div className="shrink-0 mt-0.5">
-          {hasAvatar ? (
-            <img
-              src={curatedTalent.profileImageUrl || curatedTalent.avatarUrl}
-              alt={talent.name}
-              className="h-10 w-10 rounded-full object-cover ring-1 ring-white/10"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-            />
-          ) : (
-            <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center text-[13px] font-semibold text-white/75">
-              {talent.name.charAt(0) || "C"}
-            </div>
-          )}
-        </div>
-
-        {/* Name + subtitle */}
+      {/* 1 ── HEADER: avatar · name · role · controls */}
+      <div className="flex items-center gap-2.5 shrink-0 mb-3">
+        {hasAvatar ? (
+          <img
+            src={curatedTalent.profileImageUrl || curatedTalent.avatarUrl}
+            alt={talent.name}
+            className="h-9 w-9 rounded-full object-cover ring-1 ring-white/10 shrink-0"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+        ) : (
+          <div className="h-9 w-9 rounded-full bg-white/10 flex items-center justify-center text-[12px] font-semibold text-white/70 shrink-0">
+            {talent.name.charAt(0) || "C"}
+          </div>
+        )}
         <div className="flex-1 min-w-0">
-          <span className="text-[15px] font-semibold text-white/92 block leading-tight select-none truncate">
+          <p className="text-[14px] font-semibold text-white/90 leading-tight truncate select-none">
             {talent.name}
-          </span>
-          {/* Primary role as subtitle — stronger signal than headline */}
-          <span className="text-[11.5px] text-white/48 block leading-tight select-none truncate mt-0.5">
-            {curatedTalent.primaryRole}
-            {curatedTalent.location ? ` · ${curatedTalent.location.split(",")[0]}` : ""}
-          </span>
+          </p>
+          <p className="text-[11px] text-white/42 leading-tight truncate select-none mt-[2px]">
+            {curatedTalent.primaryRole}{curatedTalent.location ? ` · ${curatedTalent.location.split(",")[0]}` : ""}
+          </p>
         </div>
-
-        {/* Controls: prism + flip + expand */}
         <div className="flex items-center gap-1 shrink-0">
-          {curatedTalent.prismArchetype && (
-            <PrismBadge archetypeName={curatedTalent.prismArchetype} size={26} />
-          )}
+          {curatedTalent.prismArchetype && <PrismBadge archetypeName={curatedTalent.prismArchetype} size={24} />}
           <Tooltip content="Details">
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onFlip(); }}
-              className="w-6 h-6 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] transition text-white/30 hover:text-white/75"
-            >
-              <RotateCcw className="w-3 h-3" />
+            <button type="button" onClick={(e) => { e.stopPropagation(); onFlip(); }}
+              className="w-6 h-6 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] transition text-white/28 hover:text-white/70">
+              <RotateCcw className="w-[10px] h-[10px]" />
             </button>
           </Tooltip>
           <Tooltip content="Expand">
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onExpand(); }}
-              className="w-6 h-6 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] transition text-white/30 hover:text-white/75"
-            >
-              <Maximize2 className="w-3 h-3" />
+            <button type="button" onClick={(e) => { e.stopPropagation(); onExpand(); }}
+              className="w-6 h-6 rounded-full bg-white/[0.04] ring-1 ring-white/[0.08] flex items-center justify-center hover:bg-white/[0.10] transition text-white/28 hover:text-white/70">
+              <Maximize2 className="w-[10px] h-[10px]" />
             </button>
           </Tooltip>
         </div>
       </div>
 
-      {/* ── 2. Description — promoted, gets flex-1 so it anchors consistently ── */}
-      <div className="flex-1 min-h-0 mb-2.5">
-        {(curatedTalent.shortBio || curatedTalent.nicheSummary) && (
-          <p className="text-[12px] text-white/58 leading-[1.55] line-clamp-3 select-none">
-            {curatedTalent.shortBio || getFrontSummary(curatedTalent)}
-          </p>
-        )}
+      {/* 2 ── BIO: wrapper gets flex-1, inner <p> gets the clamp — these cannot be on the same element */}
+      <div className="flex-1 min-h-0 overflow-hidden mb-3">
+        <p className="text-[11.5px] text-white/55 leading-[1.6] select-none"
+          style={{ display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          {curatedTalent.shortBio || getFrontSummary(curatedTalent) || ""}
+        </p>
       </div>
 
-      {/* ── 3. Tags row: tier badge + role chips — anchored above actions ── */}
-      <div className="flex flex-wrap gap-1 mb-2.5 shrink-0 overflow-hidden max-h-[28px]">
+      {/* 3 ── TAGS: single row, no wrap, shrink-0 so it never pushes buttons */}
+      <div className="flex items-center gap-1 shrink-0 overflow-hidden mb-2.5" style={{ height: 22 }}>
         <Tooltip content={PRICING_TIER_DESCRIPTIONS[tier]}>
-          <span className={cn(
-            "rounded-full px-2 py-[2px] text-[10px] font-medium ring-1 select-none shrink-0 cursor-help leading-none",
-            styles.bg, styles.text, styles.ring
-          )}>
+          <span className={cn("rounded-full px-2 py-[1px] text-[10px] font-medium ring-1 select-none cursor-help whitespace-nowrap shrink-0", styles.bg, styles.text, styles.ring)}>
             {styles.label}
           </span>
         </Tooltip>
         {(curatedTalent.roleTags ?? []).slice(0, 3).map((r) => (
-          <span
-            key={r}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (r !== curatedTalent.primaryRole) {
-                setSelectedBookRole(prev => prev === r ? null : r);
-              }
-            }}
+          <span key={r}
+            onClick={(e) => { e.stopPropagation(); if (r !== curatedTalent.primaryRole) setSelectedBookRole(p => p === r ? null : r); }}
             className={cn(
-              "rounded-full px-2 py-[2px] text-[10px] ring-1 select-none shrink-0 leading-none transition-colors",
+              "rounded-full px-2 py-[1px] text-[10px] ring-1 select-none whitespace-nowrap shrink-0 transition-colors",
               r === curatedTalent.primaryRole
-                ? "bg-white/[0.09] text-white/80 ring-white/[0.15]"
+                ? "bg-white/[0.08] text-white/75 ring-white/[0.13]"
                 : selectedBookRole === r
                   ? "bg-purple-500/20 text-purple-300 ring-purple-400/40 cursor-pointer"
-                  : "bg-white/[0.04] text-white/45 ring-white/[0.07] hover:bg-white/[0.09] hover:text-white/70 cursor-pointer"
-            )}
-          >
+                  : "bg-white/[0.04] text-white/40 ring-white/[0.07] hover:text-white/65 cursor-pointer"
+            )}>
             {r}
           </span>
         ))}
       </div>
 
-      {/* ── 4. Actions — always at the very bottom ── */}
+      {/* 4 ── ACTIONS: always flush to bottom */}
       <div className="shrink-0 pt-2.5 border-t border-white/[0.07] flex items-center gap-2">
         <Tooltip content={effectiveAdded && !selectedBookRole ? "Remove from pod" : selectedBookRole ? `Add as ${selectedBookRole}` : "Add to pod"}>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (effectiveAdded && !selectedBookRole) {
-                onRemove?.(talent);
-              } else {
-                onAdd?.(talent, selectedBookRole ?? undefined);
-              }
-            }}
+          <button type="button"
+            onClick={(e) => { e.stopPropagation(); effectiveAdded && !selectedBookRole ? onRemove?.(talent) : onAdd?.(talent, selectedBookRole ?? undefined); }}
             className={cn(
-              "flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[12.5px] font-medium transition flex-1 justify-center",
+              "flex items-center gap-1 rounded-full px-3.5 py-1.5 text-[12px] font-medium transition flex-1 justify-center",
               effectiveAdded && !selectedBookRole
-                ? "bg-white/[0.08] text-white/50 ring-1 ring-white/12 hover:bg-red-500/10 hover:text-red-400 hover:ring-red-400/25"
+                ? "bg-white/[0.07] text-white/48 ring-1 ring-white/10 hover:bg-red-500/10 hover:text-red-400 hover:ring-red-400/25"
                 : selectedBookRole
-                  ? "bg-purple-500/18 text-purple-300 ring-1 ring-purple-400/35 hover:bg-purple-500/28"
-                  : "bg-white/[0.06] text-white/75 hover:bg-white/[0.12] hover:text-white ring-1 ring-white/10"
-            )}
-          >
+                  ? "bg-purple-500/15 text-purple-300 ring-1 ring-purple-400/35 hover:bg-purple-500/25"
+                  : "bg-white/[0.06] text-white/72 hover:bg-white/[0.11] hover:text-white ring-1 ring-white/10"
+            )}>
             {effectiveAdded && !selectedBookRole ? "✓ Added" : selectedBookRole ? `+ ${selectedBookRole.split(" ")[0]}` : "+ Add"}
           </button>
         </Tooltip>
         <Tooltip content={selectedBookRole ? `Book as ${selectedBookRole}` : "Book now"}>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onBook?.({
-                ...talent,
-                bookedRole: selectedBookRole ?? talent.roles[0],
-                headline: selectedBookRole
-                  ? `${selectedBookRole} · ${curatedTalent.location ?? "Dubai"}`
-                  : talent.headline,
-              });
-            }}
+          <button type="button"
+            onClick={(e) => { e.stopPropagation(); onBook?.({ ...talent, bookedRole: selectedBookRole ?? talent.roles[0], headline: selectedBookRole ? `${selectedBookRole} · ${curatedTalent.location ?? "Dubai"}` : talent.headline }); }}
             className={cn(
-              "flex-1 rounded-full px-4 py-1.5 text-[12.5px] font-medium transition",
+              "flex-1 rounded-full px-3.5 py-1.5 text-[12px] font-medium transition",
               selectedBookRole
-                ? "bg-purple-500/18 text-purple-300 ring-1 ring-purple-400/35 hover:bg-purple-500/28"
-                : "bg-white/[0.06] text-white/75 ring-1 ring-white/10 hover:bg-white/[0.12] hover:text-white"
-            )}
-          >
+                ? "bg-purple-500/15 text-purple-300 ring-1 ring-purple-400/35 hover:bg-purple-500/25"
+                : "bg-white/[0.06] text-white/72 ring-1 ring-white/10 hover:bg-white/[0.11] hover:text-white"
+            )}>
             {selectedBookRole ? `Book · ${selectedBookRole.split(" ")[0]}` : "Book now"}
           </button>
         </Tooltip>
