@@ -116,6 +116,7 @@ function HomePageContent() {
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [clientAuthOpen, setClientAuthOpen] = useState(false);
   const [pendingDiscover, setPendingDiscover] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<PackageConfig | null>(null);
   const [selectedPodIds, setSelectedPodIds] = useState<string[]>([]);
   const [showCampaignBoard, setShowCampaignBoard] = useState(false);
@@ -615,6 +616,7 @@ function HomePageContent() {
                 selectedPodIds={selectedPodIds}
                 selectedPackage={selectedPackage}
                 onAddToPod={addToPod}
+                onRemoveFromPod={removeFromPod}
                 onBook={(talent) => {
                   if (!selectedPodIds.includes(talent.id)) addToPod(talent.id);
                 }}
@@ -652,7 +654,7 @@ function HomePageContent() {
               onClose={() => setShowCampaignBoard(false)}
               onClear={clearPod}
               onRequestAuth={() => {
-                setPendingDiscover(true);
+                setPendingConfirm(true);
                 setClientAuthOpen(true);
               }}
             />
@@ -752,7 +754,12 @@ function HomePageContent() {
         mode="client"
         onClose={() => { setClientAuthOpen(false); setPendingDiscover(false); }}
         onSuccess={() => {
-          if (pendingDiscover) {
+          if (pendingConfirm) {
+            // Re-open the campaign board so user can confirm after signing in
+            setShowTalentGallery(true);
+            setShowCampaignBoard(true);
+            setPendingConfirm(false);
+          } else if (pendingDiscover) {
             setShowTalentGallery(true);
             setTimeout(() => scrollToRef(galleryRef), 200);
             setPendingDiscover(false);

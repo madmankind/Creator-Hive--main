@@ -31,7 +31,10 @@ function getTalentTier(talent: CuratedTalent): "HIVE_SELECT" | "HIVE_SIGNATURE" 
 }
 
 const TIER_STYLES = {
-  HIVE_SELECT: { bg: "bg-white/5", text: "text-white/70", ring: "ring-white/20", label: "Hive Select" },
+  HIVE_SELECT: {
+    bg: "bg-purple-500/10", text: "text-purple-300", ring: "ring-purple-400/30", label: "Hive Select",
+    glow: "0 0 14px rgba(124,92,255,0.18), 0 0 28px rgba(124,92,255,0.07)",
+  },
   HIVE_SIGNATURE: {
     bg: "bg-amber-500/10", text: "text-amber-300", ring: "ring-amber-400/40", label: "Hive Signature",
     glow: "0 0 14px rgba(251,191,36,0.22), 0 0 28px rgba(251,191,36,0.08)",
@@ -450,11 +453,14 @@ export function LandingTalentCard({ talent, isAdded, onAdd, onRemove, onBook, cu
             ? "ring-white/[0.15] hover:shadow-[0_0_32px_rgba(255,255,255,0.07)]"
             : tier === "HIVE_SIGNATURE"
               ? "ring-amber-400/[0.18] hover:ring-amber-400/[0.30]"
-              : "ring-white/[0.09] hover:ring-white/[0.16] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
+              : "ring-purple-400/[0.14] hover:ring-purple-400/[0.25]"
         )}
-        style={tier === "HIVE_SIGNATURE" ? {
-          boxShadow: "0 0 0 1px rgba(251,191,36,0.12), 0 4px 24px rgba(251,191,36,0.06)",
-        } : undefined}
+        style={tier === "HIVE_SIGNATURE"
+          ? { boxShadow: "0 0 0 1px rgba(251,191,36,0.12), 0 4px 24px rgba(251,191,36,0.06)" }
+          : tier === "HIVE_SELECT"
+            ? { boxShadow: "0 0 0 1px rgba(124,92,255,0.10), 0 4px 20px rgba(124,92,255,0.05)" }
+            : undefined
+        }
       >
         {/* Package shimmer */}
         {packageMatch && (

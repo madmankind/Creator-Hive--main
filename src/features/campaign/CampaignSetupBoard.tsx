@@ -213,6 +213,7 @@ export function CampaignSetupBoard({
       if (onRequestAuth) onRequestAuth();
       return;
     }
+    if (submitted) return;
     setSubmitted(true);
     const userEmail = (session?.user as { email?: string } | undefined)?.email ?? "pending@creatorhive.ae";
     const localId = `local-${Date.now()}`;

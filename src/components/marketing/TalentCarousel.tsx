@@ -68,6 +68,7 @@ interface TalentCarouselProps {
   selectedRoles?: string[]
   onTalentClick?: (talentId: string) => void
   onAddToPod?: (talentId: string) => void
+  onRemoveFromPod?: (talentId: string) => void
   onBook?: (talent: PodTalent) => void
   selectedPodIds?: string[]
   selectedPackage?: PackageConfig | null
@@ -80,6 +81,7 @@ export function TalentCarousel({
   selectedRoles: externalRoles,
   onTalentClick,
   onAddToPod,
+  onRemoveFromPod,
   onBook,
   selectedPodIds = [],
   selectedPackage = null,
@@ -209,7 +211,7 @@ export function TalentCarousel({
   })
 
   const handleAdd = (t: PodTalent, role?: string) => { onAddToPod ? onAddToPod(t.id) : addToPod(t, role) }
-  const handleRemove = (t: PodTalent, role?: string) => { removeFromPod(t.id, role) }
+  const handleRemove = (t: PodTalent, role?: string) => { onRemoveFromPod ? onRemoveFromPod(t.id) : removeFromPod(t.id, role) }
   const handleBook = (t: PodTalent) => { onBook ? onBook(t) : onTalentClick?.(t.id) }
 
   const activeFilters = tierFilter !== 'all' || roleFilter !== null || locationFilter !== 'global' || internalQuery.trim() !== ''
