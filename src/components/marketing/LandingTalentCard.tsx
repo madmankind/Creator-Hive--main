@@ -213,7 +213,7 @@ function CardFront({
       )}
 
       {/* Tier badge + selectable role chips */}
-      <div className="flex flex-wrap gap-1.5 mb-2.5 shrink-0 overflow-hidden" style={{ maxHeight: 26 }}>
+      <div className="flex flex-wrap gap-1.5 mb-2.5 shrink-0 overflow-hidden" style={{ maxHeight: 52 }}>
         <Tooltip content={PRICING_TIER_DESCRIPTIONS[tier]}>
           <span className={cn(
             "rounded-full px-2.5 py-[2px] text-[11px] font-medium ring-1 select-none shrink-0 cursor-help",
@@ -222,7 +222,7 @@ function CardFront({
             {styles.label}
           </span>
         </Tooltip>
-        {(curatedTalent.roleTags ?? []).slice(0, 3).map((r) => (
+        {(curatedTalent.roleTags ?? []).slice(0, 4).map((r) => (
           <span
             key={r}
             onClick={(e) => {
