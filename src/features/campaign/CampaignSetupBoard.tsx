@@ -209,10 +209,6 @@ export function CampaignSetupBoard({
   };
 
   const handleConfirm = async () => {
-    if (!session?.user) {
-      if (onRequestAuth) onRequestAuth();
-      return;
-    }
     if (submitted) return;
     setSubmitted(true);
     const userEmail = (session?.user as { email?: string } | undefined)?.email ?? "pending@creatorhive.ae";
