@@ -202,9 +202,16 @@ function CardFront({
         </div>
       </div>
 
-      {/* Role chips — primary role bold/white, others tappable to select booking role */}
+      {/* Role chips + tier badge */}
       <div className="flex flex-wrap gap-1.5 mb-3 flex-1 content-start overflow-hidden">
-        {(curatedTalent.roleTags ?? []).slice(0, 4).map((r) => (
+        {/* Tier badge first */}
+        <Tooltip content={PRICING_TIER_DESCRIPTIONS[tier]}>
+          <span className={cn("rounded-full px-2.5 py-0.5 text-[11px] ring-1 select-none shrink-0 cursor-help", styles.bg, styles.text, styles.ring)}>
+            {styles.label}
+          </span>
+        </Tooltip>
+        {/* Role tags — primary bold/white, others tappable */}
+        {(curatedTalent.roleTags ?? []).slice(0, 3).map((r) => (
           <span
             key={r}
             onClick={(e) => {

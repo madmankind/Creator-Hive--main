@@ -9,17 +9,18 @@ import type { NextRequest } from "next/server";
  */
 export async function GET(req: NextRequest) {
   const session = await auth();
-  const mode = new URL(req.url).searchParams.get("mode") || "manage";
+  const { searchParams, origin } = new URL(req.url);
+  const mode = searchParams.get("mode") || "manage";
 
   if (session?.user) {
     return NextResponse.redirect(
-      new URL(`/dashboard/campaigns?mode=${mode}`, process.env.NEXTAUTH_URL ?? "http://localhost:3000"),
+      new URL(`/dashboard/campaigns?mode=${mode}`, origin),
       { status: 302 }
     );
   }
 
   return NextResponse.redirect(
-    new URL("/?auth=required", process.env.NEXTAUTH_URL ?? "http://localhost:3000"),
+    new URL("/?auth=required", origin),
     { status: 302 }
   );
 }

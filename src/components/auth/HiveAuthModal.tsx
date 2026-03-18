@@ -1457,7 +1457,7 @@ function DoneStep({
     ? "Your agency account is ready. We're setting up your dashboard — you'll be redirected to complete your agency profile."
     : isManager
     ? "Your manager account is set up. Head to your dashboard to add talent to your roster and start submitting them for campaigns."
-    : "Your profile is under review. Our team will reach out within 48 hours to confirm your spot in the Hive.";
+    : "You're in. Taking you to your creator dashboard now.";
 
   const badgeAccent = isAgency ? "rgba(251,191,36,0.9)" : isManager ? "rgba(45,212,191,0.9)" : null;
   const badgeLabel  = isAgency ? "🏢 Agency" : isManager ? "👥 Talent Manager" : null;
@@ -1635,7 +1635,12 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
       }),
     }).catch(() => {});
     setStep("done");
-    setTimeout(() => { onSuccess(); onClose(); }, 2000);
+    // Redirect independent talent to their dashboard after brief done screen
+    setTimeout(() => {
+      onSuccess();
+      onClose();
+      router.push("/dashboard/creator");
+    }, 2000);
   };
 
   const SIMPLE_STEPS = ["auth", "otp", "phone", "loading", "talent-type"];
