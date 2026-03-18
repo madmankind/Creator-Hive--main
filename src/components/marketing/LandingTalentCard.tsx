@@ -31,7 +31,10 @@ function getTalentTier(talent: CuratedTalent): "HIVE_SELECT" | "HIVE_SIGNATURE" 
 }
 
 const TIER_STYLES = {
-  HIVE_SELECT: { bg: "bg-white/5", text: "text-white/70", ring: "ring-white/20", label: "Hive Select" },
+  HIVE_SELECT: {
+    bg: "bg-purple-500/10", text: "text-purple-300", ring: "ring-purple-400/30", label: "Hive Select",
+    glow: "0 0 14px rgba(124,92,255,0.18), 0 0 28px rgba(124,92,255,0.07)",
+  },
   HIVE_SIGNATURE: {
     bg: "bg-amber-500/10", text: "text-amber-300", ring: "ring-amber-400/40", label: "Hive Signature",
     glow: "0 0 14px rgba(251,191,36,0.22), 0 0 28px rgba(251,191,36,0.08)",
@@ -56,7 +59,7 @@ function getPremiumSummary(text: string, maxChars: number): string {
 
 function getFrontSummary(t: CuratedTalent): string {
   const raw = t.nicheSummary?.trim() || t.shortBio?.trim() || "";
-  return getPremiumSummary(raw, 100);
+  return getPremiumSummary(raw, 200);
 }
 
 function getAboutSummary(t: CuratedTalent): string {
@@ -202,12 +205,45 @@ function CardFront({
         </div>
       </div>
 
-      {/* Bio — use shortBio first, fall back to nicheSummary fragment */}
+      {/* Bio — 4 lines visible */}
       {(curatedTalent.shortBio || curatedTalent.nicheSummary) && (
-        <p className="mb-3 text-[12.5px] text-white/60 leading-[1.55] line-clamp-2 select-none flex-shrink-0">
+        <p className="mb-2.5 text-[12px] text-white/60 leading-[1.55] line-clamp-4 select-none flex-shrink-0">
           {curatedTalent.shortBio || getFrontSummary(curatedTalent)}
         </p>
       )}
+
+      {/* Tier badge + selectable role chips */}
+      <div className="flex flex-wrap gap-1.5 mb-2.5 shrink-0 overflow-hidden" style={{ maxHeight: 26 }}>
+        <Tooltip content={PRICING_TIER_DESCRIPTIONS[tier]}>
+          <span className={cn(
+            "rounded-full px-2.5 py-[2px] text-[11px] font-medium ring-1 select-none shrink-0 cursor-help",
+            styles.bg, styles.text, styles.ring
+          )}>
+            {styles.label}
+          </span>
+        </Tooltip>
+        {(curatedTalent.roleTags ?? []).slice(0, 3).map((r) => (
+          <span
+            key={r}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (r !== curatedTalent.primaryRole) {
+                setSelectedBookRole(prev => prev === r ? null : r);
+              }
+            }}
+            className={cn(
+              "rounded-full px-2.5 py-[2px] text-[11px] ring-1 select-none shrink-0 transition-colors",
+              r === curatedTalent.primaryRole
+                ? "bg-white/[0.10] text-white/90 ring-white/[0.18]"
+                : selectedBookRole === r
+                  ? "bg-purple-500/20 text-purple-300 ring-purple-400/40 cursor-pointer"
+                  : "bg-white/[0.05] text-white/55 ring-white/[0.08] hover:bg-white/[0.10] hover:text-white/80 cursor-pointer"
+            )}
+          >
+            {r}
+          </span>
+        ))}
+      </div>
 
       {/* Actions */}
       <div className="mt-auto shrink-0 pt-3 border-t border-white/[0.08] flex items-center gap-2">
@@ -412,17 +448,20 @@ export function LandingTalentCard({ talent, isAdded, onAdd, onRemove, onBook, cu
       <motion.article
         className={cn(
           "group relative rounded-2xl bg-white/[0.05] p-5 ring-1",
-          "w-[380px] h-[300px] flex-shrink-0 cursor-pointer select-none overflow-hidden",
+          "w-[380px] h-[360px] flex-shrink-0 cursor-pointer select-none overflow-hidden",
           "transition-shadow duration-300",
           packageMatch
             ? "ring-white/[0.15] hover:shadow-[0_0_32px_rgba(255,255,255,0.07)]"
             : tier === "HIVE_SIGNATURE"
               ? "ring-amber-400/[0.18] hover:ring-amber-400/[0.30]"
-              : "ring-white/[0.09] hover:ring-white/[0.16] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
+              : "ring-purple-400/[0.14] hover:ring-purple-400/[0.25]"
         )}
-        style={tier === "HIVE_SIGNATURE" ? {
-          boxShadow: "0 0 0 1px rgba(251,191,36,0.12), 0 4px 24px rgba(251,191,36,0.06)",
-        } : undefined}
+        style={tier === "HIVE_SIGNATURE"
+          ? { boxShadow: "0 0 0 1px rgba(251,191,36,0.12), 0 4px 24px rgba(251,191,36,0.06)" }
+          : tier === "HIVE_SELECT"
+            ? { boxShadow: "0 0 0 1px rgba(124,92,255,0.10), 0 4px 20px rgba(124,92,255,0.05)" }
+            : undefined
+        }
       >
         {/* Package shimmer */}
         {packageMatch && (
