@@ -759,7 +759,7 @@ function HomePageContent() {
           const redirect = sessionStorage.getItem("ch_post_auth_redirect");
           if (redirect) {
             sessionStorage.removeItem("ch_post_auth_redirect");
-            router.refresh(); // flush stale session so dashboard layout sees auth
+            router.refresh(); // v28f2e6b — flush stale session so dashboard layout sees auth
             router.push(redirect);
             return;
           }
