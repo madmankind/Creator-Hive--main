@@ -558,8 +558,8 @@ export function CampaignSetupBoard({
                 type="button"
                 onClick={() => {
                   if (session?.user) {
-                    router.refresh(); // v28f2e6b — flush session before navigating to dashboard
-                    router.push("/dashboard/campaigns?mode=manage");
+                    // Use hard navigation to ensure cookies are sent with request
+                    window.location.assign("/dashboard/campaigns?mode=manage");
                   } else {
                     sessionStorage.setItem("ch_post_auth_redirect", "/dashboard/campaigns?mode=manage");
                     onRequestAuth?.();

@@ -391,18 +391,23 @@ function InboxStep({ email, onBack }: { email: string; onBack: () => void }) {
 /* ─────────────────────────────────────────
    LOADING STEP — rotating logo → reveal landing
 ───────────────────────────────────────── */
-function LoadingStep({ onDone, signInFn }: { onDone: () => void; signInFn?: () => Promise<void> }) {
+function LoadingStep({ onDone, signInFn, onError }: { onDone: () => void; signInFn?: () => Promise<void>; onError?: (err: string) => void }) {
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
-      // Run signIn and the minimum display time concurrently.
-      // Only call onDone after BOTH complete so the session cookie
-      // is guaranteed to exist before the dashboard layout runs auth().
-      await Promise.all([
-        signInFn ? signInFn() : Promise.resolve(),
-        new Promise(r => setTimeout(r, 1800)),
-      ]);
-      if (!cancelled) onDone();
+      try {
+        // Run signIn and the minimum display time concurrently.
+        // Only call onDone after BOTH complete so the session cookie
+        // is guaranteed to exist before the dashboard layout runs auth().
+        await Promise.all([
+          signInFn ? signInFn() : Promise.resolve(),
+          new Promise(r => setTimeout(r, 1800)),
+        ]);
+        if (!cancelled) onDone();
+      } catch (err) {
+        // signIn failed - call onError instead of onDone
+        if (!cancelled) onError?.(err instanceof Error ? err.message : "Sign in failed");
+      }
     };
     run();
     return () => { cancelled = true; };
@@ -1716,16 +1721,23 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
                       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                       transition={{ duration: 0.35 }}>
                       <LoadingStep
-                        signInFn={async () => {
-                          await signIn("credentials", {
-                            redirect: false,
-                            email: email.trim(),
-                            userType: mode,
-                            displayName: email.split("@")[0],
-                          });
-                        }}
-                        onDone={() => { onSuccess(); onClose(); }}
-                      />
+                          signInFn={async () => {
+                            const result = await signIn("credentials", {
+                              redirect: false,
+                              email: email.trim(),
+                              userType: mode,
+                              displayName: email.split("@")[0],
+                            });
+                            if (result?.ok !== true) {
+                              throw new Error(result?.error || "Sign in failed");
+                            }
+                          }}
+                          onDone={() => { onSuccess(); onClose(); }}
+                          onError={(err) => {
+                            console.error("Sign in failed:", err);
+                            // Could show error state here
+                          }}
+                        />
                     </motion.div>
                   )}
                   {step === "talent-type" && (
