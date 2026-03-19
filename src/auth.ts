@@ -123,8 +123,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           );
         }
 
-        try {
-          const emailInput = credentials?.email;
+        const emailInput = credentials?.email;
           const userTypeInput = credentials?.userType;
           const displayNameInput = credentials?.displayName;
 

@@ -66,6 +66,8 @@ interface TalentCarouselProps {
   talents: CuratedTalent[]
   query?: string
   selectedRoles?: string[]
+  /** IDs returned by AI search — these float to front and get a highlight ring */
+  aiHighlightIds?: string[]
   onTalentClick?: (talentId: string) => void
   onAddToPod?: (talentId: string) => void
   onRemoveFromPod?: (talentId: string) => void
@@ -79,6 +81,7 @@ export function TalentCarousel({
   talents,
   query: externalQuery,
   selectedRoles: externalRoles,
+  aiHighlightIds = [],
   onTalentClick,
   onAddToPod,
   onRemoveFromPod,
@@ -169,8 +172,15 @@ export function TalentCarousel({
     return result
   }, [filtered])
 
-  // Flat ordered list for carousel
-  const flat = useMemo(() => grouped.flatMap(g => g.items), [grouped])
+  // Flat ordered list for carousel — AI results float to front
+  const flat = useMemo(() => {
+    const all = grouped.flatMap(g => g.items)
+    if (aiHighlightIds.length === 0) return all
+    const aiSet = new Set(aiHighlightIds)
+    const highlighted = aiHighlightIds.map(id => all.find(t => t.id === id)).filter(Boolean) as CuratedTalent[]
+    const rest = all.filter(t => !aiSet.has(t.id))
+    return [...highlighted, ...rest]
+  }, [grouped, aiHighlightIds])
 
   const checkScroll = useCallback(() => {
     const el = scrollRef.current
@@ -419,12 +429,23 @@ export function TalentCarousel({
                 const pod = toPod(item)
                 const isAdded = selectedPodIds.includes(item.id)
                 const pkgMatch = selectedPackage?.roles.includes(item.primaryRole as TalentCategoryTag)
+                const isAiMatch = aiHighlightIds.length > 0 && aiHighlightIds.includes(item.id)
+                const isDimmed = aiHighlightIds.length > 0 && !isAiMatch
 
                 return (
                   <div key={item.id}
-                    className={cn('flex-shrink-0 snap-start py-2 relative',
-                      isGroupStart && 'before:content-[\'\'] before:absolute before:left-[-12px] before:top-[15%] before:bottom-[15%] before:w-px before:bg-white/[0.06] before:pointer-events-none'
+                    className={cn('flex-shrink-0 snap-start py-2 relative transition-opacity duration-300',
+                      isGroupStart && 'before:content-[\'\'] before:absolute before:left-[-12px] before:top-[15%] before:bottom-[15%] before:w-px before:bg-white/[0.06] before:pointer-events-none',
+                      isDimmed && 'opacity-30'
                     )}>
+                    {isAiMatch && (
+                      <div className="absolute -top-1 left-0 right-0 flex justify-center z-10 pointer-events-none">
+                        <span className="flex items-center gap-1 text-[10px] font-medium text-purple-300 bg-purple-500/15 ring-1 ring-purple-400/25 rounded-full px-2 py-0.5">
+                          <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3l1.9 5.8h6.1l-4.9 3.6 1.9 5.8L12 15l-4.9 3.3 1.9-5.8L4.1 8.8h6.1z"/></svg>
+                          AI pick
+                        </span>
+                      </div>
+                    )}
 <motion.div
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}

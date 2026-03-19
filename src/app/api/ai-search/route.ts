@@ -1,183 +1,104 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// src/app/api/ai-search/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { curatedTalent } from "@/lib/curatedTalent";
 
-export const runtime = "nodejs";
-
-// Generate mock talent results based on AI interpretation
-function generateMockResults(aiData: any, roles: string[] = []): any[] {
-  // Build pool from real curatedTalent roster
-  const pool = curatedTalent.map(t => ({
-    creator: {
-      id: t.id,
-      name: t.name,
-      roles: t.roleTags,
-      niches: t.brandPartners ?? t.platformTags,
-      location: t.location ?? "Dubai, UAE",
-      followers: t.followers,
-      bio: t.shortBio,
-    },
-    score: 0.75 + Math.random() * 0.24,
-  }));
-
-  // Filter by roles if provided
-  let filtered = pool;
-  if (roles && roles.length > 0) {
-    filtered = pool.filter(t =>
-      roles.some(role =>
-        t.creator.roles.some((r: string) =>
-          r.toLowerCase().includes(role.toLowerCase())
-        )
-      )
-    );
-    if (filtered.length === 0) filtered = pool;
-  }
-
-  // If AI data has primaryRoles, boost those matches
-  if (aiData?.primaryRoles && Array.isArray(aiData.primaryRoles)) {
-    filtered = filtered.map((t) => {
-      const roleMatch = aiData.primaryRoles.some((pr: string) =>
-        t.creator.roles.some((r: string) =>
-          r.toLowerCase().includes(pr.toLowerCase())
-        )
-      );
-      return {
-        ...t,
-        score: roleMatch ? Math.min(t.score + 0.05, 1.0) : t.score,
-      };
-    });
-  }
-
-  // Sort by score descending
-  return filtered.sort((a, b) => b.score - a.score);
+// Build a compact roster summary to inject into the AI context
+function buildRosterContext(): string {
+  return curatedTalent
+    .map((t) => {
+      const roles = [t.primaryRole, ...(t.roleTags ?? []).filter(r => r !== t.primaryRole)].join(", ");
+      const bio = t.shortBio ?? t.nicheSummary ?? "";
+      const brands = t.brandPartners?.slice(0, 3).join(", ") ?? "";
+      return `- ID:${t.id} | Name:${t.displayName ?? t.name} | Roles:${roles} | Niche:${t.displayTitle ?? ""} | Bio:${bio.slice(0, 120)} | Brands:${brands} | Location:${t.location ?? "UAE"}`;
+    })
+    .join("\n");
 }
+
+const SYSTEM_PROMPT = `You are Creator Hive's AI talent scout. Creator Hive is a UAE-based premium creative talent marketplace.
+
+Your job: given a natural-language brief from a brand or marketer, recommend the best matching talent from the Creator Hive roster below — assembled into a campaign team.
+
+ROSTER:
+${buildRosterContext()}
+
+RULES:
+1. Recommend 3–6 talent IDs from the roster that best match the brief.
+2. Return ONLY valid JSON in this exact shape — no markdown, no explanation outside the JSON:
+{
+  "talentIds": ["talent-xxx", "talent-yyy"],
+  "teamSummary": "One sentence explaining why this team fits the brief.",
+  "roles": {
+    "talent-xxx": "Suggested role for this campaign",
+    "talent-yyy": "Suggested role for this campaign"
+  }
+}
+3. Only use IDs that appear in the roster. Never invent IDs.
+4. Match based on: specialisation, niche, platform, location, follower tier, brand history.
+5. Prefer UAE-based talent unless the brief specifies otherwise.
+6. If the brief is too vague, pick a well-rounded team spanning content creation, video, and strategy.`;
 
 export async function POST(req: NextRequest) {
   try {
-    const { query, roles } = await req.json();
+    const { query } = await req.json();
+    if (!query?.trim()) {
+      return NextResponse.json({ error: "Query is required" }, { status: 400 });
+    }
 
-    // Allow search with just roles selected (no query text required)
-    if ((!query || typeof query !== "string" || query.trim().length === 0) && 
-        (!roles || !Array.isArray(roles) || roles.length === 0)) {
+    const apiKey = process.env.THAURA_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: "AI search not configured" }, { status: 503 });
+    }
+
+    const response = await fetch("https://backend.thaura.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "thaura",
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: `Brand brief: "${query.trim()}"` },
+        ],
+        stream: false,
+        max_tokens: 500,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      console.error("Thaura API error:", err);
       return NextResponse.json(
-        { error: "Please provide either a campaign brief or select talent roles." },
-        { status: 400 }
+        { error: "AI search unavailable", detail: (err as { error?: { message?: string } })?.error?.message },
+        { status: response.status }
       );
     }
 
-    const system = `
-You are a matching assistant for a creator marketplace.
-You will read a user brief and selected talent roles.
-You MUST produce a well-structured JSON containing:
-- "interpretedBrief": concise understanding of the need,
-- "primaryRoles": ranked 1..N from the given roles that fit best,
-- "secondaryKeywords": list of niche/industry/skills inferred from the brief,
-- "searchDSL": an internal AND/OR query string (simple) we can use later.
-Keep it short, consistent, and valid JSON.
-`;
+    const data = await response.json();
+    const raw = data?.choices?.[0]?.message?.content ?? "";
 
-    const user = `
-Brief: ${query || "No specific brief provided - general talent search"}
-Selected Roles: ${Array.isArray(roles) ? roles.join(", ") : "None selected"}
-`;
-
-    // For demo purposes, return a mock response if OpenAI quota is exceeded
-    // In production, you'd handle this more gracefully
-    const mockResponse = {
-      interpretedBrief: `Looking for ${roles?.length ? roles.join(', ') : 'talent'} for: ${query || 'general project'}`,
-      primaryRoles: Array.isArray(roles) ? roles.slice(0, 3) : [],
-      secondaryKeywords: ["creative", "professional", "experienced"],
-      searchDSL: `(${query || 'talent'}) AND (${Array.isArray(roles) ? roles.join(' OR ') : 'any'})`
-    };
-
-    const openAiKey = process.env.OPENAI_API_KEY;
-    const useMockOnly = !openAiKey;
-
-    if (useMockOnly) {
-      const mockResults = generateMockResults(mockResponse, roles);
-      return NextResponse.json({
-        ok: true,
-        query,
-        roles,
-        ai: mockResponse,
-        results: mockResults,
-        source: "mock",
-      });
-    }
-
-    // Try OpenAI first, fallback to mock
+    // Parse the JSON response from the AI
+    let parsed: { talentIds?: string[]; teamSummary?: string; roles?: Record<string, string> };
     try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${openAiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          temperature: 0.2,
-          messages: [
-            { role: "system", content: system },
-            { role: "user", content: user },
-          ],
-        }),
-      });
-
-      if (!response.ok) {
-        console.log("OpenAI API unavailable, using mock response");
-        // Generate mock results based on mock AI interpretation
-        const mockResults = generateMockResults(mockResponse, roles);
-
-        return NextResponse.json({
-          ok: true,
-          query,
-          roles,
-          ai: mockResponse,
-          results: mockResults,
-          source: "mock"
-        });
-      }
-
-      const data = await response.json();
-      const content = data?.choices?.[0]?.message?.content?.trim?.() ?? "{}";
-
-      let parsed: unknown = null;
-      try {
-        parsed = JSON.parse(content);
-      } catch {
-        parsed = { raw: content };
-      }
-
-      // Generate mock results based on AI interpretation
-      const mockResults = generateMockResults(parsed, roles);
-
-      return NextResponse.json({
-        ok: true,
-        query,
-        roles,
-        ai: parsed,
-        results: mockResults,
-        source: "openai"
-      });
-    } catch (error) {
-      console.log("OpenAI error, using mock response:", error);
-      // Generate mock results based on mock AI interpretation
-      const mockResults = generateMockResults(mockResponse, roles);
-
-      return NextResponse.json({
-        ok: true,
-        query,
-        roles,
-        ai: mockResponse,
-        results: mockResults,
-        source: "mock"
-      });
+      // Strip any markdown fences if present
+      const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      parsed = JSON.parse(clean);
+    } catch {
+      console.error("Failed to parse Thaura response:", raw);
+      return NextResponse.json({ error: "Could not parse AI response", raw }, { status: 500 });
     }
-  } catch (err: unknown) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Unknown error" },
-      { status: 500 }
-    );
+
+    // Validate IDs exist in roster
+    const validIds = new Set(curatedTalent.map(t => t.id));
+    const safeIds = (parsed.talentIds ?? []).filter(id => validIds.has(id));
+
+    return NextResponse.json({
+      talentIds: safeIds,
+      teamSummary: parsed.teamSummary ?? "",
+      roles: parsed.roles ?? {},
+    });
+  } catch (err) {
+    console.error("AI search error:", err);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

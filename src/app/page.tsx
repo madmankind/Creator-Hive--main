@@ -114,6 +114,7 @@ function HomePageContent() {
   const [showPackages, setShowPackages] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [aiHighlightIds, setAiHighlightIds] = useState<string[]>([]);
   const [clientAuthOpen, setClientAuthOpen] = useState(false);
   const [pendingDiscover, setPendingDiscover] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState(false);
@@ -493,11 +494,13 @@ function HomePageContent() {
                     onQueryChange={(q) => { setSearchQuery(q); }}
                     onRolesChange={(roles) => { setSelectedRoles(roles); }}
                     onDiscover={openGallery}
+                    onAIResults={(ids, _summary) => { setAiHighlightIds(ids); }}
                     showClear={showTalentGallery}
                     onClear={() => {
                       setShowTalentGallery(false);
                       setSearchQuery("");
                       setSelectedRoles([]);
+                      setAiHighlightIds([]);
                     }}
                   />
 
@@ -614,6 +617,7 @@ function HomePageContent() {
                 talents={curatedTalent}
                 query={searchQuery}
                 selectedRoles={selectedRoles}
+                aiHighlightIds={aiHighlightIds}
                 selectedPodIds={selectedPodIds}
                 selectedPackage={selectedPackage}
                 onAddToPod={addToPod}
