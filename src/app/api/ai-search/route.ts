@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { curatedTalent } from "@/lib/curatedTalent";
 
-// Build a compact roster summary to inject into the AI context
+// ── Roster context ────────────────────────────────────────────────────────────
+// Built once at module load — server-only, never sent to the browser
 function buildRosterContext(): string {
   return curatedTalent
     .map((t) => {
@@ -36,6 +37,31 @@ RULES:
 5. Prefer UAE-based talent unless the brief specifies otherwise.
 6. If the brief is too vague, pick a well-rounded team spanning content creation, video, and strategy.`;
 
+// ── Provider config ───────────────────────────────────────────────────────────
+// API keys are read server-side from env — never exposed to the browser.
+// Grok is primary. Thaura is fallback if GROK_API_KEY is missing.
+const GROK_ENDPOINT = "https://api.x.ai/v1/chat/completions";
+const THAURA_ENDPOINT = "https://backend.thaura.ai/v1/chat/completions";
+
+interface AIProvider {
+  endpoint: string;
+  apiKey: string;
+  model: string;
+}
+
+function getProvider(): AIProvider | null {
+  const grokKey = process.env.GROK_API_KEY;
+  if (grokKey) {
+    return { endpoint: GROK_ENDPOINT, apiKey: grokKey, model: "grok-4-1-fast" };
+  }
+  const thauraKey = process.env.THAURA_API_KEY;
+  if (thauraKey) {
+    return { endpoint: THAURA_ENDPOINT, apiKey: thauraKey, model: "thaura" };
+  }
+  return null;
+}
+
+// ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
     const { query } = await req.json();
@@ -43,33 +69,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Query is required" }, { status: 400 });
     }
 
-    const apiKey = process.env.THAURA_API_KEY;
-    if (!apiKey) {
+    const provider = getProvider();
+    if (!provider) {
       return NextResponse.json({ error: "AI search not configured" }, { status: 503 });
     }
 
-    const response = await fetch("https://backend.thaura.ai/v1/chat/completions", {
+    const response = await fetch(provider.endpoint, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
+        "Authorization": `Bearer ${provider.apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "thaura",
+        model: provider.model,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: `Brand brief: "${query.trim()}"` },
         ],
         stream: false,
+        temperature: 0.2,
         max_tokens: 500,
       }),
     });
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      console.error("Thaura API error:", err);
+      const detail = (err as { error?: { message?: string } })?.error?.message;
+      console.error(`AI search error [${provider.model}]:`, detail ?? response.status);
       return NextResponse.json(
-        { error: "AI search unavailable", detail: (err as { error?: { message?: string } })?.error?.message },
+        { error: "AI search unavailable", detail },
         { status: response.status }
       );
     }
@@ -77,18 +105,17 @@ export async function POST(req: NextRequest) {
     const data = await response.json();
     const raw = data?.choices?.[0]?.message?.content ?? "";
 
-    // Parse the JSON response from the AI
+    // Parse the JSON the model returns
     let parsed: { talentIds?: string[]; teamSummary?: string; roles?: Record<string, string> };
     try {
-      // Strip any markdown fences if present
       const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       parsed = JSON.parse(clean);
     } catch {
-      console.error("Failed to parse Thaura response:", raw);
+      console.error("Failed to parse AI response:", raw);
       return NextResponse.json({ error: "Could not parse AI response", raw }, { status: 500 });
     }
 
-    // Validate IDs exist in roster
+    // Validate IDs against roster — never trust the model to invent IDs
     const validIds = new Set(curatedTalent.map(t => t.id));
     const safeIds = (parsed.talentIds ?? []).filter(id => validIds.has(id));
 
