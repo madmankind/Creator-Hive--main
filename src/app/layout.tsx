@@ -15,6 +15,13 @@ export const metadata: Metadata = {
   },
   description: 'Book pre-vetted creative talent across the UAE and GCC. Campaign teams, deliverable tracking, and payments in one platform.',
   keywords: ['influencer marketing', 'UAE creators', 'GCC talent', 'content creators Dubai', 'influencer platform'],
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Creator Hive',
+    startupImage: '/apple-touch-icon.png',
+  },
   openGraph: {
     title: 'Creator Hive — UAE Creative Talent Marketplace',
     description: 'Book pre-vetted creative talent across the UAE and GCC.',
@@ -29,6 +36,7 @@ export const metadata: Metadata = {
     description: 'Book pre-vetted creative talent across the UAE and GCC.',
   },
   metadataBase: new URL('https://creatorhive.ae'),
+  themeColor: '#07070B',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

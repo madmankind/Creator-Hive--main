@@ -53,7 +53,7 @@ function BottomDockInner() {
 
   return (
     <div
-      className="fixed left-0 right-0 bottom-0 z-50"
+      className="lg:hidden fixed left-0 right-0 bottom-0 z-50"
       style={{ height: "88px", pointerEvents: "none", opacity, transition: "opacity 0.4s ease" }}
       onMouseEnter={() => { hovered.current = true; setOpacity(1); if (scrollTimer.current) clearTimeout(scrollTimer.current); }}
       onMouseLeave={() => { hovered.current = false; }}
