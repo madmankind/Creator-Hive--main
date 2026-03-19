@@ -211,6 +211,11 @@ export function CampaignSetupBoard({
 
   const handleConfirm = async () => {
     if (submitted) return;
+    // Require auth before booking — API returns 401 otherwise
+    if (!session?.user) {
+      onRequestAuth?.();
+      return;
+    }
     setSubmitted(true);
     const userEmail = (session?.user as { email?: string } | undefined)?.email ?? "pending@creatorhive.ae";
     const localId = `local-${Date.now()}`;
@@ -555,7 +560,6 @@ export function CampaignSetupBoard({
                   if (session?.user) {
                     router.push("/dashboard/campaigns?mode=manage");
                   } else {
-                    // Not signed in — store intent then trigger auth
                     sessionStorage.setItem("ch_post_auth_redirect", "/dashboard/campaigns?mode=manage");
                     onRequestAuth?.();
                   }

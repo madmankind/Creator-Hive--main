@@ -12,7 +12,7 @@ import { PackageSelector } from "@/features/campaign/PackageSelector";
 import { curatedTalent, getTalentDisplayName } from "@/lib/curatedTalent";
 import { PACKAGES, type PackageConfig } from "@/lib/packages";
 import { useSession, signIn, signOut } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Sparkles } from "lucide-react";
 
@@ -137,6 +137,7 @@ function HomePageContent() {
 
   const { data: session } = useSession();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const role = (session?.user as { role?: string | null } | undefined)?.role ?? null;
   const isClient = role === "AGENCY";
 
@@ -758,7 +759,7 @@ function HomePageContent() {
           const redirect = sessionStorage.getItem("ch_post_auth_redirect");
           if (redirect) {
             sessionStorage.removeItem("ch_post_auth_redirect");
-            window.location.href = redirect;
+            router.push(redirect);
             return;
           }
           if (pendingConfirm) {
