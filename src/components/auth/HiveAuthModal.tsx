@@ -1731,6 +1731,17 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
                             if (result?.ok !== true) {
                               throw new Error(result?.error || "Sign in failed");
                             }
+                            // Verify session exists before allowing navigation
+                            const sessionCheck = await fetch('/api/auth/session').then(r => r.json());
+                            if (!sessionCheck?.user) {
+                              console.warn('[Auth] Session not established after signIn, attempting cookie sync...');
+                              // Try one more time after brief delay
+                              await new Promise(r => setTimeout(r, 500));
+                              const retryCheck = await fetch('/api/auth/session').then(r => r.json());
+                              if (!retryCheck?.user) {
+                                throw new Error("Session not established - please try again");
+                              }
+                            }
                           }}
                           onDone={() => { onSuccess(); onClose(); }}
                           onError={(err) => {

@@ -759,6 +759,15 @@ function HomePageContent() {
           const redirect = sessionStorage.getItem("ch_post_auth_redirect");
           if (redirect) {
             sessionStorage.removeItem("ch_post_auth_redirect");
+            // Verify session exists before navigating
+            try {
+              const sessionCheck = await fetch('/api/auth/session').then(r => r.json());
+              if (!sessionCheck?.user) {
+                console.warn('[Auth] Session not found before redirect, redirecting anyway...');
+              }
+            } catch (e) {
+              console.warn('[Auth] Session check failed:', e);
+            }
             // Use hard navigation to ensure cookies are sent with request
             window.location.assign(redirect);
             return;
