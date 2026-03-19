@@ -391,11 +391,23 @@ function InboxStep({ email, onBack }: { email: string; onBack: () => void }) {
 /* ─────────────────────────────────────────
    LOADING STEP — rotating logo → reveal landing
 ───────────────────────────────────────── */
-function LoadingStep({ onDone }: { onDone: () => void }) {
+function LoadingStep({ onDone, signInFn }: { onDone: () => void; signInFn?: () => Promise<void> }) {
   useEffect(() => {
-    const t = setTimeout(onDone, 1800);
-    return () => clearTimeout(t);
-  }, [onDone]);
+    let cancelled = false;
+    const run = async () => {
+      // Run signIn and the minimum display time concurrently.
+      // Only call onDone after BOTH complete so the session cookie
+      // is guaranteed to exist before the dashboard layout runs auth().
+      await Promise.all([
+        signInFn ? signInFn() : Promise.resolve(),
+        new Promise(r => setTimeout(r, 1800)),
+      ]);
+      if (!cancelled) onDone();
+    };
+    run();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex flex-col items-center gap-5">
@@ -1530,28 +1542,9 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
     if (!email.trim()) return;
     setError("");
     setSubmitting(true);
-
-    // Try NextAuth, fall back gracefully in dev
-    try {
-      const result = await signIn("credentials", {
-        redirect: false,
-        email: email.trim(),
-        userType: authMode === "login" ? mode : mode,
-        displayName: email.split("@")[0],
-      });
-      if (result?.ok || !result?.error || result.error.toLowerCase().includes("configuration")) {
-        localStorage.setItem(`ch_${mode}_email`, email.trim().toLowerCase());
-      } else {
-        setError("Couldn't send link. Please try again.");
-        setSubmitting(false);
-        return;
-      }
-    } catch {
-      localStorage.setItem(`ch_${mode}_email`, email.trim().toLowerCase());
-    }
-
+    // Store email for later — signIn happens in LoadingStep after OTP
+    localStorage.setItem(`ch_${mode}_email`, email.trim().toLowerCase());
     setSubmitting(false);
-    // All email paths go through OTP verification first
     setOtpVia("email");
     setStep("otp");
   };
@@ -1722,7 +1715,17 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
                     <motion.div key="loading"
                       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                       transition={{ duration: 0.35 }}>
-                      <LoadingStep onDone={() => { onSuccess(); onClose(); }} />
+                      <LoadingStep
+                        signInFn={async () => {
+                          await signIn("credentials", {
+                            redirect: false,
+                            email: email.trim(),
+                            userType: mode,
+                            displayName: email.split("@")[0],
+                          });
+                        }}
+                        onDone={() => { onSuccess(); onClose(); }}
+                      />
                     </motion.div>
                   )}
                   {step === "talent-type" && (
