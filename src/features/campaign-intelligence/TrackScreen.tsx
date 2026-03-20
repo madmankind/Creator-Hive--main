@@ -119,21 +119,24 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
     setAiLoading(true);
     setAiResponse(null);
     try {
-      const context = activeCampaign ? JSON.stringify({
-        name: activeCampaign.name,
-        objective: activeCampaign.objective,
-        budget: activeCampaign.budget,
-        spend: activeCampaign.spend,
-        talentNames: activeCampaign.talentNames,
-        kpis,
-      }) : "";
-      const res = await fetch("/api/ai-search", {
+      const res = await fetch("/api/ai-analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: `Campaign analysis: ${q}\n\nCampaign data: ${context}` }),
+        body: JSON.stringify({
+          query: q,
+          campaignData: {
+            name: activeCampaign?.name,
+            objective: activeCampaign?.objective,
+            budget: activeCampaign?.budget,
+            spend: activeCampaign?.spend,
+            talentNames: activeCampaign?.talentNames,
+            kpis,
+          },
+          mode: "analyze",
+        }),
       });
       const data = await res.json();
-      setAiResponse(data.teamSummary ?? data.detail ?? "Analysis complete. Try a more specific question.");
+      setAiResponse(data.analysis ?? data.detail ?? "Analysis complete. Try a more specific question.");
     } catch {
       setAiResponse("AI analysis unavailable. Try again later.");
     } finally {

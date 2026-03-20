@@ -188,20 +188,43 @@ export function HeroBar({
                     ))}
                   </div>
                 )}
-                <input
-                  value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value);
-                    // Always propagate text to fuzzy filter — AI results layer on top
-                    onQueryChange?.(e.target.value);
-                  }}
-                  onFocus={() => setOpen(true)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleDiscover();
-                  }}
-                  placeholder="Describe your campaign — AI will build your team"
-                  className="w-full bg-transparent outline-none text-slate-200 placeholder:text-slate-400/40 text-[15px] leading-8"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    value={query}
+                    onChange={(e) => {
+                      setQuery(e.target.value);
+                      // Always propagate text to fuzzy filter — AI results layer on top
+                      onQueryChange?.(e.target.value);
+                    }}
+                    onFocus={() => setOpen(true)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleDiscover();
+                    }}
+                    placeholder="Describe your campaign — AI will build your team"
+                    className="flex-1 bg-transparent outline-none text-slate-200 placeholder:text-slate-400/40 text-[15px] leading-8"
+                  />
+                  {/* (+) Upload — inside bar like LLM chat interfaces */}
+                  <label
+                    className="flex items-center justify-center w-7 h-7 rounded-full transition-all cursor-pointer shrink-0"
+                    style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.15)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; }}
+                    title="Upload brief, image, or presentation"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-white/45" />
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.pptx,.ppt,.docx,.doc,.xlsx,.csv,.png,.jpg,.jpeg,.webp"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setQuery((prev) => prev ? `${prev} [brief: ${file.name}]` : `Match talent for brief: ${file.name}`);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
               </div>
 
               {open && (suggestions.length > 0 || visibleRoles.length > 0) && (
@@ -310,27 +333,6 @@ export function HeroBar({
                 )}
                 {aiLoading ? "Searching…" : "Discover"}
               </button>
-              {/* Brief upload — accepts briefs, images, presentations */}
-              <label
-                className="flex items-center justify-center w-9 h-9 rounded-full transition-all cursor-pointer shrink-0"
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.12)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)"; }}
-                title="Upload brief, image, or presentation"
-              >
-                <Plus className="w-4 h-4 text-white/50" />
-                <input
-                  type="file"
-                  className="hidden"
-                  accept=".pdf,.pptx,.ppt,.docx,.doc,.xlsx,.csv,.png,.jpg,.jpeg,.webp"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setQuery((prev) => prev ? `${prev} [brief: ${file.name}]` : `Match talent for brief: ${file.name}`);
-                    }
-                  }}
-                />
-              </label>
             </div>
             </div>
 

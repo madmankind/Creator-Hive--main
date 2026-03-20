@@ -85,6 +85,8 @@ export function ExecutionHubPanel({ cards, campaignName, campaignId }: Execution
     } : null,
   };
 
+  const totalDeliverables = cards.reduce((sum, c) => sum + (c.deliverables?.length ?? 0), 0);
+
   const PanelCard = ({
     title,
     icon,
@@ -244,6 +246,38 @@ export function ExecutionHubPanel({ cards, campaignName, campaignId }: Execution
 
       {/* Scrollable content area (flex: 1, scrolls internally) */}
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide" style={{ paddingRight: "2px" }}>
+        {/* Deliverables breakdown */}
+        {totalDeliverables > 0 && (
+          <div className="mb-4 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="px-3.5 py-2.5 border-b" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+              <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.35)" }}>
+                Deliverables — {totalDeliverables} total
+              </span>
+            </div>
+            <div className="px-3.5 py-2.5 space-y-2">
+              {cards.map((card) => (
+                <div key={card.id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-medium" style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)" }}>
+                      {(card.talentName ?? "C")[0]}
+                    </div>
+                    <span className="text-[11px] text-white/60">{card.talentName}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {card.deliverables.map((d) => (
+                      <span key={d.id} className="text-[10px] px-2 py-0.5 rounded-md" style={{
+                        background: d.status === "Approved" ? "rgba(16,185,129,0.12)" : d.status === "Pending" ? "rgba(255,255,255,0.05)" : "rgba(245,158,11,0.12)",
+                        color: d.status === "Approved" ? "#10B981" : d.status === "Pending" ? "rgba(255,255,255,0.4)" : "#F59E0B",
+                      }}>
+                        {d.type}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-4">
           <PanelCard title="Attention / Blockers" icon={<AlertCircle className="h-4 w-4" />} accent="#F59E0B">
             <div className="space-y-2 flex-1 min-h-0">

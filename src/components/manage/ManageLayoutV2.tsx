@@ -92,11 +92,12 @@ export function ManageLayoutV2({
     <div
       className="relative flex flex-col"
       style={{
-        height: "100dvh",
+        minHeight: "100dvh",
         width: "100vw",
         color: feyTokens.colors.text.primary,
         background: "#07070B",
         isolation: "isolate",
+        paddingBottom: "112px",
       }}
     >
       {/* Opaque Base Layer */}
@@ -278,7 +279,7 @@ export function ManageLayoutV2({
             className="flex-1 min-h-0 flex flex-col"
             style={{
               gap: `${VERTICAL_GAP}px`,
-              overflow: "hidden",
+              overflow: "auto",
               paddingTop: "28px",
             }}
           >

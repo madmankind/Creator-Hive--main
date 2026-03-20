@@ -177,6 +177,70 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
     fetchContracts();
   }, [currentCampaignId, fetchLedger, fetchContracts]);
 
+  // Build synthetic payment data from campaign context when API returns empty
+  useEffect(() => {
+    if (invoices.length > 0 || !activeCampaign) return;
+    const budget = activeCampaign.budget ?? 0;
+    if (budget <= 0) return;
+    const vat = Math.round(budget * 0.05);
+    const total = budget + vat;
+    const schedule = activeCampaign.paymentSchedule ?? "milestone_50_50";
+    const talents = activeCampaign.talentNames ?? [];
+    const talentCount = Math.max(talents.length, 1);
+    const perTalent = Math.round(budget / talentCount);
+    const now = new Date();
+
+    const syntheticInvoices: Invoice[] = [];
+
+    if (schedule === "upfront_100") {
+      syntheticInvoices.push({
+        id: "inv-syn-1",
+        campaignId: activeCampaign.id,
+        invoiceNumber: `INV-${activeCampaign.id?.slice(-4)?.toUpperCase() ?? "0001"}-001`,
+        campaign: activeCampaign.name ?? "Campaign",
+        amount: total,
+        status: "Sent",
+        dueDate: now,
+      });
+    } else if (schedule === "monthly") {
+      for (let i = 0; i < 3; i++) {
+        const due = new Date(now);
+        due.setMonth(due.getMonth() + i);
+        syntheticInvoices.push({
+          id: `inv-syn-${i + 1}`,
+          campaignId: activeCampaign.id,
+          invoiceNumber: `INV-${activeCampaign.id?.slice(-4)?.toUpperCase() ?? "0001"}-${String(i + 1).padStart(3, "0")}`,
+          campaign: activeCampaign.name ?? "Campaign",
+          amount: Math.round(total / 3),
+          status: i === 0 ? "Sent" : "Draft",
+          dueDate: due,
+        });
+      }
+    } else {
+      // milestone_50_50
+      const due2 = new Date(now);
+      due2.setMonth(due2.getMonth() + 1);
+      syntheticInvoices.push(
+        { id: "inv-syn-1", campaignId: activeCampaign.id, invoiceNumber: `INV-${activeCampaign.id?.slice(-4)?.toUpperCase() ?? "0001"}-001`, campaign: activeCampaign.name ?? "Campaign", amount: Math.round(total / 2), status: "Sent" as const, dueDate: now },
+        { id: "inv-syn-2", campaignId: activeCampaign.id, invoiceNumber: `INV-${activeCampaign.id?.slice(-4)?.toUpperCase() ?? "0001"}-002`, campaign: activeCampaign.name ?? "Campaign", amount: Math.round(total / 2), status: "Draft" as const, dueDate: due2 },
+      );
+    }
+
+    setInvoices(syntheticInvoices);
+
+    // Build synthetic payouts per talent
+    const syntheticPayouts: Payout[] = talents.map((name, i) => ({
+      id: `po-syn-${i + 1}`,
+      campaignId: activeCampaign.id,
+      creator: name,
+      amount: perTalent,
+      status: "Scheduled" as const,
+      scheduledDate: now,
+      method: "Bank Transfer",
+    }));
+    setPayouts(syntheticPayouts);
+  }, [invoices.length, activeCampaign]);
+
   const paid = invoices.filter((i) => i.status === "Paid").reduce((s, i) => s + i.amount, 0);
   const outstanding = invoices.filter((i) => i.status !== "Paid").reduce((s, i) => s + i.amount, 0);
   // Use contract total if available, else fall back to campaign budget

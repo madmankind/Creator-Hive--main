@@ -245,11 +245,13 @@ function HomePageContent() {
   };
 
   const selectedTalents = selectedPodIds
-    .map((id) => curatedLookup.get(id))
-    .filter(Boolean)
-    .map((t) => {
-      const talent = curatedLookup.get(t!.id)!;
-      return { id: t!.id, name: t!.displayName ?? getTalentDisplayName(t!.name) ?? t!.name, primaryRole: talent.primaryRole };
+    .map((id) => {
+      const t = curatedLookup.get(id);
+      if (t) {
+        return { id: t.id, name: t.displayName ?? getTalentDisplayName(t.name) ?? t.name, primaryRole: t.primaryRole };
+      }
+      // Fallback for talent IDs not in curatedTalent (e.g. from direct booking links)
+      return { id, name: id.replace("talent-", "").replace(/-/g, " "), primaryRole: "Creator" };
     });
 
   const addToPod = (talentId: string) =>
