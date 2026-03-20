@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Maximize2, Minimize2 } from "lucide-react";
 import { KPIPlanner, type KPIData } from "./KPIPlanner";
+import { WeeklyKPITracker } from "./WeeklyKPITracker";
 import { type CampaignObjective } from "@/lib/campaignObjectives";
 import { CAMPAIGN_OBJECTIVES } from "@/lib/campaignObjectives";
 import { feyTokens } from "@/lib/fey-design-tokens";
@@ -470,6 +471,12 @@ export function TrackInsightsPanel({
                     dense={objective === "traffic" || objective === "conversions"}
                   />
                 </div>
+                <div className="border-t border-white/[0.06] pt-4">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-3">
+                    Weekly Performance Input
+                  </h3>
+                  <WeeklyKPITracker campaignId={campaignId} />
+                </div>
               </div>
             )}
 
@@ -725,6 +732,12 @@ export function TrackInsightsPanel({
                 objective={objective}
                 dense={objective === "traffic" || objective === "conversions"}
               />
+            </div>
+            <div className="border-t border-white/[0.06] pt-4">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-3">
+                Weekly Performance Input
+              </h3>
+              <WeeklyKPITracker campaignId={campaignId} />
             </div>
           </div>
         )}

@@ -338,18 +338,17 @@ export function TalentCard({ card, isSelected, onClick, onFlip, avatarUrl, isHig
           className="absolute inset-0 flex flex-col cursor-pointer overflow-hidden"
           style={{
             backfaceVisibility: "hidden",
-            clipPath: cardClip,
-            borderRadius: "10px",
+            borderRadius: "16px",
             transform: "rotateY(0deg)",
-            padding: "18px",
-            background: `linear-gradient(160deg, ${roleTint.bg} 0%, rgba(0,0,0,0.55) 100%)`,
+            padding: "20px",
+            background: "rgba(255,255,255,0.05)",
             boxShadow: isHighlighted
-              ? "0 8px 24px rgba(0,0,0,0.45), 0 0 0 1px rgba(91,63,214,0.15), 0 0 12px rgba(91,63,214,0.12), inset 0 1px 0 rgba(255,255,255,0.03)"
+              ? "0 0 0 1px rgba(124,92,255,0.25), 0 8px 24px rgba(0,0,0,0.45), 0 0 12px rgba(124,92,255,0.12)"
               : isSelected
-                ? "0 6px 20px rgba(0,0,0,0.40), 0 0 0 1px rgba(91,63,214,0.12), 0 0 8px rgba(91,63,214,0.08), inset 0 1px 0 rgba(255,255,255,0.03)"
+                ? "0 0 0 1px rgba(124,92,255,0.18), 0 6px 20px rgba(0,0,0,0.40), 0 0 8px rgba(124,92,255,0.08)"
                 : isHovered
-                  ? "0 4px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)"
-                  : "0 3px 12px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.04)",
+                  ? "0 0 0 1px rgba(255,255,255,0.12), 0 4px 16px rgba(0,0,0,0.35)"
+                  : "0 0 0 1px rgba(255,255,255,0.09), 0 3px 12px rgba(0,0,0,0.30)",
           }}
           onClick={onClick}
           onMouseEnter={() => setIsHovered(true)}

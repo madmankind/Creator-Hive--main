@@ -559,7 +559,7 @@ export function CampaignSetupBoard({
                 onClick={() => {
                   if (session?.user) {
                     // Use Next.js router to preserve React state and zustand stores
-                    // Hard navigation (window.location.assign) loses in-memory state
+                    // Land on Manage — that's where the user needs to be after booking
                     router.push("/dashboard/campaigns?mode=manage");
                   } else {
                     sessionStorage.setItem("ch_post_auth_redirect", "/dashboard/campaigns?mode=manage");

@@ -7,7 +7,7 @@ import { DEFAULT_ROLES } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, Plus } from "lucide-react";
 
 interface HeroBarProps {
   mode: "client" | "talent";
@@ -310,6 +310,27 @@ export function HeroBar({
                 )}
                 {aiLoading ? "Searching…" : "Discover"}
               </button>
+              {/* Brief upload — accepts briefs, images, presentations */}
+              <label
+                className="flex items-center justify-center w-9 h-9 rounded-full transition-all cursor-pointer shrink-0"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.12)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)"; }}
+                title="Upload brief, image, or presentation"
+              >
+                <Plus className="w-4 h-4 text-white/50" />
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.pptx,.ppt,.docx,.doc,.xlsx,.csv,.png,.jpg,.jpeg,.webp"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setQuery((prev) => prev ? `${prev} [brief: ${file.name}]` : `Match talent for brief: ${file.name}`);
+                    }
+                  }}
+                />
+              </label>
             </div>
             </div>
 

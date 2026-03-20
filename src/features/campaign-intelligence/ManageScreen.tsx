@@ -74,6 +74,35 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
   const [cards, setCards] = useState<TalentCampaignCard[]>([]);
   const [cardsLoading, setCardsLoading] = useState(false);
 
+  // Build cards from activeCampaign's booked talent when API returns nothing
+  const buildCardsFromCampaign = useCallback((): TalentCampaignCard[] => {
+    if (!activeCampaign?.talentIds || !activeCampaign?.talentNames) return DEMO_CARDS;
+    const ids = activeCampaign.talentIds;
+    const names = activeCampaign.talentNames;
+    if (ids.length === 0) return DEMO_CARDS;
+    return ids.map((tid, i) => {
+      const t = curatedTalent.find(c => c.id === tid);
+      return {
+        id: `booked-${tid}`,
+        campaignId: activeCampaign.id,
+        talentId: tid,
+        talentName: names[i] ?? t?.name ?? "Creator",
+        talentRole: t?.primaryRole ?? "Creator",
+        deliverables: [
+          { id: `d-${tid}-1`, type: "Reel", files: [], status: "Pending", revisionCount: 0 },
+          { id: `d-${tid}-2`, type: "Story", files: [], status: "Pending", revisionCount: 0 },
+        ],
+        agreedRate: 5000,
+        currency: "AED",
+        engagementRate: t?.engagementRate ? parseFloat((t.engagementRate * 100).toFixed(1)) : 3.8,
+        status: "BOOKED" as TalentCampaignCard["status"],
+        paymentStatus: "UNFUNDED",
+        bookingState: "CONFIRMED" as TalentCampaignCard["bookingState"],
+        createdAt: new Date().toISOString(),
+      };
+    });
+  }, [activeCampaign]);
+
   const fetchCards = useCallback(async (campaignId: string) => {
     setCardsLoading(true);
     try {
@@ -81,15 +110,15 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
       if (!res.ok) throw new Error(`Failed to load talent (${res.status})`);
       const data = await res.json();
       const realCards: TalentCampaignCard[] = data.cards ?? [];
-      // Fall back to demo cards when campaign has no assigned talent yet
-      setCards(realCards.length > 0 ? realCards : DEMO_CARDS.map(c => ({ ...c, campaignId })));
+      // Fall back to campaign-context talent, then demo cards
+      setCards(realCards.length > 0 ? realCards : buildCardsFromCampaign());
     } catch {
-      // Show demo cards if API is unavailable
-      setCards(DEMO_CARDS.map(c => ({ ...c, campaignId })));
+      // Use campaign-context talent if API is unavailable
+      setCards(buildCardsFromCampaign());
     } finally {
       setCardsLoading(false);
     }
-  }, []);
+  }, [buildCardsFromCampaign]);
 
   useEffect(() => {
     if (!currentCampaignId) {

@@ -12,8 +12,8 @@ import { EventTimeline } from "@/components/campaigns/EventTimeline";
 import { useCampaign } from "@/contexts/CampaignContext";
 import { CAMPAIGN_OBJECTIVES, type CampaignObjective } from "@/lib/campaignObjectives";
 import { type KPIData } from "@/components/campaigns/KPIPlanner";
-import { SlidersHorizontal, BarChart3 } from "lucide-react";
-import { WeeklyKPITracker } from "@/components/campaigns/WeeklyKPITracker";
+import { SlidersHorizontal, Sparkles, Paperclip, Send, Loader2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
 export type TimeRange = "1D" | "7D" | "30D" | "90D" | "YTD" | "custom";
 
@@ -32,9 +32,14 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
     activeCampaign?.objective ?? "awareness"
   );
   const [showInsights, setShowInsights] = useState(false);
-  const [showWeeklyTracker, setShowWeeklyTracker] = useState(false);
   const [plannedData, setPlannedData] = useState<KPIData | null>(null);
   const [actualData, setActualData] = useState<KPIData | null>(null);
+
+  // AI analysis chat state
+  const [aiChatOpen, setAiChatOpen] = useState(false);
+  const [aiQuery, setAiQuery] = useState("");
+  const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   // Sync objective when activeCampaign changes
   useEffect(() => {
@@ -108,6 +113,34 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
     if (activeCampaign?.id) fetchKpis(activeCampaign.id);
   }, [activeCampaign?.id, fetchKpis]);
 
+  const handleAiAnalyze = useCallback(async () => {
+    const q = aiQuery.trim();
+    if (!q || aiLoading) return;
+    setAiLoading(true);
+    setAiResponse(null);
+    try {
+      const context = activeCampaign ? JSON.stringify({
+        name: activeCampaign.name,
+        objective: activeCampaign.objective,
+        budget: activeCampaign.budget,
+        spend: activeCampaign.spend,
+        talentNames: activeCampaign.talentNames,
+        kpis,
+      }) : "";
+      const res = await fetch("/api/ai-search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: `Campaign analysis: ${q}\n\nCampaign data: ${context}` }),
+      });
+      const data = await res.json();
+      setAiResponse(data.teamSummary ?? data.detail ?? "Analysis complete. Try a more specific question.");
+    } catch {
+      setAiResponse("AI analysis unavailable. Try again later.");
+    } finally {
+      setAiLoading(false);
+    }
+  }, [aiQuery, aiLoading, activeCampaign, kpis]);
+
   // Header slots
   const headerLeft = (
     <>
@@ -132,32 +165,18 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
   );
 
   const headerRight = (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={() => setShowWeeklyTracker((v) => !v)}
-        className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] transition-colors"
-        style={{
-          background: showWeeklyTracker ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
-          border: `1px solid ${showWeeklyTracker ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.07)"}`,
-          color: showWeeklyTracker ? "rgba(16,185,129,0.9)" : feyTokens.colors.text.muted,
-        }}
-      >
-        <BarChart3 size={13} />
-        <span>Weekly KPIs</span>
-      </button>
-      <button
-        onClick={() => setShowInsights((v) => !v)}
-        className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] transition-colors"
-        style={{
-          background: showInsights ? "rgba(124,92,255,0.15)" : "rgba(255,255,255,0.04)",
-          border: `1px solid ${showInsights ? "rgba(124,92,255,0.4)" : "rgba(255,255,255,0.07)"}`,
-          color: showInsights ? "rgba(124,92,255,0.9)" : feyTokens.colors.text.muted,
-        }}
-      >
-        <SlidersHorizontal size={13} />
-        <span>Forecast</span>
-      </button>
-    </div>
+    <button
+      onClick={() => setShowInsights((v) => !v)}
+      className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] transition-colors"
+      style={{
+        background: showInsights ? "rgba(124,92,255,0.15)" : "rgba(255,255,255,0.04)",
+        border: `1px solid ${showInsights ? "rgba(124,92,255,0.4)" : "rgba(255,255,255,0.07)"}`,
+        color: showInsights ? "rgba(124,92,255,0.9)" : feyTokens.colors.text.muted,
+      }}
+    >
+      <SlidersHorizontal size={13} />
+      <span>Filter</span>
+    </button>
   );
 
   return (
@@ -207,6 +226,51 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
             </div>
           )}
 
+          {/* AI Campaign Analysis Chat */}
+          <div className="rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="flex items-center gap-2 px-4 py-2.5">
+              <Sparkles className="w-3.5 h-3.5 text-purple-400/60 shrink-0" />
+              <input
+                value={aiQuery}
+                onChange={(e) => setAiQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAiAnalyze(); }}
+                placeholder="Ask AI to analyze campaign performance..."
+                className="flex-1 bg-transparent outline-none text-[12px] text-white/80 placeholder:text-white/25"
+              />
+              <label className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-white/25 hover:text-white/50 hover:bg-white/[0.05] transition cursor-pointer">
+                <Paperclip className="w-3.5 h-3.5" />
+                <input type="file" className="hidden" accept="image/*,.pdf,.pptx,.xlsx,.csv" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) setAiQuery((prev) => prev ? `${prev} [attached: ${file.name}]` : `Analyze this file: ${file.name}`);
+                }} />
+              </label>
+              <button
+                onClick={handleAiAnalyze}
+                disabled={aiLoading || !aiQuery.trim()}
+                className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition"
+                style={{ background: aiQuery.trim() ? "rgba(124,92,255,0.25)" : "transparent", color: aiQuery.trim() ? "rgba(124,92,255,0.9)" : "rgba(255,255,255,0.20)" }}
+              >
+                {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+            <AnimatePresence>
+              {aiResponse && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="border-t border-white/[0.05] px-4 py-3"
+                >
+                  <div className="flex items-start gap-2">
+                    <Sparkles className="w-3 h-3 text-purple-400/60 shrink-0 mt-0.5" />
+                    <p className="text-[12px] text-white/60 leading-relaxed">{aiResponse}</p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           {/* Chart */}
           <TrackChart
             timeRange={timeRange}
@@ -228,29 +292,6 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
             <MetricTile label="Spend" value={kpis.spend} />
             <MetricTile label="Eng. Rate" value={kpis.er} />
           </div>
-
-          {/* Weekly KPI data entry — 4-week carousel */}
-          {showWeeklyTracker && (
-            <div
-              className="rounded-2xl px-5 py-4"
-              style={{
-                background: "rgba(255,255,255,0.02)",
-                border: "1px solid rgba(255,255,255,0.06)",
-              }}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <p className="text-[10px] font-medium uppercase tracking-[0.10em] text-white/30">
-                    Monthly Performance Tracker
-                  </p>
-                  <p className="text-[11px] text-white/20 mt-0.5">
-                    Enter weekly KPIs to track 4-week performance trends
-                  </p>
-                </div>
-              </div>
-              <WeeklyKPITracker campaignId={activeCampaign?.id} />
-            </div>
-          )}
 
           {/* Creator breakdown + timeline */}
           <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 280px" }}>

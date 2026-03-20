@@ -2,7 +2,6 @@
 
 import { ReactNode, Suspense } from "react";
 import { BottomDock } from "@/components/nav/BottomDock";
-import { DesktopSidebar } from "@/components/nav/DesktopSidebar";
 
 function DashboardLayoutInner({ children }: { children: ReactNode }) {
   return (
@@ -10,18 +9,12 @@ function DashboardLayoutInner({ children }: { children: ReactNode }) {
       className="min-h-screen w-screen"
       style={{ background: "#07070B", color: "rgba(255,255,255,0.88)" }}
     >
-      {/* Desktop sidebar — hidden below lg, shows at lg+ */}
-      <DesktopSidebar />
-
-      {/* Main content — offset left by sidebar width on desktop */}
-      <main
-        className="lg:pl-[72px]"
-        style={{ minHeight: "100vh" }}
-      >
+      {/* Main content — full width, bottom dock navigation only */}
+      <main style={{ minHeight: "100vh" }}>
         {children}
       </main>
 
-      {/* Mobile bottom dock — hidden at lg+ via CSS inside BottomDock */}
+      {/* Bottom dock — always visible on all screen sizes */}
       <BottomDock />
     </div>
   );
