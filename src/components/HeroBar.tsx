@@ -86,41 +86,56 @@ export function HeroBar({
     }
   };
 
-  const handleAISearch = useCallback(async () => {
+  const handleDiscover = useCallback(async () => {
     const q = query.trim();
-    if (!q) return;
-    setAiLoading(true);
-    setAiError(null);
-    setAiSummary(null);
-    // Open the gallery first so results appear immediately
+    const hasRoles = selected.length > 0;
+
+    // Always open the gallery — roles and/or text will filter
     onDiscover?.();
-    try {
-      const res = await fetch("/api/ai-search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        // Fall back to fuzzy search — pass query to carousel
-        setAiError(data?.detail ?? "AI search unavailable — showing keyword results");
+
+    // If there's text, run AI search for smart matching
+    if (q) {
+      setAiLoading(true);
+      setAiError(null);
+      setAiSummary(null);
+      try {
+        const res = await fetch("/api/ai-search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: q }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setAiError(data?.detail ?? "AI search unavailable — showing keyword results");
+          onQueryChange?.(q);
+          setAiActive(false);
+        } else {
+          setAiSummary(data.teamSummary ?? null);
+          setAiActive(true);
+          onAIResults?.(data.talentIds ?? [], data.teamSummary ?? "");
+          // Pass query so carousel text filter still applies as secondary
+          onQueryChange?.(hasRoles ? q : "");
+        }
+      } catch {
+        setAiError("AI search unavailable — showing keyword results");
         onQueryChange?.(q);
         setAiActive(false);
-      } else {
-        setAiSummary(data.teamSummary ?? null);
-        setAiActive(true);
-        onAIResults?.(data.talentIds ?? [], data.teamSummary ?? "");
-        // Also pass query so carousel text filter still applies as secondary
-        onQueryChange?.("");
+      } finally {
+        setAiLoading(false);
       }
-    } catch {
-      setAiError("AI search unavailable — showing keyword results");
-      onQueryChange?.(q);
-      setAiActive(false);
-    } finally {
-      setAiLoading(false);
+      return;
     }
-  }, [query, onDiscover, onQueryChange, onAIResults]);
+
+    // No text — just roles selected: open gallery with role filtering (no AI)
+    if (hasRoles) {
+      onRolesChange?.(selected);
+      onQueryChange?.("");
+      return;
+    }
+
+    // Nothing selected — just open the full gallery
+    onQueryChange?.("");
+  }, [query, selected, onDiscover, onQueryChange, onAIResults, onRolesChange]);
 
   const handleClearAI = useCallback(() => {
     setAiActive(false);
@@ -177,12 +192,12 @@ export function HeroBar({
                   value={query}
                   onChange={(e) => {
                     setQuery(e.target.value);
-                    // Only propagate to fuzzy filter when AI is not active
-                    if (!aiActive) onQueryChange?.(e.target.value);
+                    // Always propagate text to fuzzy filter — AI results layer on top
+                    onQueryChange?.(e.target.value);
                   }}
                   onFocus={() => setOpen(true)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") handleAISearch();
+                    if (e.key === "Enter") handleDiscover();
                   }}
                   placeholder="Describe your campaign — AI will build your team"
                   className="w-full bg-transparent outline-none text-slate-200 placeholder:text-slate-400/40 text-[15px] leading-8"
@@ -279,7 +294,7 @@ export function HeroBar({
               ) : null}
               <button
                 type="button"
-                onClick={handleAISearch}
+                onClick={handleDiscover}
                 disabled={aiLoading}
                 className={cn(
                   "flex items-center gap-1.5 rounded-full px-5 py-2 text-xs font-semibold transition",

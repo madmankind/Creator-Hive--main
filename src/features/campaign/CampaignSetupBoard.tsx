@@ -558,8 +558,9 @@ export function CampaignSetupBoard({
                 type="button"
                 onClick={() => {
                   if (session?.user) {
-                    // Use hard navigation to ensure cookies are sent with request
-                    window.location.assign("/dashboard/campaigns?mode=manage");
+                    // Use Next.js router to preserve React state and zustand stores
+                    // Hard navigation (window.location.assign) loses in-memory state
+                    router.push("/dashboard/campaigns?mode=manage");
                   } else {
                     sessionStorage.setItem("ch_post_auth_redirect", "/dashboard/campaigns?mode=manage");
                     onRequestAuth?.();

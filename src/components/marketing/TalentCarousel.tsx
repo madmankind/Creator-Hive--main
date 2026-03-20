@@ -430,13 +430,11 @@ export function TalentCarousel({
                 const isAdded = selectedPodIds.includes(item.id)
                 const pkgMatch = selectedPackage?.roles.includes(item.primaryRole as TalentCategoryTag)
                 const isAiMatch = aiHighlightIds.length > 0 && aiHighlightIds.includes(item.id)
-                const isDimmed = aiHighlightIds.length > 0 && !isAiMatch
 
                 return (
                   <div key={item.id}
                     className={cn('flex-shrink-0 snap-start py-2 relative transition-opacity duration-300',
-                      isGroupStart && 'before:content-[\'\'] before:absolute before:left-[-12px] before:top-[15%] before:bottom-[15%] before:w-px before:bg-white/[0.06] before:pointer-events-none',
-                      isDimmed && 'opacity-30'
+                      isGroupStart && 'before:content-[\'\'] before:absolute before:left-[-12px] before:top-[15%] before:bottom-[15%] before:w-px before:bg-white/[0.06] before:pointer-events-none'
                     )}>
                     {isAiMatch && (
                       <div className="absolute -top-1 left-0 right-0 flex justify-center z-10 pointer-events-none">

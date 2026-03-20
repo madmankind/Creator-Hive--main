@@ -66,8 +66,10 @@ function mapApiCampaign(c: {
 }
 
 export function CampaignProvider({ children }: { children: ReactNode }) {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(null);
+  // Immediately hydrate from local store so booking-flow campaigns are available on first render
+  const localCampaignsInit = useLocalCampaignStore((state) => state.campaigns);
+  const [campaigns, setCampaigns] = useState<Campaign[]>(localCampaignsInit);
+  const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(localCampaignsInit[0] ?? null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

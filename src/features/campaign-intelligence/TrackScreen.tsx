@@ -12,7 +12,8 @@ import { EventTimeline } from "@/components/campaigns/EventTimeline";
 import { useCampaign } from "@/contexts/CampaignContext";
 import { CAMPAIGN_OBJECTIVES, type CampaignObjective } from "@/lib/campaignObjectives";
 import { type KPIData } from "@/components/campaigns/KPIPlanner";
-import { SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal, BarChart3 } from "lucide-react";
+import { WeeklyKPITracker } from "@/components/campaigns/WeeklyKPITracker";
 
 export type TimeRange = "1D" | "7D" | "30D" | "90D" | "YTD" | "custom";
 
@@ -31,6 +32,7 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
     activeCampaign?.objective ?? "awareness"
   );
   const [showInsights, setShowInsights] = useState(false);
+  const [showWeeklyTracker, setShowWeeklyTracker] = useState(false);
   const [plannedData, setPlannedData] = useState<KPIData | null>(null);
   const [actualData, setActualData] = useState<KPIData | null>(null);
 
@@ -130,18 +132,32 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
   );
 
   const headerRight = (
-    <button
-      onClick={() => setShowInsights((v) => !v)}
-      className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] transition-colors"
-      style={{
-        background: showInsights ? "rgba(124,92,255,0.15)" : "rgba(255,255,255,0.04)",
-        border: `1px solid ${showInsights ? "rgba(124,92,255,0.4)" : "rgba(255,255,255,0.07)"}`,
-        color: showInsights ? "rgba(124,92,255,0.9)" : feyTokens.colors.text.muted,
-      }}
-    >
-      <SlidersHorizontal size={13} />
-      <span>Forecast</span>
-    </button>
+    <div className="flex items-center gap-2">
+      <button
+        onClick={() => setShowWeeklyTracker((v) => !v)}
+        className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] transition-colors"
+        style={{
+          background: showWeeklyTracker ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
+          border: `1px solid ${showWeeklyTracker ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.07)"}`,
+          color: showWeeklyTracker ? "rgba(16,185,129,0.9)" : feyTokens.colors.text.muted,
+        }}
+      >
+        <BarChart3 size={13} />
+        <span>Weekly KPIs</span>
+      </button>
+      <button
+        onClick={() => setShowInsights((v) => !v)}
+        className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] transition-colors"
+        style={{
+          background: showInsights ? "rgba(124,92,255,0.15)" : "rgba(255,255,255,0.04)",
+          border: `1px solid ${showInsights ? "rgba(124,92,255,0.4)" : "rgba(255,255,255,0.07)"}`,
+          color: showInsights ? "rgba(124,92,255,0.9)" : feyTokens.colors.text.muted,
+        }}
+      >
+        <SlidersHorizontal size={13} />
+        <span>Forecast</span>
+      </button>
+    </div>
   );
 
   return (
@@ -212,6 +228,29 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
             <MetricTile label="Spend" value={kpis.spend} />
             <MetricTile label="Eng. Rate" value={kpis.er} />
           </div>
+
+          {/* Weekly KPI data entry — 4-week carousel */}
+          {showWeeklyTracker && (
+            <div
+              className="rounded-2xl px-5 py-4"
+              style={{
+                background: "rgba(255,255,255,0.02)",
+                border: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-[10px] font-medium uppercase tracking-[0.10em] text-white/30">
+                    Monthly Performance Tracker
+                  </p>
+                  <p className="text-[11px] text-white/20 mt-0.5">
+                    Enter weekly KPIs to track 4-week performance trends
+                  </p>
+                </div>
+              </div>
+              <WeeklyKPITracker campaignId={activeCampaign?.id} />
+            </div>
+          )}
 
           {/* Creator breakdown + timeline */}
           <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 280px" }}>
