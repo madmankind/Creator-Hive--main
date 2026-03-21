@@ -3,7 +3,20 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CampaignCommandCenter } from "@/features/campaign-intelligence/CampaignCommandCenter";
-import { CampaignProvider } from "@/contexts/CampaignContext";
+import { CampaignProvider, useCampaign } from "@/contexts/CampaignContext";
+
+// Sync URL campaignId with the CampaignProvider's activeCampaign
+function CampaignUrlSync({ campaignId }: { campaignId: string | null }) {
+  const { campaigns, setActiveCampaign, activeCampaign } = useCampaign();
+  useEffect(() => {
+    if (!campaignId) return;
+    // Only switch if the requested campaign is different from the active one
+    if (activeCampaign?.id === campaignId) return;
+    const found = campaigns.find((c) => c.id === campaignId);
+    if (found) setActiveCampaign(found);
+  }, [campaignId, campaigns, activeCampaign?.id, setActiveCampaign]);
+  return null;
+}
 
 function CampaignsContent() {
   const router = useRouter();
@@ -41,6 +54,7 @@ function CampaignsContent() {
   // No side navigation - the bottom dock is the ONLY page switcher
   return (
     <CampaignProvider>
+      <CampaignUrlSync campaignId={searchParams.get("campaignId")} />
       <CampaignCommandCenter
         initialMode={mode}
         selectedCampaignIds={selectedCampaignIds}

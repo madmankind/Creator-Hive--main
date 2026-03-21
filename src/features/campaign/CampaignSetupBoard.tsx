@@ -559,8 +559,10 @@ export function CampaignSetupBoard({
                 onClick={() => {
                   if (session?.user) {
                     // Use Next.js router to preserve React state and zustand stores
-                    // Land on Manage — that's where the user needs to be after booking
-                    router.push("/dashboard/campaigns?mode=manage");
+                    // Land on Manage — pass the new campaign ID so dashboard selects it
+                    const latestCampaign = useLocalCampaignStore.getState().campaigns;
+                    const latestId = latestCampaign[latestCampaign.length - 1]?.id;
+                    router.push(`/dashboard/campaigns?mode=manage${latestId ? `&campaignId=${latestId}` : ""}`);
                   } else {
                     sessionStorage.setItem("ch_post_auth_redirect", "/dashboard/campaigns?mode=manage");
                     onRequestAuth?.();

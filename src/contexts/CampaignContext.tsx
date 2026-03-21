@@ -69,7 +69,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
   // Immediately hydrate from local store so booking-flow campaigns are available on first render
   const localCampaignsInit = useLocalCampaignStore((state) => state.campaigns);
   const [campaigns, setCampaigns] = useState<Campaign[]>(localCampaignsInit);
-  const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(localCampaignsInit[0] ?? null);
+  const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(localCampaignsInit[localCampaignsInit.length - 1] ?? null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -94,9 +94,9 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       setActiveCampaign((prev) => {
         if (prev) {
           const still = merged.find((c) => c.id === prev.id);
-          return still ?? merged[0] ?? null;
+          return still ?? merged[merged.length - 1] ?? null;
         }
-        return merged[0] ?? null;
+        return merged[merged.length - 1] ?? null;
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -104,7 +104,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       const local = useLocalCampaignStore.getState().campaigns;
       if (local.length > 0) {
         setCampaigns(local);
-        setActiveCampaign((prev) => prev ?? local[0] ?? null);
+        setActiveCampaign((prev) => prev ?? local[local.length - 1] ?? null);
       }
     } finally {
       setLoading(false);
@@ -127,7 +127,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     });
     setActiveCampaign((prev) => {
       if (prev) return prev;
-      return localCampaigns[0] ?? null;
+      return localCampaigns[localCampaigns.length - 1] ?? null;
     });
   }, [localCampaigns]);
 
