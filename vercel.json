@@ -2,5 +2,11 @@
   "buildCommand": "prisma generate && next build",
   "installCommand": "pnpm install",
   "framework": "nextjs",
-  "outputDirectory": ".next"
+  "outputDirectory": ".next",
+  "crons": [
+    {
+      "path": "/api/editorial/ingest",
+      "schedule": "0 */4 * * *"
+    }
+  ]
 }

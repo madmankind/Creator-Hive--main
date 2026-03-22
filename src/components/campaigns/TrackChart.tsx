@@ -39,7 +39,8 @@ const ACCENT_RED = "#F63148";
 
 // Build demo assets — uses real talent names from campaign context when available
 function buildDemoAssets(talentNames?: string[]): Asset[] {
-  const names = talentNames && talentNames.length > 0 ? talentNames : ["Dan", "Camila"];
+  // Prefer real campaign talent names; single neutral row when none yet (no fake roster)
+  const names = talentNames && talentNames.length > 0 ? talentNames : ["Your campaign"];
   const platforms: Array<Asset["platform"]> = ["IG", "TikTok", "YouTube", "IG"];
   return names.slice(0, 3).map((name, i): Asset => ({
     id: `asset-${i + 1}`,

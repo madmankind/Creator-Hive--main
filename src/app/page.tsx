@@ -11,7 +11,8 @@ import { CampaignSetupBoard } from "@/features/campaign/CampaignSetupBoard";
 import { PackageSelector } from "@/features/campaign/PackageSelector";
 import { curatedTalent, getTalentDisplayName } from "@/lib/curatedTalent";
 import { PACKAGES, type PackageConfig } from "@/lib/packages";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
+import { HomeProfileMenu } from "@/components/nav/HomeProfileMenu";
 import { useSearchParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Sparkles } from "lucide-react";
@@ -130,6 +131,7 @@ function HomePageContent() {
   const [heroAuthPhone, setHeroAuthPhone] = useState("");
   const [heroAuthOtpVia, setHeroAuthOtpVia] = useState<"email" | "whatsapp">("email");
   const [heroAuthGoogleLoading, setHeroAuthGoogleLoading] = useState(false);
+  const [heroOtpVerifying, setHeroOtpVerifying] = useState(false);
   const [talentModalOpen, setTalentModalOpen] = useState<"auth" | "phone" | "talent-type" | null>(null);
 
   const packageRef = useRef<HTMLElement>(null);
@@ -141,6 +143,18 @@ function HomePageContent() {
   const router = useRouter();
   const role = (session?.user as { role?: string | null } | undefined)?.role ?? null;
   const isClient = role === "AGENCY";
+
+  // Talent: marketing "/" is the client welcome — send signed-in creators to their dashboard home
+  useEffect(() => {
+    if (role !== "CREATOR" || !session?.user) return;
+    const auth = searchParams.get("auth");
+    const bookId = searchParams.get("book");
+    const pkgId = searchParams.get("package");
+    const skip = searchParams.get("skip");
+    if (auth || bookId || pkgId || skip === "gallery") return;
+    router.replace("/dashboard/creator");
+  }, [role, session?.user, router, searchParams]);
+
 
   useEffect(() => {
     const pkgId  = searchParams.get("package");
@@ -198,29 +212,66 @@ function HomePageContent() {
     if (!heroAuthEmail.trim()) return;
     setHeroAuthError("");
     setHeroAuthSubmitting(true);
+    // Do NOT call signIn here: credentials authorize() creates a session immediately, which
+    // hides the hero auth UI (`!session?.user`) and skips OTP + talent onboarding.
     try {
-      const result = await signIn("credentials", {
-        redirect: false,
-        email: heroAuthEmail.trim(),
-        userType: mode,
-        displayName: heroAuthEmail.split("@")[0],
-      });
-      if (result?.ok || !result?.error || result.error.toLowerCase().includes("configuration")) {
-        localStorage.setItem(`ch_${mode}_email`, heroAuthEmail.trim().toLowerCase());
-      } else {
-        setHeroAuthError("Couldn't send link. Please try again.");
-        setHeroAuthSubmitting(false);
-        return;
-      }
-    } catch {
       localStorage.setItem(`ch_${mode}_email`, heroAuthEmail.trim().toLowerCase());
+    } catch {
+      /* ignore */
     }
     setHeroAuthSubmitting(false);
     setHeroAuthOtpVia("email");
     setHeroAuthStep("otp");
   };
 
-  const handleHeroOTPVerify = () => {
+  const handleHeroOTPVerify = async () => {
+    if (heroOtpVerifying) return;
+    setHeroOtpVerifying(true);
+    setHeroAuthError("");
+
+    const email =
+      heroAuthEmail.trim() ||
+      (heroAuthPhone ? `${heroAuthPhone.replace(/\D/g, "")}@creatorhive.phone` : "");
+    if (!email) {
+      setHeroAuthError("Missing email or phone.");
+      setHeroOtpVerifying(false);
+      return;
+    }
+
+    const displayName = heroAuthEmail.trim()
+      ? heroAuthEmail.split("@")[0]
+      : heroAuthPhone.replace(/\D/g, "") || "Creator";
+
+    try {
+      const result = await signIn("credentials", {
+        redirect: false,
+        email,
+        userType: mode,
+        displayName,
+      });
+      const okish =
+        result?.ok ||
+        !result?.error ||
+        (typeof result?.error === "string" && result.error.toLowerCase().includes("configuration"));
+      if (!okish) {
+        setHeroAuthError("Couldn't verify. Please try again.");
+        setHeroOtpVerifying(false);
+        return;
+      }
+      try {
+        localStorage.setItem(`ch_${mode}_email`, email.toLowerCase());
+      } catch {
+        /* ignore */
+      }
+    } catch {
+      try {
+        localStorage.setItem(`ch_${mode}_email`, email.toLowerCase());
+      } catch {
+        /* ignore */
+      }
+    }
+
+    setHeroOtpVerifying(false);
     if (mode === "client" || heroAuthAuthMode === "login") {
       setHeroAuthStep("loading");
     } else {
@@ -353,7 +404,7 @@ function HomePageContent() {
               <p className="text-[14px] text-white/38 font-light max-w-[420px] mx-auto leading-relaxed min-h-[46px]">
                 {mode === "client"
                   ? "Book Top 1% talent seamlessly"
-                  : "Showcase your work to top brands across the Gulf."}
+                  : "Showcase your work to brands globally"}
               </p>
             </motion.div>
           </AnimatePresence>
@@ -454,28 +505,40 @@ function HomePageContent() {
                         }
                       </p>
                       <div className="flex items-center gap-3">
-                        <div className="rounded-full bg-[#0D0D14] ring-1 ring-white/10 p-2 pl-6 pr-6 flex items-center justify-center w-[220px] sm:w-64 min-h-[52px]">
+                        <div className={cn(
+                          "rounded-full bg-[#0D0D14] ring-1 ring-white/10 p-2 pl-6 pr-6 flex items-center justify-center w-[220px] sm:w-64 min-h-[52px]",
+                          heroOtpVerifying && "opacity-50 pointer-events-none"
+                        )}>
                           <input
                             type="text"
                             inputMode="numeric"
                             maxLength={6}
                             autoFocus
+                            disabled={heroOtpVerifying}
                             placeholder="000 000"
                             className="w-full bg-transparent outline-none text-[22px] text-center text-slate-200 placeholder:text-slate-400/25 tracking-[0.4em] leading-8"
                             onChange={e => {
+                              if (heroOtpVerifying) return;
                               const v = e.target.value.replace(/\D/g, "").slice(0, 6);
-                              if (v.length === 6) handleHeroOTPVerify();
+                              if (v.length === 6) void handleHeroOTPVerify();
                             }}
                           />
                         </div>
                         <button
                           type="button"
                           onClick={() => setHeroAuthStep(heroAuthOtpVia === "whatsapp" ? "phone" : "email")}
-                          className="text-[12px] text-white/30 hover:text-white/55 transition px-3 py-2"
+                          disabled={heroOtpVerifying}
+                          className="text-[12px] text-white/30 hover:text-white/55 transition px-3 py-2 disabled:opacity-40"
                         >
                           ← Back
                         </button>
                       </div>
+                      {heroAuthError && (
+                        <p className="text-[12px] text-center text-red-400/80">{heroAuthError}</p>
+                      )}
+                      {heroOtpVerifying && (
+                        <p className="text-[12px] text-center text-white/35">Verifying…</p>
+                      )}
                     </div>
                   )}
                   {heroAuthStep === "loading" && (
@@ -800,32 +863,9 @@ function HomePageContent() {
         onSuccess={() => {}}
       />
 
-      {/* Bottom dock — always visible; sign-out only shown when logged in */}
+      {/* Bottom dock — always visible; account menu on marketing home when logged in */}
       <BottomDock />
-      {session?.user && (
-        <>
-          <button
-            type="button"
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="fixed top-5 right-5 z-50 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] transition-all duration-150"
-            style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.09)",
-              color: "rgba(255,255,255,0.35)",
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)";
-              (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.65)";
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
-              (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.35)";
-            }}
-          >
-            Log out
-          </button>
-        </>
-      )}
+      {session?.user ? <HomeProfileMenu /> : null}
     </main>
   );
 }

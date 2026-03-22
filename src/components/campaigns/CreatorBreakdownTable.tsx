@@ -118,15 +118,8 @@ export function CreatorBreakdownTable({ campaignIds }: CreatorBreakdownTableProp
         }
       }
 
-      // Final fallback: real Creator Hive roster (only shown when no real campaign)
-      const mockData: CreatorData[] = [
-        { id: "talent-dan",      name: "Dan",      role: "Content Creator",  deliverables: "2 Reels, 1 Story",  reach: 580000, impressions: 1400000, er: 2.9, spend: 8500,  status: "On Track" },
-        { id: "talent-nadine",   name: "Nadine",   role: "Content Creator",  deliverables: "2 Reels, 2 Stories",reach: 220000, impressions: 640000,  er: 4.8, spend: 5500,  status: "On Track" },
-        { id: "talent-amro",     name: "Amro",     role: "Videographer",     deliverables: "1 Hero Film",       reach: 960000, impressions: 2200000, er: 3.2, spend: 14000, status: "On Track" },
-        { id: "talent-altamash", name: "Altamash", role: "Photographer",     deliverables: "8 Stills, 1 Reel",  reach: 230000, impressions: 580000,  er: 3.5, spend: 6000,  status: "Needs Review" },
-        { id: "talent-cheb",     name: "Cheb",     role: "Art Director",     deliverables: "Campaign Direction", reach: 0,     impressions: 0,       er: 0,   spend: 9500,  status: "On Track" },
-      ];
-      applyData(mockData);
+      // No fake roster: show empty until API / localStorage has data
+      applyData([]);
     });
   }, [campaignIds]);
 
@@ -305,6 +298,13 @@ export function CreatorBreakdownTable({ campaignIds }: CreatorBreakdownTableProp
             </tr>
           </thead>
           <tbody>
+            {displayCreators.length === 0 && (
+              <tr>
+                <td colSpan={8} className="px-5 py-10 text-center text-[12px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+                  No creator rows yet. Data loads from your campaign when you are assigned (creator) or when your agency books talent (client).
+                </td>
+              </tr>
+            )}
             {displayCreators.map((creator, index) => (
               <motion.tr
                 key={creator.id}

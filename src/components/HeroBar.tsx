@@ -166,7 +166,7 @@ export function HeroBar({
             <div className="flex flex-1 items-center gap-3">
             <div className="relative flex-1">
               <div
-                className="rounded-full bg-[#0D0D14] ring-1 ring-white/10 hover:ring-white/15 transition p-2 pl-5 pr-14"
+                className="rounded-full bg-[#0D0D14] ring-1 ring-white/10 hover:ring-white/15 transition p-2 pl-5 pr-3"
               >
                 {selected.length > 0 && (
                   <div className="mb-1 -mt-1 flex flex-wrap gap-1">
@@ -188,12 +188,11 @@ export function HeroBar({
                     ))}
                   </div>
                 )}
-                <div className="flex items-center gap-2">
+                <div className="relative flex items-center min-h-[36px] pr-10">
                   <input
                     value={query}
                     onChange={(e) => {
                       setQuery(e.target.value);
-                      // Always propagate text to fuzzy filter — AI results layer on top
                       onQueryChange?.(e.target.value);
                     }}
                     onFocus={() => setOpen(true)}
@@ -201,11 +200,10 @@ export function HeroBar({
                       if (e.key === "Enter") handleDiscover();
                     }}
                     placeholder="Describe your campaign — AI will build your team"
-                    className="flex-1 bg-transparent outline-none text-slate-200 placeholder:text-slate-400/40 text-[15px] leading-8"
+                    className="w-full min-w-0 bg-transparent outline-none text-slate-200 placeholder:text-slate-400/40 text-[15px] leading-8 pr-1"
                   />
-                  {/* (+) Upload — inside bar like LLM chat interfaces */}
                   <label
-                    className="flex items-center justify-center w-7 h-7 rounded-full transition-all cursor-pointer shrink-0"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full transition-all cursor-pointer shrink-0"
                     style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.15)"; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; }}

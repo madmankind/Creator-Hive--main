@@ -7,6 +7,7 @@ import { WeeklyKPITracker } from "./WeeklyKPITracker";
 import { type CampaignObjective } from "@/lib/campaignObjectives";
 import { CAMPAIGN_OBJECTIVES } from "@/lib/campaignObjectives";
 import { feyTokens } from "@/lib/fey-design-tokens";
+import { trackPulseNewsItems } from "@/lib/hive/pulseSignals";
 
 const STORAGE_KEY = "ch.trackInsightsPanel.pos";
 
@@ -38,24 +39,8 @@ interface TrackInsightsPanelProps {
 
 type TabType = "news" | "kpis" | "summary";
 
-const MOCK_NEWS = [
-  {
-    headline: "TikTok: new attribution window options rolling out for Ads Manager",
-    timestamp: "2 min ago",
-  },
-  {
-    headline: "Meta Reels: average watch time now weighted more heavily than likes",
-    timestamp: "8 min ago",
-  },
-  {
-    headline: "Snap: CPMs trending up in GCC post-holiday; plan reach buffers",
-    timestamp: "15 min ago",
-  },
-  {
-    headline: "YouTube Shorts: clickable sticker CTR benchmarks updated",
-    timestamp: "22 min ago",
-  },
-];
+/** Same pulse source as Hive Mind — compact operational view. */
+const MOCK_NEWS = trackPulseNewsItems();
 
 export function TrackInsightsPanel({
   objective,

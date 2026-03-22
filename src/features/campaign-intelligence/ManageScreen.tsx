@@ -15,43 +15,11 @@ import { SectionFrame } from "@/components/manage/SectionFrame";
 import { ExecutionHubPanel } from "@/components/manage/ExecutionHubPanel";
 import { WeeklyCalendarPanel } from "@/components/manage/WeeklyCalendarPanel";
 import { ManageLayoutV2 } from "@/components/manage/ManageLayoutV2";
+import { curatedTalent } from "@/lib/curatedTalent";
 
 interface ManageScreenProps {
   selectedCampaignIds: string[];
 }
-
-// Demo cards built from real curatedTalent roster
-import { curatedTalent } from "@/lib/curatedTalent";
-
-function makeDemoCard(talentId: string, role: string, rate: number, status: string, bookingState: string, daysAgo: number): TalentCampaignCard {
-  const t = curatedTalent.find(c => c.id === talentId);
-  return {
-    id: `demo-${talentId}`,
-    campaignId: "demo",
-    talentId,
-    talentName: t?.name ?? "Creator",
-    talentRole: role,
-    deliverables: [
-      { id: `d-${talentId}-1`, type: "Reel", files: [], status: "Pending", revisionCount: 0 },
-      { id: `d-${talentId}-2`, type: "Story", files: [], status: "Pending", revisionCount: 0 },
-    ],
-    agreedRate: rate,
-    currency: "AED",
-    engagementRate: t?.engagementRate ? parseFloat((t.engagementRate * 100).toFixed(1)) : 3.8,
-    status: status as TalentCampaignCard["status"],
-    paymentStatus: "UNFUNDED",
-    bookingState: bookingState as TalentCampaignCard["bookingState"],
-    createdAt: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString(),
-  };
-}
-
-const DEMO_CARDS: TalentCampaignCard[] = [
-  makeDemoCard("talent-nadine",   "Content Creator",    5500, "SHORTLISTED",   "PENDING",    2),
-  makeDemoCard("talent-dan",      "Content Creator",    8500, "BOOKED",         "CONFIRMED",  5),
-  makeDemoCard("talent-amro",     "Videographer",      14000, "IN_PRODUCTION",  "CONFIRMED", 10),
-  makeDemoCard("talent-altamash", "Photographer",       6000, "BOOKED",         "CONFIRMED",  3),
-  makeDemoCard("talent-cheb",     "Creative Director",  9500, "SHORTLISTED",   "PENDING",    1),
-];
 
 // Feature flag: enable V2 layout
 const USE_MANAGE_V2 = true;
@@ -76,10 +44,10 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
 
   // Build cards from activeCampaign's booked talent when API returns nothing
   const buildCardsFromCampaign = useCallback((): TalentCampaignCard[] => {
-    if (!activeCampaign?.talentIds || !activeCampaign?.talentNames) return DEMO_CARDS;
+    if (!activeCampaign?.talentIds || !activeCampaign?.talentNames) return [];
     const ids = activeCampaign.talentIds;
     const names = activeCampaign.talentNames;
-    if (ids.length === 0) return DEMO_CARDS;
+    if (ids.length === 0) return [];
     return ids.map((tid, i) => {
       const t = curatedTalent.find(c => c.id === tid);
       return {

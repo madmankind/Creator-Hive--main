@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User, Briefcase, BarChart2, Share2,
@@ -192,7 +193,14 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 ];
 
 export function CreatorDashboardClient({ profile }: { profile: Profile; userId: string }) {
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<Tab>("overview");
+
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    const allowed: Tab[] = ["overview", "portfolio", "opportunities", "analytics", "referral", "settings"];
+    if (t && allowed.includes(t as Tab)) setTab(t as Tab);
+  }, [searchParams]);
   const pendingInvites = profile?.invites.filter(i => i.status === "PENDING") ?? [];
   const activeContracts = profile?.contracts.filter(c => c.status !== "COMPLETED" && c.status !== "CANCELLED") ?? [];
   const pendingMilestones = activeContracts.flatMap(c => c.milestones.filter(m => m.status === "SUBMITTED" || m.status === "FUNDED"));

@@ -218,7 +218,7 @@ function AuthStep({
   });
 
   const subtitleMap: Record<string, string> = {
-    "client-signup": "Enter your work email to access UAE's most vetted creator marketplace.",
+    "client-signup": "Access to vetted premium global talent",
     "client-login":  "Welcome back. Enter your email and we'll send you a secure link.",
     "talent-signup": "Your application starts here. We'll match you to campaigns that fit who you are.",
     "talent-login":  "Good to have you back. Enter your email to continue.",

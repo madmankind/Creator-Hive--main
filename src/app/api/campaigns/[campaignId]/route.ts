@@ -2,54 +2,55 @@ import { NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { requireUser } from "@/server/authz";
 import { getOrCreateAgency } from "@/server/agency";
+import { assertCampaignAccess } from "@/server/campaignAccess";
+
+const campaignInclude = {
+  talents: {
+    include: {
+      talent: {
+        select: {
+          id: true,
+          name: true,
+          instagram: true,
+          skills: true,
+          avatarUrl: true,
+          hourlyRate: true,
+          dayRate: true,
+        },
+      },
+    },
+  },
+  metrics: {
+    orderBy: { date: "desc" as const },
+    take: 90,
+  },
+  payments: {
+    orderBy: { dueDate: "asc" as const },
+  },
+  invites: {
+    include: {
+      creator: {
+        select: { id: true, name: true, instagram: true, avatarUrl: true },
+      },
+    },
+  },
+} as const;
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ campaignId: string }> }
 ) {
-  const authResult = await requireUser({ roles: ["AGENCY", "ADMIN"] });
+  const authResult = await requireUser();
   if ("error" in authResult) return authResult.error;
   const { user } = authResult;
   const { campaignId } = await params;
 
-  const agency = user.role === "ADMIN" ? null : await getOrCreateAgency(user);
+  const denied = await assertCampaignAccess(user, campaignId);
+  if (denied) return denied;
 
   const campaign = await db.campaign.findFirst({
-    where: {
-      id: campaignId,
-      ...(agency ? { agencyId: agency.id } : {}),
-    },
-    include: {
-      talents: {
-        include: {
-          talent: {
-            select: {
-              id: true,
-              name: true,
-              instagram: true,
-              skills: true,
-              avatarUrl: true,
-              hourlyRate: true,
-              dayRate: true,
-            },
-          },
-        },
-      },
-      metrics: {
-        orderBy: { date: "desc" },
-        take: 90,
-      },
-      payments: {
-        orderBy: { dueDate: "asc" },
-      },
-      invites: {
-        include: {
-          creator: {
-            select: { id: true, name: true, instagram: true, avatarUrl: true },
-          },
-        },
-      },
-    },
+    where: { id: campaignId },
+    include: campaignInclude,
   });
 
   if (!campaign) {

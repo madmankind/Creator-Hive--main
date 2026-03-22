@@ -22,6 +22,17 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "*.supabase.co", pathname: "/storage/**" },
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "cdn.creatorhive.ae" },
+      // Editorial ingestion sources
+      { protocol: "https", hostname: "image-cdn.hypb.st" },
+      { protocol: "https", hostname: "media.voguearabia.com" },
+      { protocol: "https", hostname: "assets.vogue.com" },
+      { protocol: "https", hostname: "media.gq.com" },
+      { protocol: "https", hostname: "*.highsnobiety.com" },
+      { protocol: "https", hostname: "assets.glossy.co" },
+      { protocol: "https", hostname: "media.wwd.com" },
+      { protocol: "https", hostname: "img.businessoffashion.com" },
+      { protocol: "https", hostname: "*.tubefilter.com" },
+      { protocol: "https", hostname: "*.modernretail.co" },
     ],
   },
   async headers() {
@@ -33,6 +44,25 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         ],
+      },
+    ];
+  },
+  async redirects() {
+    return [
+      {
+        source: "/dashboard/hive/shop/new",
+        destination: "/dashboard/hive/build/new",
+        permanent: false,
+      },
+      {
+        source: "/dashboard/hive/shop/new/:path*",
+        destination: "/dashboard/hive/build/new/:path*",
+        permanent: false,
+      },
+      {
+        source: "/dashboard/hive/shop/:id",
+        destination: "/dashboard/hive/build/:id",
+        permanent: false,
       },
     ];
   },

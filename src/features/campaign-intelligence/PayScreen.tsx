@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { feyTokens } from "@/lib/fey-design-tokens";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { CampaignSwitcher } from "@/components/campaigns/CampaignSwitcher";
@@ -78,6 +79,8 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
 }
 export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
   const router = useRouter();
+  const { data: session } = useSession();
+  const portalRole = (session?.user as { role?: string | null } | undefined)?.role ?? null;
   const { activeCampaign } = useCampaign();
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
@@ -141,6 +144,10 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
   };
   const [payFace, setPayFace] = useState<PayFace>("client");
   const [activeTab, setActiveTab] = useState<ClientTab>("invoices");
+
+  useEffect(() => {
+    if (portalRole === "CREATOR") setPayFace("talent");
+  }, [portalRole]);
 
   const currentCampaignId = selectedCampaignIds[0] || activeCampaign?.id || null;
 

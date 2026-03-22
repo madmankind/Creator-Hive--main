@@ -2,25 +2,34 @@
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { BarChart3, Users, CreditCard, Home, Hexagon } from "lucide-react";
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
 import { feyTokens } from "@/lib/fey-design-tokens";
-
-const NAV_ITEMS = [
-  { id: "home",     label: "Home",    icon: Home,       route: "/" },
-  { id: "track",    label: "Track",   icon: BarChart3,  route: "/dashboard/campaigns?mode=track" },
-  { id: "manage",   label: "Manage",  icon: Users,      route: "/dashboard/campaigns?mode=manage" },
-  { id: "pay",      label: "Pay",     icon: CreditCard, route: "/dashboard/campaigns?mode=pay" },
-  { id: "discover", label: "Hive",    icon: Hexagon,    route: "/dashboard/campaigns?mode=discover" },
-];
+import { useSession } from "next-auth/react";
 
 function DesktopSidebarInner() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentMode = searchParams.get("mode") || "track";
+  const { data: session } = useSession();
+  const role = (session?.user as { role?: string | null } | undefined)?.role ?? null;
+
+  const navItems = useMemo(() => {
+    const homeRoute = role === "CREATOR" ? "/dashboard/creator" : "/";
+    return [
+      { id: "home", label: "Home", icon: Home, route: homeRoute },
+      { id: "track", label: "Track", icon: BarChart3, route: "/dashboard/campaigns?mode=track" },
+      { id: "manage", label: "Manage", icon: Users, route: "/dashboard/campaigns?mode=manage" },
+      { id: "pay", label: "Pay", icon: CreditCard, route: "/dashboard/campaigns?mode=pay" },
+      { id: "discover", label: "Hive", icon: Hexagon, route: "/dashboard/campaigns?mode=discover" },
+    ] as const;
+  }, [role]);
 
   const isActive = (id: string) => {
-    if (id === "home") return pathname === "/";
+    if (id === "home") {
+      if (role === "CREATOR") return pathname === "/dashboard/creator";
+      return pathname === "/";
+    }
     if (id === "discover") return pathname === "/dashboard/campaigns" && currentMode === "discover";
     return pathname === "/dashboard/campaigns" && currentMode === id;
   };
@@ -67,12 +76,13 @@ function DesktopSidebarInner() {
 
       {/* Nav items */}
       <nav className="flex flex-col items-center gap-1 flex-1">
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const active = isActive(item.id);
           const Icon = item.icon;
           return (
             <button
               key={item.id}
+              type="button"
               onClick={() => router.push(item.route)}
               title={item.label}
               className="flex flex-col items-center justify-center rounded-xl transition-all duration-150 group relative"

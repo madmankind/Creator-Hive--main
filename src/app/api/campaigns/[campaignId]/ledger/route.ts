@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/server/db";
 import type { Invoice, Payout } from "@/components/campaigns/types";
+import { requireUser } from "@/server/authz";
+import { assertCampaignAccess } from "@/server/campaignAccess";
 
 type DbInvoice = {
   id: string;
@@ -22,7 +24,13 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ campaignId: string }> }
 ) {
+  const authResult = await requireUser({ roles: ["AGENCY", "ADMIN", "CREATOR"] });
+  if ("error" in authResult) return authResult.error;
+  const { user } = authResult;
   const { campaignId } = await params;
+
+  const denied = await assertCampaignAccess(user, campaignId);
+  if (denied) return denied;
 
   const [dbInvoices, dbPayments] = await Promise.all([
     db.invoice.findMany({

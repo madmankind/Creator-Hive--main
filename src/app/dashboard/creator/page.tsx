@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/server/db";
@@ -36,5 +37,15 @@ export default async function CreatorDashboardPage() {
       }).catch(() => null)
     : null;
 
-  return <CreatorDashboardClient profile={profile as any} userId={user?.id ?? ""} />;
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center" style={{ background: "#07070B", color: "rgba(255,255,255,0.5)" }}>
+          <span className="text-[13px]">Loading…</span>
+        </div>
+      }
+    >
+      <CreatorDashboardClient profile={profile as any} userId={user?.id ?? ""} />
+    </Suspense>
+  );
 }

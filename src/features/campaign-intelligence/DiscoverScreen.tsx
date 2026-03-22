@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { feyTokens } from "@/lib/fey-design-tokens";
@@ -55,6 +56,8 @@ interface DiscoverScreenProps {
 
 export function DiscoverScreen(_: DiscoverScreenProps) {
   const router = useRouter();
+  const { data: session } = useSession();
+  const role = (session?.user as { role?: string | null } | undefined)?.role ?? null;
 
   const headerLeft = (
     <span className="text-[14px] font-medium tracking-[-0.01em]" style={{ color: feyTokens.colors.text.primary }}>
@@ -70,7 +73,7 @@ export function DiscoverScreen(_: DiscoverScreenProps) {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.30 }}>
           <button
             type="button"
-            onClick={() => router.push("/")}
+            onClick={() => router.push(role === "CREATOR" ? "/dashboard/creator" : "/")}
             className="group w-full text-left rounded-2xl px-7 py-6 relative overflow-hidden transition-all duration-200"
             style={{
               background: "rgba(255,255,255,0.025)",
@@ -146,7 +149,7 @@ export function DiscoverScreen(_: DiscoverScreenProps) {
               Ready to build a campaign team?
             </p>
             <button
-              onClick={() => router.push("/")}
+              onClick={() => router.push(role === "CREATOR" ? "/dashboard/creator" : "/")}
               className="flex items-center gap-2 rounded-xl px-4 py-2 text-[13px] font-medium transition-all hover:opacity-80"
               style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", color: feyTokens.colors.text.primary }}>
               Browse creators
