@@ -6,9 +6,9 @@ import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 const STATS = [
+  { value: "48h", label: "Avg. booking time" },
   { value: "1,000+", label: "Vetted creators" },
   { value: "UAE & Global", label: "Coverage" },
-  { value: "48h", label: "Avg. booking time" },
 ];
 
 export function JoinClient() {
@@ -16,7 +16,7 @@ export function JoinClient() {
   const [hovering, setHovering] = useState(false);
 
   const handleApply = () => {
-    router.push("/talent/signup?ref=instagram");
+    router.push("/talent/signup?ref=instagram&type=brand");
   };
 
   return (
@@ -87,8 +87,8 @@ export function JoinClient() {
             className="text-[16px] font-light leading-relaxed max-w-[340px] mx-auto"
             style={{ color: "rgba(255,255,255,0.45)" }}
           >
-            The creative talent platform for campaigns that move culture.
-            Vetted. Global. On demand.
+            Book world-class creative talent for your next campaign.
+            Vetted. Fast. On demand.
           </p>
         </motion.div>
 
@@ -136,7 +136,7 @@ export function JoinClient() {
             className="text-[13px]"
             style={{ color: "rgba(255,255,255,0.35)" }}
           >
-            Creator or brand — apply for early access.
+            For brands, agencies, and founders ready to book top-tier talent.
           </p>
           <motion.button
             onClick={handleApply}
@@ -154,14 +154,14 @@ export function JoinClient() {
                 : "0 4px 16px rgba(0,0,0,0.3)",
             }}
           >
-            Apply for access
+            Book talent now
             <ArrowRight size={16} />
           </motion.button>
           <p
             className="text-[11px]"
             style={{ color: "rgba(255,255,255,0.2)" }}
           >
-            Takes 2 minutes. We review every application.
+            Creator? <a href="/talent/signup" style={{ color: "rgba(255,255,255,0.35)", textDecoration: "underline" }}>Apply to join the talent roster →</a>
           </p>
         </motion.div>
 
