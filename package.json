@@ -48,6 +48,7 @@
     "react-dom": "19.2.3",
     "react-hook-form": "^7.62.0",
     "recharts": "^3.1.2",
+    "resend": "^6.9.4",
     "rss-parser": "^3.13.0",
     "stripe": "^17.7.0",
     "swr": "^2.3.6",
@@ -86,5 +87,10 @@
       "prettier --write",
       "next lint --fix --file"
     ]
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20",
+    "pnpm": "9"
   }
 }
