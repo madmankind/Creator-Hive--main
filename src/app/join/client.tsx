@@ -66,7 +66,7 @@ export function JoinClient() {
               className="w-1.5 h-1.5 rounded-full animate-pulse"
               style={{ background: "rgba(124,92,255,0.9)" }}
             />
-            Applications open
+            Now accepting brand bookings
           </span>
         </motion.div>
 
@@ -87,8 +87,8 @@ export function JoinClient() {
             className="text-[16px] font-light leading-relaxed max-w-[340px] mx-auto"
             style={{ color: "rgba(255,255,255,0.45)" }}
           >
-            Book world-class creative talent for your next campaign.
-            Vetted. Fast. On demand.
+            The fastest way to book world-class creative talent.
+            Vetted. Brief-ready. On demand.
           </p>
         </motion.div>
 
@@ -136,7 +136,7 @@ export function JoinClient() {
             className="text-[13px]"
             style={{ color: "rgba(255,255,255,0.35)" }}
           >
-            For brands, agencies, and founders ready to book top-tier talent.
+            For brands and agencies ready to run campaigns.
           </p>
           <motion.button
             onClick={handleApply}
@@ -145,23 +145,27 @@ export function JoinClient() {
             whileTap={{ scale: 0.98 }}
             className="w-full py-4 rounded-2xl text-[15px] font-medium flex items-center justify-center gap-2.5 transition-all duration-200"
             style={{
-              background: hovering
-                ? "rgba(255,255,255,1)"
-                : "rgba(255,255,255,0.92)",
+              background: hovering ? "rgba(255,255,255,1)" : "rgba(255,255,255,0.92)",
               color: "#07070B",
               boxShadow: hovering
                 ? "0 0 40px rgba(124,92,255,0.25), 0 4px 20px rgba(0,0,0,0.4)"
                 : "0 4px 16px rgba(0,0,0,0.3)",
             }}
           >
-            Book talent now
+            Start booking talent
             <ArrowRight size={16} />
           </motion.button>
           <p
             className="text-[11px]"
             style={{ color: "rgba(255,255,255,0.2)" }}
           >
-            Creator? <a href="/talent/signup" style={{ color: "rgba(255,255,255,0.35)", textDecoration: "underline" }}>Apply to join the talent roster →</a>
+            Creative talent?{" "}
+            <a
+              href="/talent/signup"
+              style={{ color: "rgba(255,255,255,0.35)", textDecoration: "underline" }}
+            >
+              Apply to join the roster →
+            </a>
           </p>
         </motion.div>
 
