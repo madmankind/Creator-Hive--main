@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google'
 import { Analytics } from "@vercel/analytics/react";
 import { Providers } from "@/components/Providers";
 import { AppShell } from "@/components/AppShell";
+import { MetaPixel } from "@/components/MetaPixel";
 import clsx from 'clsx'
 
 const inter = Inter({ subsets: ['latin'], display: 'swap', variable: '--font-inter' })
@@ -57,6 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </AppShell>
         </Providers>
         <Analytics />
+        <MetaPixel />
       </body>
     </html>
   )
