@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { userHasRole } from "@/server/authz";
+import { sendSignupConfirmation, sendAdminSignupAlert } from "@/lib/email";
 
 type Body = {
   role: "AGENCY" | "CREATOR" | "ADMIN";
@@ -33,6 +34,19 @@ export async function POST(req: Request) {
       instagram: payload.instagram,
     },
   });
+
+  // Send emails (non-blocking — don't fail the response if email fails)
+  const emailPromises: Promise<unknown>[] = []
+  if (payload.email) {
+    emailPromises.push(sendSignupConfirmation(payload.email, payload.role))
+  }
+  emailPromises.push(sendAdminSignupAlert({
+    role: payload.role,
+    email: payload.email,
+    whatsapp: payload.whatsapp,
+    instagram: payload.instagram,
+  }))
+  void Promise.allSettled(emailPromises)
 
   return NextResponse.json({ ok: true });
 }
