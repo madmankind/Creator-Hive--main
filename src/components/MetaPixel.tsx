@@ -1,10 +1,30 @@
 'use client'
 
 import Script from 'next/script'
+import { useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 
 const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID
 
+declare global {
+  interface Window {
+    fbq: (...args: unknown[]) => void
+  }
+}
+
 export function MetaPixel() {
+  const pathname = usePathname()
+
+  useEffect(() => {
+    if (typeof window.fbq === 'function') {
+      window.fbq('track', 'PageView')
+      window.fbq('track', 'ViewContent', {
+        content_name: document.title,
+        content_category: pathname,
+      })
+    }
+  }, [pathname])
+
   if (!PIXEL_ID) return null
 
   return (
