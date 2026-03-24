@@ -3,6 +3,7 @@
 // 7 campaign packages × 2 tiers each = 14 total configurations
 
 import type { TalentCategoryTag } from "./curatedTalent";
+import { getRetainerExternalPrice } from "./pricing";
 
 export type PackageCategory =
   | "ugc"
@@ -136,8 +137,12 @@ export const PACKAGES: PackageConfig[] = [
       { platform: "Instagram", format: "Post", quantity: 12 },
       { platform: "TikTok", format: "Video post", quantity: 8 },
     ],
-    priceRangeAED: [8000, 14000],
-    priceNote: "Per month",
+    // Select tier = AED 8,000/mo (external), Signature = AED 15,000/mo (external)
+    priceRangeAED: [
+      getRetainerExternalPrice("Social Media Manager", "select") ?? 8000,
+      getRetainerExternalPrice("Social Media Manager", "signature") ?? 15000,
+    ],
+    priceNote: "Per month (retainer) · 2 touchpoints/week",
     idealFor: "SMEs, startups, brands entering social for the first time",
     defaultObjective: "engagement",
     bookingType: "retainer",
