@@ -1547,7 +1547,23 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
     if (!email.trim()) return;
     setError("");
     setSubmitting(true);
-    // Store email for later — signIn happens in LoadingStep after OTP
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to send code. Try again.");
+        setSubmitting(false);
+        return;
+      }
+    } catch {
+      setError("Network error. Check your connection.");
+      setSubmitting(false);
+      return;
+    }
     localStorage.setItem(`ch_${mode}_email`, email.trim().toLowerCase());
     setSubmitting(false);
     setOtpVia("email");

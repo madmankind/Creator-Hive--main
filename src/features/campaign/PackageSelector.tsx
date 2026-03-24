@@ -191,9 +191,12 @@ function PackageCard({
               <p className="text-[15px] font-semibold text-white/90 leading-tight tracking-[-0.01em]">
                 {pkg.name}
               </p>
-              <p className="text-[12px] text-white/45 mt-0.5 leading-snug">
-                {pkg.tagline}
-              </p>
+              {pkg.bookingModel === "build" && (
+                <span className="inline-block mt-1 text-[9px] font-medium tracking-[0.12em] uppercase px-1.5 py-0.5 rounded"
+                  style={{ background: "rgba(148,163,184,0.10)", color: "rgba(148,163,184,0.7)" }}>
+                  Build Sprint
+                </span>
+              )}
             </div>
           </div>
           {isSelected && (
@@ -203,19 +206,15 @@ function PackageCard({
           )}
         </div>
 
-        {/* Deliverables */}
-        <p className="text-[12px] text-white/50 leading-relaxed mb-2">
-          {pkg.deliverableTemplates.slice(0, 3).map((dt, i) => (
-            <span key={i}>{i > 0 ? " · " : ""}{dt.quantity}× {dt.format}</span>
-          ))}
-          {pkg.deliverableTemplates.length > 3 && (
-            <span> · +{pkg.deliverableTemplates.length - 3} more</span>
-          )}
+        {/* Description */}
+        <p className="text-[12px] text-white/45 leading-relaxed mb-2 line-clamp-2">
+          {pkg.description}
         </p>
 
-        {/* Ideal for */}
-        <p className="text-[12px] text-white/35 leading-relaxed mb-auto line-clamp-2">
-          {pkg.idealFor}
+        {/* Deliverable line */}
+        <p className="text-[11px] font-medium leading-relaxed mb-auto"
+          style={{ color: "rgba(255,255,255,0.28)" }}>
+          {pkg.cardDeliverableLine}
         </p>
 
         {/* Price */}

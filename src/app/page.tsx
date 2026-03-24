@@ -132,6 +132,7 @@ function HomePageContent() {
   const [heroAuthOtpVia, setHeroAuthOtpVia] = useState<"email" | "whatsapp">("email");
   const [heroAuthGoogleLoading, setHeroAuthGoogleLoading] = useState(false);
   const [heroOtpVerifying, setHeroOtpVerifying] = useState(false);
+  const [heroOtpCode, setHeroOtpCode] = useState("");
   const [talentModalOpen, setTalentModalOpen] = useState<"auth" | "phone" | "talent-type" | null>(null);
 
   const packageRef = useRef<HTMLElement>(null);
@@ -220,13 +221,28 @@ function HomePageContent() {
     if (!heroAuthEmail.trim()) return;
     setHeroAuthError("");
     setHeroAuthSubmitting(true);
-    // Do NOT call signIn here: credentials authorize() creates a session immediately, which
-    // hides the hero auth UI (`!session?.user`) and skips OTP + talent onboarding.
     try {
       localStorage.setItem(`ch_${mode}_email`, heroAuthEmail.trim().toLowerCase());
+    } catch { /* ignore */ }
+
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: heroAuthEmail.trim().toLowerCase() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setHeroAuthError(data.error || "Failed to send code. Try again.");
+        setHeroAuthSubmitting(false);
+        return;
+      }
     } catch {
-      /* ignore */
+      setHeroAuthError("Network error. Check your connection.");
+      setHeroAuthSubmitting(false);
+      return;
     }
+
     setHeroAuthSubmitting(false);
     setHeroAuthOtpVia("email");
     setHeroAuthStep("otp");
@@ -246,6 +262,26 @@ function HomePageContent() {
       return;
     }
 
+    // Step 1 — verify the OTP code against the database
+    try {
+      const verifyRes = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp: heroOtpCode.trim() }),
+      });
+      const verifyData = await verifyRes.json();
+      if (!verifyRes.ok) {
+        setHeroAuthError(verifyData.error || "Invalid code. Try again.");
+        setHeroOtpVerifying(false);
+        return;
+      }
+    } catch {
+      setHeroAuthError("Network error. Check your connection.");
+      setHeroOtpVerifying(false);
+      return;
+    }
+
+    // Step 2 — OTP verified, create the session
     const displayName = heroAuthEmail.trim()
       ? heroAuthEmail.split("@")[0]
       : heroAuthPhone.replace(/\D/g, "") || "Creator";
@@ -262,21 +298,17 @@ function HomePageContent() {
         !result?.error ||
         (typeof result?.error === "string" && result.error.toLowerCase().includes("configuration"));
       if (!okish) {
-        setHeroAuthError("Couldn't verify. Please try again.");
+        setHeroAuthError("Sign in failed. Please try again.");
         setHeroOtpVerifying(false);
         return;
       }
       try {
         localStorage.setItem(`ch_${mode}_email`, email.toLowerCase());
-      } catch {
-        /* ignore */
-      }
+      } catch { /* ignore */ }
     } catch {
       try {
         localStorage.setItem(`ch_${mode}_email`, email.toLowerCase());
-      } catch {
-        /* ignore */
-      }
+      } catch { /* ignore */ }
     }
 
     setHeroOtpVerifying(false);

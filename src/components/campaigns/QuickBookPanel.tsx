@@ -48,12 +48,15 @@ function getSeasonalBanner(): { title: string; subtitle: string } | null {
 
 // Package category → Fey-style subtle background tint
 const CATEGORY_TINT: Record<string, string> = {
-  ugc:       "rgba(124,92,255,0.06)",
-  social:    "rgba(34,211,238,0.05)",
-  video:     "rgba(16,185,129,0.05)",
-  seasonal:  "rgba(234,179,8,0.05)",
-  awareness: "rgba(99,102,241,0.05)",
-  performance: "rgba(249,115,22,0.05)",
+  ugc:           "rgba(124,92,255,0.06)",
+  "ugc-stills":  "rgba(16,185,129,0.05)",
+  social:        "rgba(34,211,238,0.05)",
+  build:         "rgba(100,116,139,0.06)",
+  growth:        "rgba(234,179,8,0.06)",
+  video:         "rgba(16,185,129,0.05)",
+  seasonal:      "rgba(234,179,8,0.05)",
+  performance:   "rgba(249,115,22,0.05)",
+  brand:         "rgba(99,102,241,0.05)",
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -168,7 +171,7 @@ export function QuickBookPanel() {
 
 function QuickBookCard({ pkg, onSelect }: { pkg: PackageConfig; onSelect: (p: PackageConfig) => void }) {
   const isElite = pkg.tier === "elite";
-  const isSeasonal = pkg.category === "seasonal";
+  const isBuild = pkg.bookingModel === "build";
   const tint = CATEGORY_TINT[pkg.category] ?? "rgba(255,255,255,0.025)";
 
   return (
@@ -178,42 +181,49 @@ function QuickBookCard({ pkg, onSelect }: { pkg: PackageConfig; onSelect: (p: Pa
       whileHover={{ scale: 1.012 }}
       whileTap={{ scale: 0.988 }}
       className="group relative text-left w-full rounded-2xl transition-all duration-200 overflow-hidden"
-      style={{
-        background: tint,
-        border: "none",
-        boxShadow: "none",
-      }}
+      style={{ background: tint, border: "none", boxShadow: "none" }}
     >
       <div className="p-4">
         <div className="flex items-start justify-between mb-2.5">
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-0.5">
               <span className="text-[15px]">{pkg.emoji}</span>
               <span className="text-[13px] font-medium text-white/85 tracking-[-0.01em]">{pkg.name}</span>
             </div>
-            <p className="text-[10px] text-white/32 leading-relaxed">{pkg.tagline}</p>
+            <p className="text-[10px] text-white/32 leading-relaxed line-clamp-2">
+              {pkg.description}
+            </p>
           </div>
           <div className="shrink-0 ml-2 px-2 py-0.5 rounded-full text-[9px] font-medium bg-white/[0.05] text-white/32">
-            {isSeasonal ? "Seasonal" : isElite ? "Elite" : "Starter"}
+            {isBuild ? "Build" : isElite ? "Flagship" : "Monthly"}
           </div>
         </div>
 
+        {/* Deliverable line */}
+        {"cardDeliverableLine" in pkg && (
+          <p className="text-[9px] text-white/25 mb-2.5 leading-relaxed line-clamp-1">
+            {(pkg as PackageConfig & { cardDeliverableLine: string }).cardDeliverableLine}
+          </p>
+        )}
+
         {/* Roles */}
         <div className="flex flex-wrap gap-1 mb-3">
-          {[...new Set(pkg.roles)].slice(0, 3).map((role) => (
+          {[...new Set(pkg.roles)].slice(0, 4).map((role) => (
             <span key={role} className="px-1.5 py-0.5 rounded-md bg-white/[0.05] text-white/35 text-[9px] ring-1 ring-white/[0.06]">
               {role}
             </span>
           ))}
-          {[...new Set(pkg.roles)].length > 3 && (
-            <span className="text-[9px] text-white/22 px-1">+{[...new Set(pkg.roles)].length - 3}</span>
+          {[...new Set(pkg.roles)].length > 4 && (
+            <span className="text-[9px] text-white/22 px-1">+{[...new Set(pkg.roles)].length - 4}</span>
           )}
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-2.5">
           <div>
-            <p className="text-[11px] font-medium text-white/60">{getPackagePriceLabel(pkg)}</p>
+            <p className="text-[11px] font-medium text-white/60">
+              {pkg.priceAED > 0 ? getPackagePriceLabel(pkg) : "Custom"}
+            </p>
             <p className="text-[9px] text-white/22 mt-0.5">{pkg.priceNote}</p>
           </div>
           <div className="flex items-center gap-1 text-[10px] text-white/30 group-hover:text-white/60 transition-colors">

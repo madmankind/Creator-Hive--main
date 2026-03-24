@@ -5,10 +5,13 @@ import type { TalentCategoryTag } from "./curatedTalent";
 
 export type PackageCategory =
   | "ugc"
-  | "video"
+  | "ugc-stills"
+  | "social"
+  | "build"
+  | "growth"
   | "brand"
   | "performance"
-  | "social"
+  | "video"
   | "team"
   | "seasonal";
 
@@ -29,198 +32,209 @@ export interface PackageConfig {
   tier: PackageTier;
   name: string;
   tagline: string;
+  description: string;             // card body copy — what it's for, who it suits
+  cardDeliverableLine: string;     // compact deliverable summary for card display
   emoji: string;
   roles: TalentCategoryTag[];
   deliverableTemplates: DeliverableTemplate[];
-  priceAED: number;                    // fixed public-facing price (no ranges)
+  priceAED: number;
   priceNote: string;
-  minimumMonths?: number;              // minimum engagement in months
+  minimumMonths?: number;
   idealFor: string;
   defaultObjective: CampaignObjective;
   bookingType: "campaign" | "retainer";
+  bookingModel?: "content" | "build"; // distinguishes content packages from build sprints
   touchpointsPerWeek: number;
   budgetSplitWeights: Record<string, number>;
   accentColor: string;
   accentText: string;
   accentRing: string;
-  // kept for backwards compat — derived from priceAED
-  priceRangeAED: [number, number];
+  priceRangeAED: [number, number]; // backwards compat
 }
 
 // ── PACKAGE DEFINITIONS ───────────────────────────────────────────────────────
+// 5 curated packages — entry to flagship, content to build
 
 export const PACKAGES: PackageConfig[] = [
 
-  // ── 1. BRAND SPARK — AED 15,000 / month ──────────────────────────────────
+  // ── 1. UGC SPARK — entry ─────────────────────────────────────────────────
   {
-    id: "brand-spark",
-    category: "brand",
+    id: "ugc-spark",
+    category: "ugc",
     tier: "starter",
-    name: "Brand Spark",
-    tagline: "Build your brand foundation from the ground up",
-    emoji: "◆",
-    roles: ["Content Creator", "Copywriter", "Designer", "Editor"],
+    name: "UGC Spark",
+    tagline: "Creator-led short-form content. No production team required.",
+    description: "For DTC, F&B, beauty, and consumer brands that need steady short-form output without a full production setup. Creator-shot, edited, and delivery-ready every month.",
+    cardDeliverableLine: "12x Short-form UGC Videos",
+    emoji: "✦",
+    roles: ["UGC Creator", "Editor"],
     deliverableTemplates: [
-      { platform: "Instagram", format: "Static / Carousel", quantity: 4, notesTemplate: "Brand-aligned content pillars" },
-      { platform: "Instagram", format: "Short-form Video", quantity: 2, notesTemplate: "15–30s brand or product story" },
-      { platform: "Cross-Platform", format: "Copy & Captions", quantity: 1, notesTemplate: "Full month of caption copy AR + EN" },
+      { platform: "TikTok", format: "Short-form UGC Video", quantity: 12, notesTemplate: "Up to 45–60s, creator-shot on phone, edited and delivery-ready" },
     ],
-    priceAED: 15000,
-    priceRangeAED: [15000, 15000],
-    priceNote: "AED 15,000 / month · min. 2 months",
-    minimumMonths: 2,
-    idealFor: "New brands, rebrand projects, launch setup, brand foundation building",
+    priceAED: 0,
+    priceRangeAED: [0, 0],
+    priceNote: "Custom / month",
+    idealFor: "DTC brands, F&B, beauty, consumer brands, founder-led brands",
     defaultObjective: "awareness",
     bookingType: "retainer",
+    bookingModel: "content",
     touchpointsPerWeek: 1,
-    budgetSplitWeights: {
-      "Content Creator": 0.30,
-      "Copywriter": 0.20,
-      "Designer": 0.30,
-      "Editor": 0.20,
-    },
+    budgetSplitWeights: { "UGC Creator": 0.70, "Editor": 0.30 },
     accentColor: "bg-violet-500/10",
     accentText: "text-violet-300",
     accentRing: "ring-violet-400/25",
   },
 
-  // ── 2. GROWTH PULSE — AED 25,000 / month ─────────────────────────────────
+  // ── 2. UGC + STILLS ───────────────────────────────────────────────────────
   {
-    id: "growth-pulse",
+    id: "ugc-stills",
+    category: "ugc-stills",
+    tier: "starter",
+    name: "UGC + Stills",
+    tagline: "Short-form creator content plus polished static assets.",
+    description: "For brands building both feed presence and recurring creator content. Adds photography without becoming a full managed social retainer — production-led, not management-led.",
+    cardDeliverableLine: "10x Short-form UGC Videos · 12x Edited Static Images",
+    emoji: "◈",
+    roles: ["UGC Creator", "Photographer", "Editor"],
+    deliverableTemplates: [
+      { platform: "Cross-Platform", format: "Short-form UGC Video", quantity: 10, notesTemplate: "Up to 45–60s, creator-shot, edited and delivery-ready" },
+      { platform: "Instagram", format: "Edited Static Image", quantity: 12, notesTemplate: "Photography-directed, post-produced, brand-aligned" },
+    ],
+    priceAED: 0,
+    priceRangeAED: [0, 0],
+    priceNote: "Custom / month",
+    idealFor: "Brands building feed presence alongside ongoing creator content",
+    defaultObjective: "awareness",
+    bookingType: "retainer",
+    bookingModel: "content",
+    touchpointsPerWeek: 1,
+    budgetSplitWeights: { "UGC Creator": 0.45, "Photographer": 0.35, "Editor": 0.20 },
+    accentColor: "bg-emerald-500/10",
+    accentText: "text-emerald-300",
+    accentRing: "ring-emerald-400/25",
+  },
+
+  // ── 3. SOCIAL PULSE ───────────────────────────────────────────────────────
+  {
+    id: "social-pulse",
     category: "social",
     tier: "starter",
-    name: "Growth Pulse",
-    tagline: "Your always-on marketing team, fully managed",
+    name: "Social Pulse",
+    tagline: "Recurring content production and managed social execution.",
+    description: "For SMEs, hospitality, retail, clinics, and lifestyle brands that need consistent monthly presence with actual account management. Content production plus posting, calendar, and reporting.",
+    cardDeliverableLine: "12x Short-form Videos · 2x Camera-shot Reels · 8x Static Images · Social Media Management",
     emoji: "◉",
-    roles: ["Social Media Manager", "Strategist", "Account Manager", "Designer", "Copywriter", "Editor"],
+    roles: ["UGC Creator", "Photographer", "Videographer", "Social Media Manager", "Editor"],
     deliverableTemplates: [
-      { platform: "Instagram", format: "Static / Carousel", quantity: 8, notesTemplate: "Strategist-led content calendar" },
-      { platform: "Cross-Platform", format: "Short-form Video", quantity: 4, notesTemplate: "Reels + TikTok native format" },
-      { platform: "Cross-Platform", format: "Monthly Performance Report", quantity: 1, notesTemplate: "Reach, engagement, growth metrics" },
+      { platform: "Cross-Platform", format: "Short-form Video", quantity: 12 },
+      { platform: "Instagram", format: "Camera-shot Reel", quantity: 2, notesTemplate: "Videographer-produced, brand-directed" },
+      { platform: "Instagram", format: "Edited Static Image", quantity: 8 },
+      { platform: "Cross-Platform", format: "Monthly Content Calendar", quantity: 1 },
+      { platform: "Cross-Platform", format: "Monthly Performance Report", quantity: 1 },
     ],
     priceAED: 25000,
     priceRangeAED: [25000, 25000],
     priceNote: "AED 25,000 / month",
-    idealFor: "Brands needing a full outsourced social and content team, ongoing brand presence",
+    idealFor: "SMEs, hospitality, retail, clinics, lifestyle brands",
     defaultObjective: "engagement",
     bookingType: "retainer",
+    bookingModel: "content",
     touchpointsPerWeek: 2,
     budgetSplitWeights: {
-      "Social Media Manager": 0.22,
-      "Content Strategist": 0.18,
-      "Account Manager": 0.15,
-      "Designer": 0.20,
-      "Copywriter": 0.13,
-      "Editor": 0.12,
+      "UGC Creator": 0.22,
+      "Photographer": 0.15,
+      "Videographer": 0.20,
+      "Social Media Manager": 0.28,
+      "Editor": 0.15,
     },
     accentColor: "bg-blue-500/10",
     accentText: "text-blue-300",
     accentRing: "ring-blue-400/25",
   },
 
-  // ── 3. CAMPAIGN SPRINT — AED 45,000 / month ──────────────────────────────
+  // ── 4. BUILD STACK ────────────────────────────────────────────────────────
   {
-    id: "campaign-sprint",
-    category: "performance",
-    tier: "elite",
-    name: "Campaign Sprint",
-    tagline: "Premium campaign execution for major brand moments",
-    emoji: "⚡",
-    roles: ["Strategist", "Account Manager", "Talent Manager", "Producer", "Videographer", "Photographer", "Editor", "Designer", "Copywriter"],
+    id: "build-stack",
+    category: "build",
+    tier: "starter",
+    name: "Build Stack",
+    tagline: "Design and development support for your digital product.",
+    description: "For brands building or evolving their digital product layer. A monthly build sprint covering UI/UX design, front-end and back-end development, CMS, QA, and deployment — not a content subscription.",
+    cardDeliverableLine: "1x Active Build Sprint · Up to 5 Pages or 2 Feature Modules · QA & Deployment Support",
+    emoji: "⬡",
+    roles: ["Designer", "Other"],
     deliverableTemplates: [
-      { platform: "Cross-Platform", format: "Hero Reel", quantity: 1, notesTemplate: "Full production day — brand film or campaign hero" },
-      { platform: "Cross-Platform", format: "Short-form Cutdown", quantity: 5, notesTemplate: "4–6 cutdowns from hero reel for social distribution" },
-      { platform: "Instagram", format: "Static / Carousel", quantity: 5, notesTemplate: "4–5 campaign statics" },
-      { platform: "Cross-Platform", format: "Production Day", quantity: 1, notesTemplate: "1 full production day included" },
+      { platform: "Cross-Platform", format: "Active Build Sprint", quantity: 1 },
+      { platform: "Cross-Platform", format: "Pages Designed / Developed", quantity: 5, notesTemplate: "Up to 5 core pages, or up to 2 feature modules" },
+      { platform: "Cross-Platform", format: "QA, Deployment & Sprint Review", quantity: 1 },
+    ],
+    priceAED: 0,
+    priceRangeAED: [0, 0],
+    priceNote: "Custom / sprint",
+    idealFor: "Brands building websites, apps, or digital product features",
+    defaultObjective: "conversions",
+    bookingType: "retainer",
+    bookingModel: "build",
+    touchpointsPerWeek: 1,
+    budgetSplitWeights: { "Designer": 0.45, "Other": 0.55 },
+    accentColor: "bg-slate-500/10",
+    accentText: "text-slate-300",
+    accentRing: "ring-slate-400/25",
+  },
+
+  // ── 5. GROWTH POD — flagship ──────────────────────────────────────────────
+  {
+    id: "growth-pod",
+    category: "growth",
+    tier: "elite",
+    name: "Growth Pod",
+    tagline: "A full outsourced content and strategy team. Monthly, ongoing.",
+    description: "For brands that need stronger output and strategic oversight. Strategy, production, social management, and operational consistency — a complete outsourced content team.",
+    cardDeliverableLine: "16x Short-form Videos · 4x Camera-shot Reels · 12x Static Images · Strategy & Full Social Media Management",
+    emoji: "⬡",
+    roles: ["UGC Creator", "Photographer", "Videographer", "Social Media Manager", "Strategist", "Editor"],
+    deliverableTemplates: [
+      { platform: "Cross-Platform", format: "Short-form Video", quantity: 16 },
+      { platform: "Cross-Platform", format: "Camera-shot Reel", quantity: 4, notesTemplate: "Videographer-produced, brand-directed" },
+      { platform: "Instagram", format: "Edited Static Image", quantity: 12 },
+      { platform: "Cross-Platform", format: "Monthly Content Calendar", quantity: 1 },
+      { platform: "Cross-Platform", format: "Monthly Reporting Pack", quantity: 1 },
     ],
     priceAED: 45000,
     priceRangeAED: [45000, 45000],
     priceNote: "AED 45,000 / month",
-    idealFor: "Product launches, seasonal campaigns, brand moments, major campaign executions",
-    defaultObjective: "conversions",
-    bookingType: "campaign",
+    idealFor: "Brands needing full content output, strategy, and social management",
+    defaultObjective: "engagement",
+    bookingType: "retainer",
+    bookingModel: "content",
     touchpointsPerWeek: 2,
     budgetSplitWeights: {
-      "Strategist": 0.15,
-      "Account Manager": 0.10,
-      "Talent Manager": 0.08,
-      "Producer": 0.12,
-      "Videographer": 0.18,
+      "UGC Creator": 0.18,
       "Photographer": 0.12,
-      "Editor": 0.10,
-      "Designer": 0.08,
-      "Copywriter": 0.07,
+      "Videographer": 0.20,
+      "Social Media Manager": 0.22,
+      "Strategist": 0.15,
+      "Editor": 0.13,
     },
     accentColor: "bg-amber-500/10",
     accentText: "text-amber-300",
     accentRing: "ring-amber-400/25",
-  },
-
-  // ── 4. UGC SPARK (preserved) ──────────────────────────────────────────────
-  {
-    id: "ugc-spark",
-    category: "ugc",
-    tier: "starter",
-    name: "UGC Spark",
-    tagline: "Authentic product content for DTC brands",
-    emoji: "✦",
-    roles: ["UGC Creator", "UGC Creator", "Editor"],
-    deliverableTemplates: [
-      { platform: "TikTok",    format: "Short-form Video", quantity: 4, notesTemplate: "15–30s authentic product demo" },
-      { platform: "Instagram", format: "Reel",             quantity: 4, notesTemplate: "Repurposed from TikTok with native caption" },
-      { platform: "Instagram", format: "Static Post",      quantity: 8, notesTemplate: "Lifestyle product shots" },
-    ],
-    priceAED: 15000,
-    priceRangeAED: [12000, 18000],
-    priceNote: "Per campaign (4 weeks)",
-    idealFor: "DTC product launches, e-commerce, F&B, beauty",
-    defaultObjective: "awareness",
-    bookingType: "campaign",
-    touchpointsPerWeek: 1,
-    budgetSplitWeights: { "UGC Creator": 0.45, "Editor": 0.1 },
-    accentColor: "bg-emerald-500/10",
-    accentText: "text-emerald-300",
-    accentRing: "ring-emerald-400/25",
-  },
-
-  // ── 5. HIVE MOMENTS (preserved) ──────────────────────────────────────────
-  {
-    id: "hive-moments",
-    category: "seasonal",
-    tier: "starter",
-    name: "Hive Moments",
-    tagline: "Seasonal and cultural campaigns",
-    emoji: "☽",
-    roles: ["UGC Creator", "Designer", "Copywriter", "Content Creator"],
-    deliverableTemplates: [
-      { platform: "Instagram", format: "Seasonal themed post", quantity: 6 },
-      { platform: "Instagram", format: "Story series", quantity: 10 },
-      { platform: "Cross-Platform", format: "Seasonal copy (AR + EN)", quantity: 1 },
-    ],
-    priceAED: 14000,
-    priceRangeAED: [10000, 18000],
-    priceNote: "Fixed seasonal scope",
-    idealFor: "SMEs, local brands, first-time seasonal campaigns",
-    defaultObjective: "engagement",
-    bookingType: "campaign",
-    touchpointsPerWeek: 1,
-    budgetSplitWeights: { "UGC Creator": 0.4, "Designer": 0.3, "Copywriter": 0.2, "Content Creator": 0.1 },
-    accentColor: "bg-rose-500/10",
-    accentText: "text-rose-300",
-    accentRing: "ring-rose-400/25",
   },
 ];
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 
 export const PACKAGE_CATEGORY_META: Record<PackageCategory, { label: string; description: string; emoji: string }> = {
-  ugc:         { label: "UGC",         description: "Authentic creator content",          emoji: "✦"  },
-  video:       { label: "Video",       description: "Brand storytelling through film",    emoji: "▶"  },
-  brand:       { label: "Brand",       description: "Identity and visual systems",        emoji: "◆"  },
-  performance: { label: "Performance", description: "Paid social and conversion creative",emoji: "⚡" },
-  social:      { label: "Social",      description: "Organic presence and community",     emoji: "◉"  },
-  team:        { label: "Team",        description: "Outsourced creative departments",    emoji: "⬡"  },
-  seasonal:    { label: "Seasonal",    description: "Seasonal and cultural campaigns",   emoji: "☽"  },
+  ugc:         { label: "UGC Spark",    description: "Creator-led short-form content",        emoji: "✦"  },
+  "ugc-stills":{ label: "UGC + Stills", description: "Creator content plus polished statics", emoji: "◈"  },
+  social:      { label: "Social Pulse", description: "Content production and social management", emoji: "◉" },
+  build:       { label: "Build Stack",  description: "Design and development sprint",          emoji: "⬡"  },
+  growth:      { label: "Growth Pod",   description: "Full outsourced content and strategy team", emoji: "⬡" },
+  brand:       { label: "Brand",        description: "Identity and visual systems",            emoji: "◆"  },
+  performance: { label: "Performance",  description: "Paid social and conversion creative",    emoji: "⚡" },
+  video:       { label: "Video",        description: "Brand storytelling through film",        emoji: "▶"  },
+  team:        { label: "Team",         description: "Outsourced creative departments",        emoji: "⬡"  },
+  seasonal:    { label: "Seasonal",     description: "Seasonal and cultural campaigns",        emoji: "☽"  },
 };
 
 export function getPackageById(id: string): PackageConfig | undefined {
