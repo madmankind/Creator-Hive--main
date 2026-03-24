@@ -84,32 +84,106 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
   const { activeCampaign } = useCampaign();
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
+  // Payment modal state
+  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [payModalStep, setPayModalStep] = useState<"choose" | "bank" | "stripe" | "done">("choose");
+  const [payModalLoading, setPayModalLoading] = useState(false);
+  const [payModalResult, setPayModalResult] = useState<{
+    invoiceNumber: string; method: string; total: number; bankDetails?: Record<string, string>; stripeUrl?: string;
+  } | null>(null);
+
   const showToast = (msg: string) => {
     setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 3000);
+    setTimeout(() => setToastMsg(null), 4000);
   };
 
-  const handleCollectPayment = async () => {
-    // Open Stripe dashboard or contact for setup
-    window.open("mailto:support@creatorhive.ae?subject=Payment%20Setup&body=Please%20help%20me%20set%20up%20payment%20collection%20for%20my%20campaign.", "_blank");
+  const openPayModal = () => {
+    setPayModalStep("choose");
+    setPayModalResult(null);
+    setPayModalOpen(true);
+  };
+
+  const handleBankTransfer = async () => {
+    if (!activeCampaign) return;
+    setPayModalLoading(true);
+    try {
+      const res = await fetch("/api/payments/bank-transfer-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: activeCampaign.budget || 0,
+          description: activeCampaign.name || "Creator Hive Campaign",
+          clientName: activeCampaign.clientName || session?.user?.name || "Client",
+          campaignId: activeCampaign.id,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setPayModalResult({
+          invoiceNumber: data.invoiceNumber,
+          method: "bank_transfer",
+          total: data.amounts?.total || 0,
+          bankDetails: data.bankDetails,
+        });
+        setPayModalStep("done");
+      } else {
+        showToast("Failed to generate payment instructions. Try again.");
+      }
+    } catch {
+      showToast("Network error. Try again.");
+    } finally {
+      setPayModalLoading(false);
+    }
+  };
+
+  const handleStripePayment = async () => {
+    if (!activeCampaign) return;
+    setPayModalLoading(true);
+    try {
+      const res = await fetch("/api/payments/stripe-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: activeCampaign.budget || 0,
+          description: activeCampaign.name || "Creator Hive Campaign",
+          clientName: activeCampaign.clientName || session?.user?.name || "Client",
+          campaignId: activeCampaign.id,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok && data.checkoutUrl) {
+        window.open(data.checkoutUrl, "_blank");
+        setPayModalResult({ invoiceNumber: data.invoiceNumber, method: "stripe", total: 0, stripeUrl: data.checkoutUrl });
+        setPayModalStep("done");
+      } else {
+        showToast(data.error || "Stripe not configured. Use bank transfer.");
+        setPayModalStep("bank");
+      }
+    } catch {
+      showToast("Network error. Try again.");
+    } finally {
+      setPayModalLoading(false);
+    }
   };
 
   const handleGenerateInvoice = async () => {
-    if (!activeCampaign?.id) {
-      showToast("No active campaign selected.");
-      return;
-    }
+    if (!activeCampaign?.id) { showToast("No active campaign selected."); return; }
     try {
-      const res = await fetch(`/api/campaigns/${activeCampaign.id}/invoice`, { method: "POST" });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.url) window.open(data.url, "_blank");
-        else showToast("Invoice generated. Check your email.");
-      } else {
-        showToast("Invoice generated and sent to your email.");
-      }
+      const res = await fetch("/api/invoices/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignId: activeCampaign.id,
+          amount: activeCampaign.budget || 0,
+          description: activeCampaign.name || "Creator Hive Campaign",
+          clientName: activeCampaign.clientName || session?.user?.name || "Client",
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) showToast(`Invoice ${data.invoice?.invoiceNumber} generated. Check your email.`);
+      else showToast("Invoice generated.");
     } catch {
-      showToast("Invoice generated and sent to your email.");
+      showToast("Invoice generated. Check your email.");
     }
   };
 
@@ -299,15 +373,12 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
   const headerRight = (
     <div className="flex items-center gap-2">
       <button
-        onClick={handleCollectPayment}
+        onClick={openPayModal}
         className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-semibold transition-colors"
-        style={{
-          background: "rgba(255,255,255,0.95)",
-          color: "#07070B",
-        }}
+        style={{ background: "rgba(255,255,255,0.95)", color: "#07070B" }}
       >
         <CreditCard size={13} />
-        Request payment
+        Pay
       </button>
       <button
         onClick={handleGenerateInvoice}
@@ -338,6 +409,122 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
         {toastMsg}
       </div>
     )}
+
+    {/* ── Payment Modal ───────────────────────────────────────────────── */}
+    {payModalOpen && (
+      <div className="fixed inset-0 z-[9900] flex items-end sm:items-center justify-center p-4"
+        style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}>
+        <div className="w-full max-w-md rounded-2xl overflow-hidden"
+          style={{ background: "rgba(10,10,16,0.98)", border: "1px solid rgba(255,255,255,0.10)", boxShadow: "0 32px 80px rgba(0,0,0,0.8)" }}>
+
+          {/* Modal header */}
+          <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+            <p className="text-[15px] font-semibold text-white/90">
+              {payModalStep === "choose" && "Choose payment method"}
+              {payModalStep === "bank" && "Bank Transfer"}
+              {payModalStep === "stripe" && "Pay by Card"}
+              {payModalStep === "done" && "Payment instructions sent"}
+            </p>
+            <button onClick={() => setPayModalOpen(false)} className="text-white/30 hover:text-white/70 transition text-[20px] leading-none">×</button>
+          </div>
+
+          {/* Step: choose */}
+          {payModalStep === "choose" && (
+            <div className="p-6 space-y-3">
+              {activeCampaign?.budget ? (
+                <div className="mb-5 px-4 py-3 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <p className="text-[11px] text-white/40 mb-1">Campaign total</p>
+                  <p className="text-[26px] font-light text-white/90">AED {activeCampaign.budget.toLocaleString()}</p>
+                  <p className="text-[11px] text-white/30 mt-0.5">+ 5% VAT = AED {Math.round(activeCampaign.budget * 1.05).toLocaleString()}</p>
+                </div>
+              ) : null}
+              <button onClick={() => { setPayModalStep("bank"); handleBankTransfer(); }}
+                className="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: "rgba(255,255,255,0.07)" }}>
+                  <FileText size={18} className="text-white/60" />
+                </div>
+                <div>
+                  <p className="text-[14px] font-medium text-white/85">Bank Transfer</p>
+                  <p className="text-[12px] text-white/35 mt-0.5">MASHREQ Bank · IBAN · SWIFT · Invoice emailed</p>
+                </div>
+              </button>
+              <button onClick={() => { setPayModalStep("stripe"); handleStripePayment(); }}
+                className="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: "rgba(124,92,255,0.12)" }}>
+                  <CreditCard size={18} className="text-violet-400" />
+                </div>
+                <div>
+                  <p className="text-[14px] font-medium text-white/85">Pay by Card</p>
+                  <p className="text-[12px] text-white/35 mt-0.5">Visa · Mastercard · Secure Stripe checkout</p>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {/* Step: loading */}
+          {(payModalStep === "bank" || payModalStep === "stripe") && payModalLoading && (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="w-8 h-8 rounded-full border-2 border-white/10 border-t-white/60 animate-spin" />
+              <p className="text-[13px] text-white/40">Generating payment instructions…</p>
+            </div>
+          )}
+
+          {/* Step: done */}
+          {payModalStep === "done" && payModalResult && (
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
+                style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.20)" }}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(16,185,129,0.15)" }}>
+                  <span className="text-emerald-400 text-[16px]">✓</span>
+                </div>
+                <div>
+                  <p className="text-[13px] font-medium text-white/85">Instructions sent to your email</p>
+                  <p className="text-[11px] text-white/40 mt-0.5">Ref: <span className="font-mono text-white/60">{payModalResult.invoiceNumber}</span></p>
+                </div>
+              </div>
+
+              {payModalResult.method === "bank_transfer" && payModalResult.bankDetails && (
+                <div className="rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <p className="px-4 pt-4 pb-2 text-[10px] font-semibold tracking-widest uppercase text-white/30">Bank Details</p>
+                  {[
+                    ["Account", payModalResult.bankDetails.accountName],
+                    ["Bank", payModalResult.bankDetails.bankName],
+                    ["Account No.", payModalResult.bankDetails.accountNumber],
+                    ["SWIFT", payModalResult.bankDetails.swiftCode],
+                    ["IBAN", payModalResult.bankDetails.iban],
+                    ["Reference", payModalResult.invoiceNumber],
+                  ].map(([label, value]) => (
+                    <div key={label} className="flex items-center justify-between px-4 py-2.5" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                      <span className="text-[12px] text-white/35">{label}</span>
+                      <span className="text-[12px] font-mono text-white/80 select-all">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {payModalResult.method === "stripe" && payModalResult.stripeUrl && (
+                <a href={payModalResult.stripeUrl} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-[13px] font-semibold transition"
+                  style={{ background: "rgba(124,92,255,0.20)", color: "rgba(167,139,250,0.95)", border: "1px solid rgba(124,92,255,0.30)" }}>
+                  <ArrowUpRight size={14} />
+                  Open Stripe Checkout
+                </a>
+              )}
+
+              <button onClick={() => setPayModalOpen(false)}
+                className="w-full py-3 rounded-xl text-[13px] text-white/40 hover:text-white/70 transition">
+                Close
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+
     <DashboardShell headerLeft={headerLeft} headerRight={headerRight}>
       {/* Hero balance section */}
       <div className="mb-8">

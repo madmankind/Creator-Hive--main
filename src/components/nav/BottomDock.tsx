@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { BarChart3, Users, CreditCard, Home } from "lucide-react";
+import { BarChart3, Users, CreditCard, Home, BookOpen } from "lucide-react";
 import { feyTokens } from "@/lib/fey-design-tokens";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
@@ -18,10 +18,11 @@ function BottomDockInner() {
   const mainItems = useMemo(() => {
     const homeRoute = role === "CREATOR" ? "/dashboard/creator" : "/";
     return [
-      { id: "home", label: "Home", icon: Home, route: homeRoute },
-      { id: "track", label: "Track", icon: BarChart3, route: "/dashboard/campaigns?mode=track" },
-      { id: "manage", label: "Manage", icon: Users, route: "/dashboard/campaigns?mode=manage" },
-      { id: "pay", label: "Pay", icon: CreditCard, route: "/dashboard/campaigns?mode=pay" },
+      { id: "home",     label: "Home",     icon: Home,      route: homeRoute },
+      { id: "track",    label: "Track",    icon: BarChart3, route: "/dashboard/campaigns?mode=track" },
+      { id: "manage",   label: "Manage",   icon: Users,     route: "/dashboard/campaigns?mode=manage" },
+      { id: "pay",      label: "Pay",      icon: CreditCard,route: "/dashboard/campaigns?mode=pay" },
+      { id: "bookings", label: "Bookings", icon: BookOpen,  route: "/dashboard/bookings" },
     ] as const;
   }, [role]);
 
@@ -50,6 +51,7 @@ function BottomDockInner() {
       if (role === "CREATOR") return pathname === "/dashboard/creator";
       return pathname === "/";
     }
+    if (id === "bookings") return pathname === "/dashboard/bookings";
     return pathname === "/dashboard/campaigns" && currentMode === id;
   };
   const isHiveSurface = pathname.startsWith("/dashboard/hive");

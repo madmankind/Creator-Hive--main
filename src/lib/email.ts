@@ -5,6 +5,9 @@ import {
   welcomeEmail,
   campaignInviteEmail,
   bookingConfirmedEmail,
+  bookingReceivedEmail,
+  adminBookingAlertEmail,
+  paymentInstructionsEmail,
 } from '@/emails/templates'
 
 const ADMIN_EMAIL = 'ajil@creatorhive.ae'
@@ -26,7 +29,7 @@ async function send(to: string, subject: string, html: string): Promise<SendResu
 }
 
 export async function sendSignupConfirmation(to: string, role: string) {
-  return send(to, 'You\'re on the Creator Hive list', signupConfirmationEmail(role))
+  return send(to, "You're on the Creator Hive list", signupConfirmationEmail(role))
 }
 
 export async function sendAdminSignupAlert(data: {
@@ -50,4 +53,25 @@ export async function sendBookingConfirmed(to: string, data: {
   recipientName: string; otherPartyName: string; campaignName: string; dashboardUrl: string
 }) {
   return send(to, `Booking confirmed — ${data.campaignName}`, bookingConfirmedEmail(data))
+}
+
+export async function sendBookingConfirmation(to: string, data: {
+  bookingId: string; description: string; budgetRange?: string; clientName: string
+}) {
+  return send(to, 'Your Creator Hive booking is received', bookingReceivedEmail(data))
+}
+
+export async function sendAdminBookingAlert(data: {
+  bookingId: string; description: string; email?: string; clientName?: string;
+  budgetRange?: string; talentCount: number; packageId?: string
+}) {
+  const subject = `New booking — ${data.clientName || data.email || 'unknown'} · ${data.description.substring(0, 50)}`
+  return send(ADMIN_EMAIL, subject, adminBookingAlertEmail(data))
+}
+
+export async function sendPaymentInstructions(to: string, data: {
+  invoiceNumber: string; amount: number; vatAmount: number; total: number;
+  clientName: string; method: 'bank_transfer' | 'stripe'; stripeUrl?: string
+}) {
+  return send(to, `Payment instructions — Invoice ${data.invoiceNumber}`, paymentInstructionsEmail(data))
 }
