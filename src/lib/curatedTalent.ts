@@ -876,30 +876,7 @@ export const curatedTalent: CuratedTalent[] = [
   },
 
 
-  {
-    id: "talent-vruksha",
-    name: "Vruksha",
-    displayTitle: "Account Manager · Campaign Manager",
-    instagramHandle: "",
-    instagramUrl: "",
-    avatarUrl: "https://ui-avatars.com/api/?name=Vruksha&background=111827&color=c4b5fd&size=512",
-    primaryRole: "Account Manager",
-    roleTags: ["Account Manager", "Project Manager", "Strategist", "Creative Director"],
-    platformTags: ["LinkedIn"],
-    shortBio: "Manages client accounts, coordinates campaigns, and oversees project delivery. Experienced in creative agency operations, campaign management, and client relations.",
-    nicheSummary: "Account manager and campaign manager based in Dubai. Handles AM, PM, and campaign management at Creator Hive.",
-    availability: ["Monthly"],
-    prismArchetype: "The Conductor",
-    location: "Dubai, UAE",
-    tier: "Tier 1",
-    portfolio: [
-      { type: "image", src: "/portfolio/work-1.svg", title: "Campaign Management" },
-      { type: "image", src: "/portfolio/work-2.svg", title: "Account Work" },
-      { type: "video", src: "/portfolio/work-3.svg", poster: "/portfolio/work-3.svg", title: "Project Delivery" },
-    ],
-    profileImageUrl: "https://ui-avatars.com/api/?name=Vruksha&background=111827&color=c4b5fd&size=512",
-    links: {},
-  },{
+{
     id: "talent-abir",
     name: "Abir",
     displayTitle: "Talent Manager",
