@@ -160,7 +160,15 @@ function HomePageContent() {
     const pkgId  = searchParams.get("package");
     const skip   = searchParams.get("skip");
     const auth   = searchParams.get("auth");
+    const signin = searchParams.get("signin");
     const bookId = searchParams.get("book"); // ?book=[creatorId] from public profile "Book now"
+
+    // Open auth modal when redirected from protected routes
+    if (signin === "required" && !session?.user) {
+      setMode("client");
+      setHeroAuthStep("email");
+      return;
+    }
 
     // Open auth modal when redirected from /signup?type=...
     if (auth === "talent" && !session?.user) {
