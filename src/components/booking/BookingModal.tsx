@@ -25,6 +25,10 @@ export function BookingModal({ open, onClose, talents, onViewPod }: BookingModal
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [bookingOrder, setBookingOrder] = useState<{
+    orderRef: string; description: string; budgetRange?: string;
+    startDate?: string; bookingType?: string; talentCount: number; submittedAt: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tradeLicenseFile, setTradeLicenseFile] = useState<File | null>(null);
   const [tradeLicenseFileName, setTradeLicenseFileName] = useState<string>("");
@@ -33,6 +37,7 @@ export function BookingModal({ open, onClose, talents, onViewPod }: BookingModal
   useEffect(() => {
     if (open) {
       setSuccess(false);
+      setBookingOrder(null);
       setSubmitting(false);
       setError(null);
       setBookingType("short");
@@ -83,6 +88,8 @@ export function BookingModal({ open, onClose, talents, onViewPod }: BookingModal
         const body = await res.json().catch(() => null);
         throw new Error(body?.error || "Failed to submit booking");
       }
+      const data = await res.json();
+      setBookingOrder(data?.data?.bookingOrder ?? null);
       setSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit booking");
@@ -372,39 +379,93 @@ export function BookingModal({ open, onClose, talents, onViewPod }: BookingModal
                 <motion.div
                   initial={{ opacity: 0, scale: 0.96, y: 8 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  className="pt-8 pb-4 text-center"
+                  className="py-2"
                 >
-                  <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
+                  {/* Status badge */}
+                  <div className="flex items-center gap-2 mb-5">
+                    <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                      <svg className="w-3 h-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <span className="text-[11px] font-semibold tracking-widest uppercase text-emerald-400">Booking order received</span>
                   </div>
-                  <h2 className="text-2xl font-semibold text-white/90 mb-3">
-                    Booking request sent ✨
-                  </h2>
-                  <p className="mt-2 text-base text-white/70 max-w-md mx-auto">
-                    We&apos;ve received your brief. An assigned campaign manager will review your brief, confirm talent, and get back to you within 48 hours.
-                  </p>
-                  <div className="mt-8 flex justify-center gap-3">
+
+                  {/* Order card */}
+                  <div className="rounded-2xl overflow-hidden mb-5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.09)" }}>
+                    {/* Card header */}
+                    <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
+                      <div>
+                        <p className="text-[10px] font-semibold tracking-widest uppercase text-white/30">Creator Hive FZE</p>
+                        <p className="text-[13px] font-semibold text-white/85 mt-0.5">Booking Order</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] text-white/30 uppercase tracking-widest">Ref</p>
+                        <p className="text-[12px] font-mono text-white/70 mt-0.5">{bookingOrder?.orderRef ?? "—"}</p>
+                      </div>
+                    </div>
+
+                    {/* Talent summary */}
+                    {talents.length > 0 && (
+                      <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                        <p className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Selected Talent</p>
+                        <div className="flex flex-wrap gap-2">
+                          {talents.map((t) => (
+                            <div key={t.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                              {t.avatarUrl && <img src={t.avatarUrl} alt={t.name} className="w-4 h-4 rounded-full object-cover" />}
+                              <span className="text-[11px] text-white/70">{t.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Order details */}
+                    <div className="px-5 py-3 space-y-2.5">
+                      {([
+                        ["Type", bookingOrder?.bookingType === "long" ? "Monthly Retainer" : "Per Campaign"],
+                        bookingOrder?.startDate ? ["Start", bookingOrder.startDate] : null,
+                        bookingOrder?.budgetRange ? ["Budget", bookingOrder.budgetRange] : null,
+                        ["Status", "Pending review"],
+                        ["Date", bookingOrder?.submittedAt ? new Date(bookingOrder.submittedAt).toLocaleDateString("en-AE", { day: "numeric", month: "short", year: "numeric" }) : new Date().toLocaleDateString("en-AE", { day: "numeric", month: "short", year: "numeric" })],
+                      ] as (string[] | null)[]).filter((r): r is string[] => r !== null).map(([label, value]) => (
+                        <div key={label} className="flex items-center justify-between">
+                          <span className="text-[11px] text-white/30">{label}</span>
+                          <span className="text-[12px] text-white/70">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Brief */}
+                    {campaignDescription && (
+                      <div className="px-5 pb-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                        <p className="text-[10px] text-white/30 uppercase tracking-widest mt-3 mb-1">Brief</p>
+                        <p className="text-[12px] text-white/55 leading-relaxed line-clamp-3">{campaignDescription}</p>
+                      </div>
+                    )}
+
+                    {/* Next step */}
+                    <div className="px-5 py-3 mx-0" style={{ background: "rgba(16,185,129,0.06)", borderTop: "1px solid rgba(16,185,129,0.15)" }}>
+                      <p className="text-[11px] text-emerald-400/80">A booking confirmation and invoice will be sent to <strong className="text-emerald-300/90">{email}</strong> within 48 hours.</p>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => {
-                        onClose();
-                        onViewPod?.();
-                      }}
-                      className="rounded-full px-5 py-2.5 text-sm text-white/70 hover:bg-white/5 transition"
+                      onClick={() => { onClose(); onViewPod?.(); }}
+                      className="flex-1 rounded-xl px-4 py-2.5 text-[12px] text-white/50 hover:bg-white/5 transition text-center"
                     >
-                      Back to discovery
+                      Keep browsing
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        onClose();
-                        router.push('/dashboard/campaigns');
-                      }}
-                      className="rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black hover:bg-white/90 transition"
+                      onClick={() => { onClose(); router.push("/dashboard/bookings"); }}
+                      className="flex-1 rounded-xl px-4 py-2.5 text-[13px] font-semibold text-black transition text-center"
+                      style={{ background: "rgba(255,255,255,0.92)" }}
                     >
-                      Go to campaign management
+                      View booking →
                     </button>
                   </div>
                 </motion.div>

@@ -2,6 +2,7 @@ import type { Session, User } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
 import type { UserRole } from "@prisma/client";
 
 
@@ -77,6 +78,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     strategy: "jwt",
   },
   providers: [
+    // Google OAuth — free, no OTP required
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET ? [
+      Google({
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        authorization: { params: { prompt: "select_account" } },
+      }),
+    ] : []),
     Credentials({
       name: "Creator Hive Access",
       credentials: {
@@ -212,16 +221,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }: { token: JWT; user?: User | null }) {
+    async jwt({ token, user, account }: { token: JWT; user?: User | null; account?: { provider?: string } | null }) {
       // On initial sign-in, persist role into the token
       if (user?.role) {
         token.role = user.role;
       }
-      // Fallback: if token has no role but has a sub, default to AGENCY
-      // This covers edge cases where the JWT was created without a role
-      if (!token.role && token.sub) {
-        token.role = "AGENCY";
+      // Google OAuth sign-in — upsert user as AGENCY (client) by default
+      if (account?.provider === "google" && !token.role) {
+        const googleUser = user as { email?: string; name?: string } | undefined;
+        if (googleUser?.email) {
+          try {
+            const { db } = await import("@/server/db");
+            const dbUser = await db.user.upsert({
+              where: { email: googleUser.email },
+              update: { name: googleUser.name ?? undefined },
+              create: { email: googleUser.email, name: googleUser.name ?? googleUser.email.split("@")[0], role: "AGENCY" },
+            });
+            token.role = dbUser.role;
+            token.sub = dbUser.id;
+            await db.agencyAccount.upsert({
+              where: { userId: dbUser.id },
+              update: {},
+              create: { userId: dbUser.id, name: dbUser.name || "My Brand" },
+            });
+          } catch { token.role = "AGENCY"; }
+        }
       }
+      if (!token.role && token.sub) token.role = "AGENCY";
       return token;
     },
     async session({ session, token }: { session: Session; token: JWT }) {

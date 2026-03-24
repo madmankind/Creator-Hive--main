@@ -90,7 +90,13 @@ export function PackageSelector({ onSelect, onSkip, selectedPackageId }: Package
             <div
               key={pkg.id}
               className="flex-shrink-0 snap-start py-2"
-              style={{ width: "calc(33.333% - 11px)", maxWidth: 360 }}
+              style={{
+                // Mobile: full viewport width card (dating app style single swipe)
+                // Desktop: 3 cards visible
+                width: "min(calc(100vw - 32px), calc(33.333% - 11px))",
+                maxWidth: 360,
+                minWidth: 260,
+              }}
             >
               <PackageCard
                 pkg={pkg}

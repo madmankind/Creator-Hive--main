@@ -433,7 +433,10 @@ export function TalentCarousel({
 
                 return (
                   <div key={item.id}
-                    className={cn('flex-shrink-0 snap-start py-2 relative transition-opacity duration-300',
+                    className={cn(
+                      'flex-shrink-0 snap-start py-2 relative transition-opacity duration-300',
+                      // Mobile: full-width single card swipe. Desktop: fixed card width.
+                      'w-[calc(100vw-32px)] sm:w-auto',
                       isGroupStart && 'before:content-[\'\'] before:absolute before:left-[-12px] before:top-[15%] before:bottom-[15%] before:w-px before:bg-white/[0.06] before:pointer-events-none'
                     )}>
                     {isAiMatch && (

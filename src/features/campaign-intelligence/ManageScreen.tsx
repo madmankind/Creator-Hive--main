@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { feyTokens } from "@/lib/fey-design-tokens";
-import { Settings2, Share2, FileText } from "lucide-react";
+import { Settings2, Share2, FileText, BookOpen } from "lucide-react";
 import type { TalentCampaignCard } from "@/components/campaigns/types";
 import { useCampaign } from "@/contexts/CampaignContext";
 import { CampaignSwitcher } from "@/components/campaigns/CampaignSwitcher";
@@ -294,11 +294,9 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
                     <Settings2 className="h-4 w-4" />
                   </button>
                 </Tooltip>
-                <Tooltip label="Share">
+                <Tooltip label="Bookings">
                   <button
-                    onClick={() => {
-                      // TODO: share/export
-                    }}
+                    onClick={() => { window.location.href = "/dashboard/bookings"; }}
                     className="flex items-center justify-center rounded-full border transition-colors hover:bg-white/10"
                     style={{
                       borderColor: "rgba(255,255,255,0.10)",
@@ -308,7 +306,7 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
                       width: "36px",
                     }}
                   >
-                    <Share2 className="h-4 w-4" />
+                    <BookOpen className="h-4 w-4" />
                   </button>
                 </Tooltip>
 

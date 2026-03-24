@@ -448,7 +448,7 @@ export function LandingTalentCard({ talent, isAdded, onAdd, onRemove, onBook, cu
       <motion.article
         className={cn(
           "group relative rounded-2xl bg-white/[0.05] p-5 ring-1",
-          "w-[380px] h-[360px] flex-shrink-0 cursor-pointer select-none overflow-hidden",
+          "w-full sm:w-[380px] h-[360px] flex-shrink-0 cursor-pointer select-none overflow-hidden",
           "transition-shadow duration-300",
           packageMatch
             ? "ring-white/[0.15] hover:shadow-[0_0_32px_rgba(255,255,255,0.07)]"

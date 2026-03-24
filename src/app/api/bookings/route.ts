@@ -108,7 +108,24 @@ export async function POST(req: Request) {
       }),
     ]);
 
-    return NextResponse.json({ data: { ...booking, campaignId } }, { status: 201 });
+    return NextResponse.json({
+      data: {
+        ...booking,
+        campaignId,
+        bookingOrder: {
+          orderRef: booking.id.substring(0, 12).toUpperCase(),
+          status: "PENDING",
+          description: payload.campaignDescription,
+          budgetRange: payload.budgetRange,
+          startDate: payload.startDate,
+          bookingType: payload.bookingType,
+          talentCount: (payload.talentIds ?? []).length,
+          talentIds: payload.talentIds ?? [],
+          submittedAt: booking.createdAt,
+          nextStep: "Our team will review your brief and confirm availability within 48 hours.",
+        },
+      }
+    }, { status: 201 });
 
   } catch (error) {
     console.error("[bookings] Error:", error);
