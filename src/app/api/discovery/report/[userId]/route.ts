@@ -1,0 +1,46 @@
+import { db } from "@/server/db";
+import { requireUser } from "@/server/authz";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(_: Request, context: { params: Promise<{ userId: string }> }) {
+  const { userId } = await context.params;
+  const authResult = await requireUser({ roles: ["AGENCY", "ADMIN"] });
+  if ("error" in authResult) return authResult.error;
+
+  const handle = userId?.toLowerCase();
+  const profile = await db.creatorProfile.findFirst({
+    where: {
+      OR: [
+        { id: userId },
+        { instagram: { equals: handle, mode: "insensitive" } },
+      ],
+    },
+  });
+
+  if (!profile) {
+    return Response.json({ error: true, message: "Talent not found" }, { status: 404 });
+  }
+
+  return Response.json({
+    profile: {
+      name: profile.name,
+      username: profile.instagram ?? profile.id,
+      followers: null,
+      engagementRate: null,
+      avgEngagement: null,
+      languages: [],
+      location: profile.location,
+      interests: profile.niches ?? [],
+      brands: [],
+      shortBio: profile.bio,
+      niches: profile.niches,
+    },
+    availability: [],
+    platforms: [],
+    roleTags: profile.skills ?? [],
+    meta: {
+      source: "database",
+    },
+  });
+}

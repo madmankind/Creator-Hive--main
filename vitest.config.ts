@@ -1,21 +1,14 @@
-import { defineConfig } from "vitest/config";
-import path from "path";
+import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  esbuild: {
-    jsx: "automatic",
+  webServer: {
+    command: 'pnpm dev',
+    port: 3000,
+    timeout: 120 * 1000,
+    reuseExistingServer: !process.env.CI,
   },
-  test: {
-    environment: "jsdom",
-    setupFiles: ["./vitest.setup.ts"],
-    globals: true,
-    include: ["tests/**/*.test.tsx"],
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "src"),
-    },
+  use: {
+    baseURL: 'http://localhost:3001',
   },
 });
-
 

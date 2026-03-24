@@ -27,11 +27,13 @@ export const recentActivity: ActivityItem[] = [
 ];
 
 export async function createPaymentLink(_data: { amount: number; email: string; description?: string; dueDate?: string }) {
+  void _data;
   await new Promise((r) => setTimeout(r, 400));
   return { id: Math.random().toString(36).slice(2), url: `https://creator.hi/pay/${Date.now()}` };
 }
 
 export async function createInvoice(_data: { amount: number; client: string; dueDate?: string }) {
+  void _data;
   await new Promise((r) => setTimeout(r, 400));
   return { id: Math.random().toString(36).slice(2), status: "draft" as const };
 }
@@ -40,5 +42,4 @@ export async function createProject(data: { name: string; client: string; milest
   await new Promise((r) => setTimeout(r, 400));
   return { id: Math.random().toString(36).slice(2), ...data };
 }
-
 

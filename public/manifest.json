@@ -1,0 +1,38 @@
+{
+  "name": "Creator Hive",
+  "short_name": "Creator Hive",
+  "description": "UAE premium creative talent marketplace",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07070B",
+  "theme_color": "#07070B",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/brand/ch-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/brand/ch-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/brand/screenshot-mobile.jpg",
+      "sizes": "390x844",
+      "type": "image/jpeg",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/brand/screenshot-desktop.jpg",
+      "sizes": "1280x800",
+      "type": "image/jpeg",
+      "form_factor": "wide"
+    }
+  ]
+}

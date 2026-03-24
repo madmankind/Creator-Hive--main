@@ -1,0 +1,18 @@
+{
+  "agents": {
+    "agent-1773907872769-3dkgnb": {
+      "agentId": "agent-1773907872769-3dkgnb",
+      "agentType": "coder",
+      "status": "idle",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "provider": "anthropic"
+      },
+      "createdAt": "2026-03-19T08:11:12.769Z",
+      "model": "sonnet",
+      "modelRoutedBy": "default"
+    }
+  },
+  "version": "3.0.0"
+}

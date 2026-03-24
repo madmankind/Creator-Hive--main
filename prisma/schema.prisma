@@ -1,0 +1,968 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // Critical for migrations to work
+}
+
+enum HireType {
+  PROJECT
+  MONTHLY
+  HOURLY
+}
+
+enum UsageRightsTier {
+  NONE
+  STANDARD
+  FULL
+  BUYOUT
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
+
+model User {
+  campaignFilesUploaded CampaignFile[]
+  userAgreements        UserAgreement[]
+  walletTransactions    WalletTransaction[]
+  id                    String              @id @default(cuid())
+  email                 String              @unique
+  name                  String?
+  role                  UserRole            @default(CREATOR)
+  emailVerified         DateTime?
+  image                 String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  // Legal acceptance — captured at onboarding with version + timestamp
+  legalAcceptedAt      DateTime?
+  legalVersion         String?             // e.g. "2026-03"
+
+  // Relations
+  agencyAccount   AgencyAccount?
+  creatorProfile  CreatorProfile?
+  accounts        Account[]
+  sessions        Session[]
+  bookingRequests BookingRequest[]
+  pods            PodSelection[]
+  creatorShopProjects CreatorShopProject[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model UserAgreement {
+  id           String              @id @default(cuid())
+  userId       String
+  agreementRef String              @unique
+  version      Int                 @default(1)
+  status       UserAgreementStatus @default(GENERATED)
+  storagePath  String?
+  storageUrl   String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([agreementRef])
+  @@index([status])
+  @@map("user_agreements")
+}
+
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model SignupApplication {
+  id        String   @id @default(cuid())
+  role      UserRole
+  email     String
+  whatsapp  String?
+  instagram String?
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([role])
+  @@index([email])
+  @@map("signup_applications")
+}
+
+model CampaignPodSelectionConfig {
+  id               String          @id @default(cuid())
+  campaignId       String
+  creatorProfileId String
+  hireType         HireType        @default(PROJECT)
+  startDate        DateTime?
+  endDate          DateTime?
+  estimatedDays    Int?
+  hours            Int?
+  months           Int?
+  dayRate          Int?
+  hourlyRate       Int?
+  monthlyRate      Int?
+  usageRightsTier  UsageRightsTier @default(NONE)
+  usageRightsFee   Int?
+  lineTotal        Int?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  campaign       Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creatorProfile CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, creatorProfileId])
+  @@index([campaignId])
+  @@index([creatorProfileId])
+  @@map("campaign_pod_selection_configs")
+}
+
+// ============================================
+// AGENCY & TALENT MANAGEMENT
+// ============================================
+
+model AgencyAccount {
+  walletTransactions WalletTransaction[]
+  id                 String              @id @default(cuid())
+  userId             String              @unique
+  name               String
+  website            String?
+  location           String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  // Relations
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creators        CreatorProfile[]
+  campaigns       Campaign[]
+  bookingRequests BookingRequest[]
+  creatorShopProjects CreatorShopProject[]
+
+  @@index([userId])
+  @@map("agency_accounts")
+}
+
+model CreatorProfile {
+  walletTransactions     WalletTransaction[]
+  id                     String                 @id @default(cuid())
+  userId                 String?                @unique
+  agencyId               String?
+  name                   String
+  instagram              String?
+  tiktok                 String?
+  youtube                String?
+  bio                    String?                @db.Text
+  hourlyRate             Int?
+  dayRate                Int?
+  skills                 String[]
+  niches                 String[]
+  location               String?
+  avatarUrl              String?
+  portfolioUrl           String?
+  displayName            String?
+  fullName               String?
+  qualityScore           Int?
+  talentStatus           String                 @default("pending")
+  source                 String?
+  isVerified             Boolean                @default(false)
+  isActive               Boolean                @default(true)
+  prismArchetype         String?
+  stripeAccountId        String?                @unique
+  stripeOnboardingStatus StripeOnboardingStatus @default(NOT_STARTED)
+  availabilityStatus     String                 @default("AVAILABLE")
+  profileViews           Int                    @default(0)
+  totalEarned            Int                    @default(0)
+  responseRate           Float?
+  avgResponseHours       Int?
+  referralCode           String?                @unique
+  instagramVerified      Boolean                @default(false)
+  tiktokVerified         Boolean                @default(false)
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+
+  agency                      AgencyAccount?               @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  user                        User?                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaigns                   CampaignTalent[]
+  messages                    Message[]                    @relation("CreatorMessages")
+  invoices                    Invoice[]
+  invites                     CampaignInvite[]
+  campaignPodSelectionConfigs CampaignPodSelectionConfig[]
+  portfolioItems              PortfolioItem[]
+  contracts                   Contract[]
+  opportunityPreference       CreatorOpportunityPreference?
+
+  @@index([userId])
+  @@index([agencyId])
+  @@index([instagram])
+  @@index([isActive])
+  @@index([availabilityStatus])
+  @@map("creator_profiles")
+}
+
+// ============================================
+// CAMPAIGNS & PROJECTS
+// ============================================
+
+model Campaign {
+  id                 String              @id @default(cuid())
+  agencyId           String
+  title              String
+  brief              String              @db.Text // Legacy: kept for backward compatibility
+  status             CampaignStatus      @default(DRAFT)
+  startDate          DateTime?
+  dueDate            DateTime?
+  budget             Int? // In cents
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  walletTransactions WalletTransaction[]
+
+  // Relations
+  agency                      AgencyAccount                @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  talents                     CampaignTalent[]
+  messages                    Message[]
+  invoices                    Invoice[]
+  pod                         CampaignPod?
+  invites                     CampaignInvite[]
+  files                       CampaignFile[]
+  campaignPodSelectionConfigs CampaignPodSelectionConfig[]
+  metrics                     CampaignMetric[]
+  payments                    CampaignPayment[]
+  campaignBrief               CampaignBrief?
+
+  @@index([agencyId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("campaigns")
+}
+
+model CampaignBrief {
+  id                String      @id @default(cuid())
+  campaignId        String      @unique
+  version           Int         @default(1)
+  status            BriefStatus @default(DRAFT)
+  isLocked          Boolean     @default(false)
+  lockedAt          DateTime?
+  sentAt            DateTime?
+  
+  // Audit fields
+  lastEditedBy      String?     // User ID or name (string for dev compatibility)
+  lastEditedByName   String?     // User name for display
+  
+  // Brief sections
+  primaryObjective  String?     // awareness | consideration | conversion
+  keyMessage        String?     @db.VarChar(280) // 280 chars max
+  creativeDirection Json?        // Checkbox-driven + optional notes
+  mandatoryRequirements String?  @db.Text
+  approvalRules     String?     @db.Text
+  postingRules      String?     @db.Text
+  
+  // Attachments (references to CampaignFile)
+  attachmentIds     String[]
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([isLocked])
+  @@index([status])
+  @@map("campaign_briefs")
+}
+
+model CampaignTalent {
+  id         String               @id @default(cuid())
+  campaignId String
+  talentId   String
+  status     CampaignTalentStatus @default(ASSIGNED)
+  rate       Int? // Override rate for this campaign (in cents)
+  notes      String?              @db.Text
+  assignedAt DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  // Relations
+  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  talent   CreatorProfile @relation(fields: [talentId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, talentId])
+  @@index([campaignId])
+  @@index([talentId])
+  @@index([status])
+  @@map("campaign_talents")
+}
+
+model CampaignPod {
+  id         String   @id @default(cuid())
+  campaignId String   @unique
+  talentIds  String[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("campaign_pods")
+}
+
+model CampaignInvite {
+  id               String               @id @default(cuid())
+  campaignId       String
+  creatorProfileId String
+  status           CampaignInviteStatus @default(PENDING)
+  note             String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creator  CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, creatorProfileId])
+  @@index([campaignId])
+  @@index([creatorProfileId])
+  @@map("campaign_invites")
+}
+
+model CampaignFile {
+  id             String   @id @default(cuid())
+  campaignId     String
+  uploaderUserId String
+  storageBucket  String
+  storagePath    String   @unique
+  originalName   String
+  mimeType       String
+  sizeBytes      Int
+  createdAt      DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  uploader User     @relation(fields: [uploaderUserId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([uploaderUserId])
+  @@map("campaign_files")
+}
+
+model CampaignMetric {
+  id          String   @id @default(cuid())
+  campaignId  String
+  date        DateTime
+  views       Int      @default(0)
+  reach       Int      @default(0)
+  engagements Int      @default(0)
+  spend       Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt   DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, date])
+  @@index([campaignId])
+  @@index([date])
+  @@map("campaign_metrics")
+}
+
+model CampaignPayment {
+  id         String        @id @default(cuid())
+  campaignId String
+  amount     Decimal       @db.Decimal(12, 2)
+  status     PaymentStatus @default(COMMITTED)
+  dueDate    DateTime
+  paidAt     DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("campaign_payments")
+}
+
+model WalletTransaction {
+  id               String                @id @default(cuid())
+  userId           String
+  creatorProfileId String?
+  agencyAccountId  String?
+  campaignId       String?
+  type             WalletTransactionType
+  direction        WalletDirection
+  amount           Int
+  currency         String
+  status           WalletStatus
+  stripeObjectType String
+  stripeObjectId   String
+  metadata         Json?
+  createdAt        DateTime              @default(now())
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creator  CreatorProfile? @relation(fields: [creatorProfileId], references: [id], onDelete: SetNull)
+  agency   AgencyAccount?  @relation(fields: [agencyAccountId], references: [id], onDelete: SetNull)
+  campaign Campaign?       @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([creatorProfileId])
+  @@index([agencyAccountId])
+  @@index([campaignId])
+  @@index([stripeObjectId])
+  @@map("wallet_transactions")
+}
+
+model BookingRequest {
+  id           String        @id @default(cuid())
+  userId       String
+  agencyId     String?
+  bookingType  BookingType   @default(SHORT)
+  startDate    String?
+  budgetRange  String?
+  description  String        @db.Text
+  contactEmail String
+  talentIds    String[]
+  status       BookingStatus @default(PENDING)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agency AgencyAccount? @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([agencyId])
+  @@map("booking_requests")
+}
+
+model PodSelection {
+  id        String   @id @default(cuid())
+  userId    String
+  talentIds String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+  @@index([userId])
+  @@map("pod_selections")
+}
+
+// ============================================
+// MESSAGING
+// ============================================
+
+model Message {
+  id          String   @id @default(cuid())
+  campaignId  String?
+  senderId    String // CreatorProfile ID
+  recipientId String? // AgencyAccount ID or CreatorProfile ID
+  content     String   @db.Text
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  campaign Campaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  sender   CreatorProfile @relation("CreatorMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([senderId])
+  @@index([recipientId])
+  @@index([createdAt])
+  @@map("messages")
+}
+
+// ============================================
+// FINANCIAL
+// ============================================
+
+model Invoice {
+  id            String        @id @default(cuid())
+  campaignId    String?
+  talentId      String
+  agencyId      String?
+  amount        Int // In cents
+  currency      String        @default("USD")
+  status        InvoiceStatus @default(PENDING)
+  dueDate       DateTime?
+  paidAt        DateTime?
+  invoiceNumber String        @unique
+  notes         String?       @db.Text
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  campaign    Campaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  talent      CreatorProfile @relation(fields: [talentId], references: [id], onDelete: Cascade)
+  transaction Transaction?
+
+  @@index([campaignId])
+  @@index([talentId])
+  @@index([agencyId])
+  @@index([status])
+  @@index([invoiceNumber])
+  @@map("invoices")
+}
+
+model Transaction {
+  id          String            @id @default(cuid())
+  invoiceId   String?           @unique
+  amount      Int // In cents
+  currency    String            @default("USD")
+  type        TransactionType
+  status      TransactionStatus @default(PENDING)
+  description String?           @db.Text
+  metadata    Json? // Additional transaction data
+  processedAt DateTime?
+  createdAt   DateTime          @default(now())
+
+  // Relations
+  invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+
+// ============================================
+// PORTFOLIO
+// ============================================
+
+model PortfolioItem {
+  id               String   @id @default(cuid())
+  creatorProfileId String
+  title            String?
+  caption          String?  @db.Text
+  mediaUrl         String
+  mediaType        String   @default("image")
+  thumbnailUrl     String?
+  position         Int      @default(0)
+  externalLink     String?
+  platform         String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  creator CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+
+  @@index([creatorProfileId])
+  @@map("portfolio_items")
+}
+
+// ============================================
+// CONTRACTS & MILESTONES
+// ============================================
+
+model Contract {
+  id               String         @id @default(cuid())
+  campaignId       String?
+  creatorProfileId String
+  agencyId         String?
+  title            String
+  content          String         @db.Text
+  status           ContractStatus @default(DRAFT)
+  totalAmount      Int?
+  currency         String         @default("AED")
+  agencySignedAt   DateTime?
+  creatorSignedAt  DateTime?
+  agencySignature  String?
+  creatorSignature String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  creator    CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  milestones Milestone[]
+
+  @@index([campaignId])
+  @@index([creatorProfileId])
+  @@map("contracts")
+}
+
+model Milestone {
+  id               String          @id @default(cuid())
+  contractId       String
+  title            String
+  description      String?         @db.Text
+  amount           Int
+  currency         String          @default("AED")
+  dueDate          DateTime?
+  status           MilestoneStatus @default(PENDING)
+  fundedAt         DateTime?
+  releasedAt       DateTime?
+  completedAt      DateTime?
+  submissionNote   String?         @db.Text
+  submissionFiles  String[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@map("milestones")
+}
+
+// ============================================
+// OPPORTUNITY PREFERENCES
+// ============================================
+
+model CreatorOpportunityPreference {
+  id               String   @id @default(cuid())
+  creatorProfileId String   @unique
+  interestedRoles  String[]
+  interestedNiches String[]
+  minRate          Int?
+  openToLongTerm   Boolean  @default(true)
+  openToShortTerm  Boolean  @default(true)
+  preferredBrands  String[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  creator CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+
+  @@index([creatorProfileId])
+  @@map("creator_opportunity_preferences")
+}
+
+// ============================================
+// REFERRALS
+// ============================================
+
+model Referral {
+  id             String         @id @default(cuid())
+  referrerId     String
+  referredEmail  String
+  referredUserId String?
+  code           String         @unique
+  status         ReferralStatus @default(PENDING)
+  rewardAmount   Int            @default(0)
+  rewardPaidAt   DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([referrerId])
+  @@index([code])
+  @@map("referrals")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  AGENCY
+  CREATOR
+  ADMIN
+}
+
+enum CampaignStatus {
+  PROVISIONAL              // Talent selected, awaiting acceptance
+  CONFIRMED_BRIEF_PENDING  // Talent accepted, brief not yet sent
+  BRIEF_SENT               // Brief sent to talent, awaiting content
+  IN_PROGRESS              // Content submitted, in production
+  COMPLETED
+  CANCELLED
+  DRAFT                    // Legacy: kept for backward compatibility
+  ACTIVE                   // Legacy: kept for backward compatibility
+}
+
+enum CampaignTalentStatus {
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  PENDING
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum TransactionType {
+  PAYMENT
+  REFUND
+  FEE
+  WITHDRAWAL
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum BookingType {
+  SHORT
+  LONG
+}
+
+enum BookingStatus {
+  PENDING
+  REVIEWING
+  CONFIRMED
+}
+
+enum CampaignInviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum StripeOnboardingStatus {
+  NOT_STARTED
+  PENDING
+  COMPLETE
+}
+
+enum WalletTransactionType {
+  PAYMENT_INTENT
+  TRANSFER
+  PAYOUT
+  REFUND
+  ADJUSTMENT
+}
+
+enum WalletDirection {
+  CREDIT
+  DEBIT
+}
+
+enum WalletStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+enum PaymentStatus {
+  COMMITTED
+  INVOICED
+  PAID
+}
+
+enum BriefStatus {
+  DRAFT
+  SENT
+  APPROVED
+  REJECTED
+}
+
+enum ContractStatus {
+  DRAFT
+  SENT
+  AGENCY_SIGNED
+  FULLY_SIGNED
+  COMPLETED
+  CANCELLED
+}
+
+enum MilestoneStatus {
+  PENDING
+  FUNDED
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  RELEASED
+  DISPUTED
+}
+
+enum ReferralStatus {
+  PENDING
+  SIGNED_UP
+  COMPLETED
+  REWARDED
+}
+
+enum UserAgreementStatus {
+  DRAFT
+  GENERATED
+  SENT
+  SIGNED
+}
+
+// ============================================
+// CREATOR SHOP (commerce enablement projects)
+// ============================================
+
+enum CreatorShopProjectMode {
+  LAUNCH
+  GROW
+}
+
+enum CreatorShopProjectStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  QUALIFIED
+  TEAM_ASSEMBLING
+  IN_BUILD
+  LAUNCH_READY
+  LIVE
+  SCALING
+}
+
+/// Execution project for creator-led product launch or growth — not native storefront / checkout.
+model CreatorShopProject {
+  id          String @id @default(cuid())
+  ownerUserId String
+  agencyId    String?
+  mode        CreatorShopProjectMode
+  productType String
+  title       String
+  status      CreatorShopProjectStatus @default(DRAFT)
+
+  /// Full intake payload (launch vs grow fields); source of truth for brief details.
+  briefPayload Json
+
+  budgetBand        String?
+  desiredLaunchDate DateTime?
+  currentPlatform   String?
+  audienceContext   String? @db.Text
+  notes             String? @db.Text
+
+  /// Timeline entries: [{ "status": "...", "at": "ISO", "label"?: "..." }]
+  statusHistory Json?
+
+  commercialModelNotes String? @db.Text
+
+  latestUpdateAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner  User           @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  agency AgencyAccount? @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+
+  @@index([ownerUserId])
+  @@index([agencyId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("creator_shop_projects")
+}
+
+
+
+// ─── CULTURE: Editorial Ingestion ──────────────────────────────
+
+enum EditorialSourceStatus {
+  ACTIVE
+  PAUSED
+  ERROR
+}
+
+enum EditorialItemStatus {
+  PENDING    // ingested, not yet enriched
+  ENRICHED   // AI summary + tags applied
+  PUBLISHED  // visible on Culture
+  HIDDEN     // manually hidden by admin
+  DUPLICATE  // flagged as duplicate
+}
+
+model EditorialSource {
+  id          String                @id @default(cuid())
+  slug        String                @unique       // e.g. "vogue", "hypebeast"
+  name        String                              // "Vogue"
+  feedUrl     String                              // RSS feed URL
+  siteUrl     String                              // Homepage URL
+  category    String                @default("fashion") // default category
+  tags        String[]              @default([])  // source-level tags
+  tier        String                @default("primary") // hero | primary | brief
+  status      EditorialSourceStatus @default(ACTIVE)
+  lastFetchAt DateTime?
+  lastError   String?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  items       EditorialItem[]
+  runs        EditorialRun[]
+
+  @@map("editorial_sources")
+}
+
+model EditorialItem {
+  id             String              @id @default(cuid())
+  sourceId       String
+  source         EditorialSource     @relation(fields: [sourceId], references: [id])
+  canonicalUrl   String              @unique        // dedupe key
+  title          String
+  excerpt        String?                            // RSS description (truncated)
+  imageUrl       String?                            // og:image or RSS enclosure
+  author         String?
+  publishedAt    DateTime?
+  category       String?                            // e.g. "Fashion", "Beauty"
+  tags           String[]            @default([])   // AI-generated tags
+  aiSummary      String?                            // Grok short summary
+  aiRelevance    Float?                             // 0.0–1.0 culture relevance
+  aiTone         String?                            // e.g. "editorial", "news"
+  duplicateOf    String?                            // canonical URL of original
+  status         EditorialItemStatus @default(PENDING)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([sourceId])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([category])
+  @@map("editorial_items")
+}
+
+model EditorialRun {
+  id          String          @id @default(cuid())
+  sourceId    String
+  source      EditorialSource @relation(fields: [sourceId], references: [id])
+  startedAt   DateTime        @default(now())
+  finishedAt  DateTime?
+  itemsFound  Int             @default(0)
+  itemsNew    Int             @default(0)
+  itemsSkipped Int            @default(0)
+  error       String?
+  createdAt   DateTime        @default(now())
+
+  @@index([sourceId])
+  @@index([startedAt])
+  @@map("editorial_runs")
+}

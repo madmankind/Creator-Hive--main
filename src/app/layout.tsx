@@ -1,92 +1,69 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
-import "./globals.css";
+import './globals.css'
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
 import { Analytics } from "@vercel/analytics/react";
-import Link from "next/link";
-import { Logo } from "@/components/Logo";
 import { Providers } from "@/components/Providers";
-import { buttonVariants } from "@/components/ui/button-variants";
-import MobileNav from "./nav.mobile";
+import { AppShell } from "@/components/AppShell";
+import { MetaPixel } from "@/components/MetaPixel";
+import { PostHogProvider } from "@/components/PostHogProvider";
+import { PostHogPageView } from "@/components/PostHogPageView";
+import { Suspense } from "react";
+import clsx from 'clsx'
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
+const inter = Inter({ subsets: ['latin'], display: 'swap', variable: '--font-inter' })
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://creator-hive.vercel.app"),
   title: {
-    default: "Creator Hive",
-    template: "%s · Creator Hive",
+    default: 'Creator Hive — UAE Creative Talent Marketplace',
+    template: '%s — Creator Hive',
   },
-  description: "Change the way you create & get paid.",
+  description: 'Book pre-vetted creative talent across the UAE and GCC. Campaign teams, deliverable tracking, and payments in one platform.',
+  keywords: ['influencer marketing', 'UAE creators', 'GCC talent', 'content creators Dubai', 'influencer platform'],
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Creator Hive',
+    startupImage: '/apple-touch-icon.png',
+  },
   openGraph: {
-    type: "website",
-    siteName: "Creator Hive",
-    title: "Creator Hive",
-    description: "Change the way you create & get paid.",
-    url: "https://creator-hive.vercel.app",
-    images: [
-      {
-        url: "/brand/creator-hive-logo.png",
-        width: 1200,
-        height: 630,
-        alt: "Creator Hive",
-      },
-    ],
+    title: 'Creator Hive — UAE Creative Talent Marketplace',
+    description: 'Book pre-vetted creative talent across the UAE and GCC.',
+    url: 'https://creatorhive.ae',
+    siteName: 'Creator Hive',
+    locale: 'en_AE',
+    type: 'website',
   },
   twitter: {
-    card: "summary_large_image",
-    title: "Creator Hive",
-    description: "Change the way you create & get paid.",
-    images: ["/brand/creator-hive-logo.png"],
+    card: 'summary_large_image',
+    title: 'Creator Hive',
+    description: 'Book pre-vetted creative talent across the UAE and GCC.',
   },
-};
+  metadataBase: new URL('https://creatorhive.ae'),
+  themeColor: '#07070B',
+}
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased bg-background text-foreground`}>
-        <Providers>
-          <header className="sticky top-0 z-50 backdrop-blur supports-[backdrop-filter]:bg-black/30 border-b border-[color:var(--color-border)]">
-            <div className="container flex items-center justify-between h-16">
-              <Link href="/" className="flex items-center gap-3 focus-ring">
-                <Logo className="h-7" />
-              </Link>
-              <nav className="hidden md:flex items-center gap-6 text-sm text-[color:var(--color-muted-foreground)]">
-                <Link href="/#how">Product</Link>
-                <Link href="/pricing">Pricing</Link>
-                <Link href="/#creators">For Creators</Link>
-                <Link href="/#brands">For Brands</Link>
-                <Link href="/#docs">Docs</Link>
-                <Link href="/app">Sign in</Link>
-                <Link href="/signup" className={`${buttonVariants({ variant: "gradient" })} ml-2`}>
-                  Get Started
-                </Link>
-              </nav>
-              <div className="md:hidden">
-                <MobileNav />
-              </div>
-            </div>
-          </header>
-          {children}
-        </Providers>
+    <html lang="en" className={clsx(inter.className, inter.variable)}>
+      <body className="bg-[#0B0F14] text-white antialiased font-sans">
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 mx-auto max-w-[980px]
+                     bg-[radial-gradient(50%_40%_at_50%_0%,rgba(255,255,255,0.08),rgba(0,0,0,0)_60%)]
+                     opacity-80"
+        />
+        <PostHogProvider>
+          <Suspense><PostHogPageView /></Suspense>
+          <Providers>
+            <AppShell>
+              {children}
+            </AppShell>
+          </Providers>
+        </PostHogProvider>
         <Analytics />
+        <MetaPixel />
       </body>
     </html>
-  );
+  )
 }

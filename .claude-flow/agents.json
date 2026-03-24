@@ -1,0 +1,30 @@
+{
+  "agents": {
+    "hive-worker-1773908036367-ps4x": {
+      "agentId": "hive-worker-1773908036367-ps4x",
+      "agentType": "worker",
+      "status": "idle",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "role": "worker",
+        "hiveRole": "worker"
+      },
+      "createdAt": "2026-03-19T08:13:56.367Z",
+      "domain": "hive-mind"
+    },
+    "hive-worker-1773908893683-8y62": {
+      "agentId": "hive-worker-1773908893683-8y62",
+      "agentType": "worker",
+      "status": "idle",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "role": "worker",
+        "hiveRole": "worker"
+      },
+      "createdAt": "2026-03-19T08:28:13.683Z",
+      "domain": "hive-mind"
+    }
+  }
+}

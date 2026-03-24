@@ -10,6 +10,7 @@ export const buttonVariants = cva(
         outline:
           "rounded-xl px-5 py-3 border border-[color:var(--color-border)] text-foreground hover:bg-[color:var(--grey-900)]",
         ghost: "rounded-xl px-4 py-2 hover:bg-[color:var(--grey-800)]",
+        pod: "bg-[#7C3AED] text-white shadow-[0_0_24px_rgba(124,58,237,0.45)] hover:bg-[#8B5CF6] hover:shadow-[0_0_32px_rgba(124,58,237,0.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A855F7]/70",
       },
       size: {
         sm: "h-9 px-3 text-sm",

@@ -1,0 +1,773 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import {
+  LayoutDashboard, BookOpen, Megaphone, Users, UserCheck,
+  CheckCircle2, XCircle, ArrowRight, RefreshCw,
+  ChevronDown, ChevronUp, ExternalLink, Zap,
+  AlertTriangle, Activity, FileText, Download,
+} from "lucide-react";
+
+type Stats = {
+  totalCreators: number;
+  pendingTalent: number;
+  activeCampaigns: number;
+  totalBookings: number;
+  pendingBookings: number;
+  totalAgencies: number;
+  pendingInvites: number;
+};
+
+type Booking = {
+  id: string;
+  status: string;
+  bookingType: string;
+  description: string;
+  contactEmail: string;
+  budgetRange: string | null;
+  startDate: string | null;
+  talentIds: string[];
+  createdAt: string;
+  user: { id: string; name: string | null; email: string | null } | null;
+  agency: { id: string; name: string } | null;
+};
+
+type Campaign = {
+  id: string;
+  title: string;
+  status: string;
+  budget: number | null;
+  startDate: string | null;
+  dueDate: string | null;
+  createdAt: string;
+  agency: {
+    id: string; name: string;
+    user: { id: string; name: string | null; email: string | null } | null;
+  };
+  talents: { id: string; talentId: string; status: string; rate: number | null; talent: { name: string; displayName: string | null } }[];
+  invites: { id: string; status: string; creatorProfileId: string }[];
+};
+
+type Creator = {
+  id: string; name: string; displayName: string | null; instagram: string | null;
+  location: string | null; skills: string[]; qualityScore: number | null;
+  talentStatus: string; source: string | null; isVerified: boolean;
+  isActive: boolean; avatarUrl: string | null; bio: string | null; createdAt: Date | string;
+};
+
+type AppUser = {
+  id: string; name: string | null; email: string | null; role: string; createdAt: string;
+  agencyAccount: { id: string; name: string } | null;
+  creatorProfile: { id: string; talentStatus: string; isActive: boolean; qualityScore: number | null } | null;
+  userAgreements: { id: string; agreementRef: string; status: string; storageUrl: string | null; createdAt: string }[];
+};
+
+const CAMPAIGN_STATUS_COLORS: Record<string, string> = {
+  DRAFT: "bg-white/10 text-white/50",
+  ACTIVE: "bg-emerald-500/20 text-emerald-300",
+  PROVISIONAL: "bg-blue-500/20 text-blue-300",
+  CONFIRMED_BRIEF_PENDING: "bg-sky-500/20 text-sky-300",
+  BRIEF_SENT: "bg-indigo-500/20 text-indigo-300",
+  IN_PROGRESS: "bg-amber-500/20 text-amber-300",
+  COMPLETED: "bg-purple-500/20 text-purple-300",
+  CANCELLED: "bg-white/10 text-white/30",
+};
+
+const BOOKING_STATUS_COLORS: Record<string, string> = {
+  PENDING: "bg-amber-500/20 text-amber-300",
+  REVIEWING: "bg-blue-500/20 text-blue-300",
+  CONFIRMED: "bg-emerald-500/20 text-emerald-300",
+};
+
+const TALENT_STATUS_COLORS: Record<string, string> = {
+  pending: "bg-amber-500/20 text-amber-300",
+  active: "bg-emerald-500/20 text-emerald-300",
+  paused: "bg-blue-500/20 text-blue-300",
+  rejected: "bg-red-500/20 text-red-300",
+};
+
+const ROLE_COLORS: Record<string, string> = {
+  ADMIN: "bg-purple-500/20 text-purple-300",
+  AGENCY: "bg-blue-500/20 text-blue-300",
+  CREATOR: "bg-emerald-500/20 text-emerald-300",
+};
+
+const CAMPAIGN_STATUSES = ["DRAFT", "ACTIVE", "PROVISIONAL", "CONFIRMED_BRIEF_PENDING", "BRIEF_SENT", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
+
+function StatusBadge({ status, map }: { status: string; map: Record<string, string> }) {
+  const cls = map[status] ?? "bg-white/10 text-white/40";
+  return (
+    <span className={"inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide " + cls}>
+      {status.replace(/_/g, " ")}
+    </span>
+  );
+}
+
+function StatCard({ label, value, sub, accent }: { label: string; value: number; sub?: string; accent?: string }) {
+  return (
+    <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5">
+      <div className={"text-3xl font-semibold " + (accent ?? "text-white")}>{value.toLocaleString()}</div>
+      <div className="mt-1 text-[11px] font-medium text-white/50 uppercase tracking-widest">{label}</div>
+      {sub && <div className="mt-0.5 text-[10px] text-white/25">{sub}</div>}
+    </div>
+  );
+}
+
+function OverviewTab({ stats, loading }: { stats: Stats | null; loading: boolean }) {
+  if (loading) return <div className="flex items-center justify-center h-64 text-white/30 text-sm">Loading stats...</div>;
+  if (!stats) return null;
+  const pending = stats.pendingBookings + stats.pendingTalent + stats.pendingInvites;
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">Platform snapshot</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="Total creators" value={stats.totalCreators} />
+          <StatCard label="Pending approval" value={stats.pendingTalent} accent="text-amber-300" sub="Talent awaiting review" />
+          <StatCard label="Active campaigns" value={stats.activeCampaigns} accent="text-emerald-300" />
+          <StatCard label="Total agencies" value={stats.totalAgencies} />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+          <StatCard label="Total bookings" value={stats.totalBookings} />
+          <StatCard label="Pending bookings" value={stats.pendingBookings} accent="text-amber-300" sub="Need your action" />
+          <StatCard label="Pending invites" value={stats.pendingInvites} />
+        </div>
+      </div>
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">Action queue</h2>
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] divide-y divide-white/[0.04]">
+          {stats.pendingBookings > 0 && (
+            <div className="flex items-center justify-between px-5 py-3.5">
+              <div className="flex items-center gap-3">
+                <BookOpen size={14} className="text-amber-300" />
+                <span className="text-[13px] text-white/70">{stats.pendingBookings} booking {stats.pendingBookings === 1 ? "request" : "requests"} awaiting review</span>
+              </div>
+              <span className="text-[11px] font-medium text-amber-300 flex items-center gap-1">Review bookings <ArrowRight size={11} /></span>
+            </div>
+          )}
+          {stats.pendingTalent > 0 && (
+            <div className="flex items-center justify-between px-5 py-3.5">
+              <div className="flex items-center gap-3">
+                <UserCheck size={14} className="text-purple-300" />
+                <span className="text-[13px] text-white/70">{stats.pendingTalent} creator {stats.pendingTalent === 1 ? "application" : "applications"} pending approval</span>
+              </div>
+              <span className="text-[11px] font-medium text-purple-300 flex items-center gap-1">Review talent <ArrowRight size={11} /></span>
+            </div>
+          )}
+          {stats.pendingInvites > 0 && (
+            <div className="flex items-center justify-between px-5 py-3.5">
+              <div className="flex items-center gap-3">
+                <Zap size={14} className="text-blue-300" />
+                <span className="text-[13px] text-white/70">{stats.pendingInvites} campaign {stats.pendingInvites === 1 ? "invite" : "invites"} awaiting creator response</span>
+              </div>
+              <span className="text-[11px] font-medium text-blue-300 flex items-center gap-1">View campaigns <ArrowRight size={11} /></span>
+            </div>
+          )}
+          {pending === 0 && (
+            <div className="px-5 py-6 text-center text-sm text-white/30">
+              <CheckCircle2 size={18} className="mx-auto mb-2 text-emerald-400" />
+              All clear — no pending actions
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BookingsTab() {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [acting, setActing] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const url = statusFilter === "all" ? "/api/admin/bookings" : `/api/admin/bookings?status=${statusFilter}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      setBookings(data.bookings ?? []);
+    } finally {
+      setLoading(false);
+    }
+  }, [statusFilter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function updateStatus(id: string, status: string) {
+    setActing(id);
+    try {
+      await fetch(`/api/admin/bookings/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status } : b));
+    } finally {
+      setActing(null);
+    }
+  }
+
+  async function convertToCampaign(id: string) {
+    setActing(id);
+    try {
+      const res = await fetch(`/api/admin/bookings/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "convert" }),
+      });
+      if (res.ok) {
+        setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status: "APPROVED" } : b));
+        // eslint-disable-next-line no-alert
+        window.alert("Campaign created. Check the Campaigns tab.");
+      }
+    } finally {
+      setActing(null);
+    }
+  }
+
+  const filtered = statusFilter === "all" ? bookings : bookings.filter((b) => b.status === statusFilter);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2">
+          {["all", "PENDING", "REVIEWING", "CONFIRMED"].map((s) => (
+            <button key={s} onClick={() => setStatusFilter(s)}
+              className={"px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize " + (statusFilter === s ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70")}>
+              {s === "all" ? "All" : s.charAt(0) + s.slice(1).toLowerCase()}
+            </button>
+          ))}
+        </div>
+        <button onClick={load} className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70">
+          <RefreshCw size={11} /> Refresh
+        </button>
+      </div>
+      {loading ? (
+        <div className="text-center py-16 text-white/30 text-sm">Loading...</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16 text-white/30 text-sm">No bookings found.</div>
+      ) : (
+        <div className="rounded-2xl border border-white/[0.07] overflow-hidden divide-y divide-white/[0.04]">
+          {filtered.map((b) => (
+            <div key={b.id} className="bg-white/[0.02] hover:bg-white/[0.03] transition-colors">
+              <button className="w-full flex items-center justify-between px-5 py-4 text-left"
+                onClick={() => setExpanded(expanded === b.id ? null : b.id)}>
+                <div className="flex items-center gap-4 min-w-0">
+                  <StatusBadge status={b.status} map={BOOKING_STATUS_COLORS} />
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-white/80 truncate">
+                      {b.user?.name ?? b.user?.email ?? b.agency?.name ?? b.contactEmail}
+                    </div>
+                    <div className="text-xs text-white/35 mt-0.5">
+                      {b.bookingType} · {b.talentIds.length} talent{b.talentIds.length !== 1 ? "s" : ""} · {new Date(b.createdAt).toLocaleDateString("en-GB")}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+                  {b.budgetRange && <span className="text-xs text-white/40">{b.budgetRange}</span>}
+                  {expanded === b.id ? <ChevronUp size={14} className="text-white/30" /> : <ChevronDown size={14} className="text-white/30" />}
+                </div>
+              </button>
+              {expanded === b.id && (
+                <div className="px-5 pb-5 space-y-4 border-t border-white/[0.05]">
+                  <div className="mt-4 grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1">Contact</div>
+                      <div className="text-sm text-white/70">{b.contactEmail}</div>
+                    </div>
+                    {b.budgetRange && (
+                      <div>
+                        <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1">Budget</div>
+                        <div className="text-sm text-white/70">{b.budgetRange}</div>
+                      </div>
+                    )}
+                    {b.startDate && (
+                      <div>
+                        <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1">Start date</div>
+                        <div className="text-sm text-white/70">{b.startDate}</div>
+                      </div>
+                    )}
+                    <div>
+                      <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1">Type</div>
+                      <div className="text-sm text-white/70 capitalize">{b.bookingType.toLowerCase()}</div>
+                    </div>
+                  </div>
+                  {b.description && (
+                    <div>
+                      <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1">Brief</div>
+                      <div className="text-sm text-white/60 leading-relaxed bg-white/[0.02] rounded-xl p-3 border border-white/[0.05]">{b.description}</div>
+                    </div>
+                  )}
+                  {b.talentIds.length > 0 && (
+                    <div>
+                      <div className="text-[10px] text-white/30 uppercase tracking-wider mb-2">Requested talent IDs</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {b.talentIds.map((tid) => (
+                          <a key={tid} href={`/creators/${tid}`} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/[0.05] border border-white/[0.07] text-xs text-white/60 hover:text-white/90 transition-colors">
+                            {tid.slice(0, 10)}... <ExternalLink size={9} />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 pt-2 flex-wrap">
+                    {b.status === "PENDING" && (
+                      <>
+                        <button onClick={() => updateStatus(b.id, "REVIEWING")} disabled={acting === b.id}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 transition-colors disabled:opacity-50">
+                          <CheckCircle2 size={12} /> Mark Reviewing
+                        </button>
+                        <button onClick={() => convertToCampaign(b.id)} disabled={acting === b.id}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 transition-colors disabled:opacity-50">
+                          <Zap size={12} /> Confirm and Create Campaign
+                        </button>
+                      </>
+                    )}
+                    {(b.status === "REVIEWING" || b.status === "CONFIRMED") && (
+                      <button onClick={() => convertToCampaign(b.id)} disabled={acting === b.id}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 transition-colors disabled:opacity-50">
+                        <Zap size={12} /> Convert to Campaign
+                      </button>
+                    )}
+                    {b.status === "REVIEWING" && (
+                      <button onClick={() => updateStatus(b.id, "PENDING")} disabled={acting === b.id}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white/10 text-white/50 hover:bg-white/15 transition-colors disabled:opacity-50">
+                        Restore to pending
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CampaignsTab() {
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [acting, setActing] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const url = statusFilter === "all" ? "/api/admin/campaigns" : `/api/admin/campaigns?status=${statusFilter}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      setCampaigns(data.campaigns ?? []);
+    } finally {
+      setLoading(false);
+    }
+  }, [statusFilter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function updateCampaignStatus(id: string, status: string) {
+    setActing(id);
+    try {
+      await fetch(`/api/admin/campaigns/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      setCampaigns((prev) => prev.map((c) => c.id === id ? { ...c, status } : c));
+    } finally {
+      setActing(null);
+    }
+  }
+
+  const filtered = statusFilter === "all" ? campaigns : campaigns.filter((c) => c.status === statusFilter);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2 flex-wrap">
+          {["all", ...CAMPAIGN_STATUSES].map((s) => (
+            <button key={s} onClick={() => setStatusFilter(s)}
+              className={"px-3 py-1.5 rounded-lg text-xs font-medium transition-colors " + (statusFilter === s ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70")}>
+              {s === "all" ? "All" : s.replace(/_/g, " ").charAt(0).toUpperCase() + s.replace(/_/g, " ").slice(1).toLowerCase()}
+            </button>
+          ))}
+        </div>
+        <button onClick={load} className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70">
+          <RefreshCw size={11} /> Refresh
+        </button>
+      </div>
+      {loading ? (
+        <div className="text-center py-16 text-white/30 text-sm">Loading...</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16 text-white/30 text-sm">No campaigns found.</div>
+      ) : (
+        <div className="rounded-2xl border border-white/[0.07] overflow-hidden divide-y divide-white/[0.04]">
+          {filtered.map((c) => (
+            <div key={c.id} className="bg-white/[0.02] hover:bg-white/[0.03] transition-colors">
+              <button className="w-full flex items-center justify-between px-5 py-4 text-left"
+                onClick={() => setExpanded(expanded === c.id ? null : c.id)}>
+                <div className="flex items-center gap-4 min-w-0">
+                  <StatusBadge status={c.status} map={CAMPAIGN_STATUS_COLORS} />
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-white/80 truncate">{c.title}</div>
+                    <div className="text-xs text-white/35 mt-0.5">
+                      {c.agency.name} · {c.talents.length} talent{c.talents.length !== 1 ? "s" : ""} · {new Date(c.createdAt).toLocaleDateString("en-GB")}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+                  {c.budget && <span className="text-xs text-white/40">${(c.budget / 100).toLocaleString()}</span>}
+                  {expanded === c.id ? <ChevronUp size={14} className="text-white/30" /> : <ChevronDown size={14} className="text-white/30" />}
+                </div>
+              </button>
+              {expanded === c.id && (
+                <div className="px-5 pb-5 space-y-4 border-t border-white/[0.05]">
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div>
+                      <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1">Client</div>
+                      <div className="text-sm text-white/70">{c.agency.name}</div>
+                      <div className="text-xs text-white/35">{c.agency.user?.email ?? "—"}</div>
+                    </div>
+                    {c.startDate && (
+                      <div>
+                        <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1">Start</div>
+                        <div className="text-sm text-white/70">{new Date(c.startDate).toLocaleDateString("en-GB")}</div>
+                      </div>
+                    )}
+                    {c.dueDate && (
+                      <div>
+                        <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1">Deadline</div>
+                        <div className="text-sm text-white/70">{new Date(c.dueDate).toLocaleDateString("en-GB")}</div>
+                      </div>
+                    )}
+                  </div>
+                  {c.talents.length > 0 && (
+                    <div>
+                      <div className="text-[10px] text-white/30 uppercase tracking-wider mb-2">Talent roster</div>
+                      <div className="space-y-1.5">
+                        {c.talents.map((t) => (
+                          <div key={t.id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+                            <div>
+                              <span className="text-sm text-white/75">{t.talent.displayName ?? t.talent.name}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              {t.rate && <span className="text-xs text-white/40">${(t.rate / 100).toLocaleString()}</span>}
+                              <StatusBadge status={t.status} map={CAMPAIGN_STATUS_COLORS} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {c.invites.length > 0 && (
+                    <div>
+                      <div className="text-[10px] text-white/30 uppercase tracking-wider mb-2">
+                        Invites ({c.invites.filter((i) => i.status === "PENDING").length} pending)
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {c.invites.map((inv) => (
+                          <span key={inv.id} className={"px-2 py-0.5 rounded-full text-[10px] font-medium " + (inv.status === "PENDING" ? "bg-amber-500/20 text-amber-300" : inv.status === "ACCEPTED" ? "bg-emerald-500/20 text-emerald-300" : "bg-white/10 text-white/30")}>
+                            {inv.status.toLowerCase()}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 pt-2 flex-wrap">
+                    <div className="text-[10px] text-white/30 uppercase tracking-wider mr-1">Move to:</div>
+                    {CAMPAIGN_STATUSES.filter((s) => s !== c.status).map((s) => (
+                      <button key={s} onClick={() => updateCampaignStatus(c.id, s)} disabled={acting === c.id}
+                        className={"px-3 py-1.5 rounded-xl text-xs font-medium transition-colors disabled:opacity-50 " + (CAMPAIGN_STATUS_COLORS[s] ?? "bg-white/10 text-white/50")}>
+                        {s.replace(/_/g, " ").charAt(0).toUpperCase() + s.replace(/_/g, " ").slice(1).toLowerCase()}
+                      </button>
+                    ))}
+                    <a href={`/dashboard/campaigns/${c.id}`} target="_blank" rel="noopener noreferrer"
+                      className="ml-auto flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs text-white/40 hover:text-white/70 border border-white/[0.07] transition-colors">
+                      Open campaign <ExternalLink size={10} />
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TalentTab({ initialCreators }: { initialCreators: Creator[] }) {
+  const [items, setItems] = useState(initialCreators);
+  const [filter, setFilter] = useState<string>("all");
+  const [updating, setUpdating] = useState<string | null>(null);
+  const filtered = filter === "all" ? items : items.filter((c) => c.talentStatus === filter);
+
+  async function updateStatus(id: string, status: string) {
+    setUpdating(id);
+    try {
+      const res = await fetch(`/api/admin/talent/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ talentStatus: status, isActive: status === "active" }),
+      });
+      if (res.ok) setItems((prev) => prev.map((c) => c.id === id ? { ...c, talentStatus: status, isActive: status === "active" } : c));
+    } finally {
+      setUpdating(null);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2">
+          {["all", "pending", "active", "paused", "rejected"].map((s) => (
+            <button key={s} onClick={() => setFilter(s)}
+              className={"px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize " + (filter === s ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70")}>
+              {s}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-white/30">{filtered.length} creators</span>
+      </div>
+      <div className="rounded-2xl border border-white/[0.07] overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-white/[0.07]">
+              {["Creator", "Instagram", "Location", "Score", "Source", "Status", "Actions"].map((h) => (
+                <th key={h} className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-wider text-white/30">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((c) => (
+              <tr key={c.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
+                <td className="px-4 py-3">
+                  <div className="text-sm font-medium text-white/80">{c.displayName || c.name}</div>
+                  {c.bio && <div className="text-xs text-white/25 mt-0.5 max-w-[200px] truncate">{c.bio}</div>}
+                </td>
+                <td className="px-4 py-3 text-sm text-white/40">
+                  {c.instagram ? (
+                    <a href={`https://instagram.com/${c.instagram}`} target="_blank" rel="noopener noreferrer" className="hover:text-white/70 transition-colors">@{c.instagram}</a>
+                  ) : "—"}
+                </td>
+                <td className="px-4 py-3 text-sm text-white/40">{c.location || "—"}</td>
+                <td className="px-4 py-3">
+                  <span className={"inline-block px-2 py-0.5 rounded-full text-xs font-medium " + ((c.qualityScore ?? 0) >= 10 ? "bg-emerald-500/20 text-emerald-300" : (c.qualityScore ?? 0) >= 6 ? "bg-amber-500/20 text-amber-300" : "bg-white/10 text-white/40")}>
+                    {c.qualityScore ?? "—"}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-xs text-white/30 capitalize">{c.source || "manual"}</td>
+                <td className="px-4 py-3">
+                  <span className={"inline-block px-2 py-0.5 rounded-full text-xs font-medium capitalize " + (TALENT_STATUS_COLORS[c.talentStatus] || "bg-white/10 text-white/40")}>
+                    {c.talentStatus}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-1 flex-wrap">
+                    <a href={`/creators/${c.id}`} target="_blank" rel="noopener noreferrer" className="px-2 py-1 rounded-md text-xs bg-white/[0.05] text-white/40 hover:bg-white/10 transition-colors">View</a>
+                    {c.talentStatus !== "active" && (
+                      <button onClick={() => updateStatus(c.id, "active")} disabled={updating === c.id}
+                        className="px-2 py-1 rounded-md text-xs bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 transition-colors disabled:opacity-50">Approve</button>
+                    )}
+                    {c.talentStatus === "active" && (
+                      <button onClick={() => updateStatus(c.id, "paused")} disabled={updating === c.id}
+                        className="px-2 py-1 rounded-md text-xs bg-white/10 text-white/40 hover:bg-white/15 transition-colors disabled:opacity-50">Pause</button>
+                    )}
+                    {c.talentStatus !== "rejected" && (
+                      <button onClick={() => updateStatus(c.id, "rejected")} disabled={updating === c.id}
+                        className="px-2 py-1 rounded-md text-xs bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors disabled:opacity-50">Reject</button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {filtered.length === 0 && (
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-white/25">No creators in this filter.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function UsersTab() {
+  const [users, setUsers] = useState<AppUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [regenUserId, setRegenUserId] = useState<string | null>(null);
+
+  const load = () => {
+    setLoading(true);
+    fetch("/api/admin/users")
+      .then((r) => r.json())
+      .then((d) => setUsers(d.users ?? []))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const regenerate = async (userId: string) => {
+    setRegenUserId(userId);
+    try {
+      const res = await fetch(`/api/admin/user-agreement/${userId}?force=true`, { method: "POST" });
+      if (res.ok) load();
+    } finally {
+      setRegenUserId(null);
+    }
+  };
+
+  const filtered = roleFilter === "all" ? users : users.filter((u) => u.role === roleFilter);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2">
+          {["all", "AGENCY", "CREATOR", "ADMIN"].map((r) => (
+            <button key={r} onClick={() => setRoleFilter(r)}
+              className={"px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize " + (roleFilter === r ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70")}>
+              {r === "all" ? "All" : r.charAt(0) + r.slice(1).toLowerCase()}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-white/30">{filtered.length} users</span>
+      </div>
+      {loading ? (
+        <div className="text-center py-16 text-white/30 text-sm">Loading...</div>
+      ) : (
+        <div className="rounded-2xl border border-white/[0.07] overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/[0.07]">
+                {["User", "Email", "Role", "Agency / Creator", "Agreement", "Joined", "Actions"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-wider text-white/30">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((u) => (
+                <tr key={u.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
+                  <td className="px-4 py-3 text-sm font-medium text-white/80">{u.name ?? "—"}</td>
+                  <td className="px-4 py-3 text-sm text-white/40">{u.email ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    <span className={"inline-block px-2 py-0.5 rounded-full text-xs font-medium " + (ROLE_COLORS[u.role] ?? "bg-white/10 text-white/40")}>
+                      {u.role}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-white/40">
+                    {u.agencyAccount ? (
+                      <span className="text-blue-300/70">{u.agencyAccount.name}</span>
+                    ) : u.creatorProfile ? (
+                      <span className="text-emerald-300/70 capitalize">{u.creatorProfile.talentStatus}</span>
+                    ) : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-white/30">{new Date(u.createdAt).toLocaleDateString("en-GB")}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1">
+                      {u.agencyAccount && (
+                        <a href="/dashboard/campaigns" className="px-2 py-1 rounded-md text-xs bg-white/[0.05] text-white/40 hover:bg-white/10 transition-colors">Campaigns</a>
+                      )}
+                      {u.creatorProfile && (
+                        <a href={`/creators/${u.creatorProfile.id}`} target="_blank" rel="noopener noreferrer"
+                          className="px-2 py-1 rounded-md text-xs bg-white/[0.05] text-white/40 hover:bg-white/10 transition-colors">Profile</a>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-white/25">No users found.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type Tab = "overview" | "bookings" | "campaigns" | "talent" | "users";
+
+const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  { id: "overview", label: "Overview", icon: <LayoutDashboard size={14} /> },
+  { id: "bookings", label: "Bookings", icon: <BookOpen size={14} /> },
+  { id: "campaigns", label: "Campaigns", icon: <Megaphone size={14} /> },
+  { id: "talent", label: "Talent", icon: <UserCheck size={14} /> },
+  { id: "users", label: "Users", icon: <Users size={14} /> },
+];
+
+export default function AdminDashboardClient({ creators }: { creators: Creator[] }) {
+  const [tab, setTab] = useState<Tab>("overview");
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/admin/stats")
+      .then((r) => r.json())
+      .then((d) => setStats(d))
+      .finally(() => setStatsLoading(false));
+  }, []);
+
+  const pendingCount = (stats?.pendingBookings ?? 0) + (stats?.pendingTalent ?? 0);
+
+  return (
+    <div className="min-h-screen bg-[#07070A] text-white">
+      <div className="border-b border-white/[0.06] bg-[#07070A]/80 backdrop-blur-sm sticky top-0 z-20">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500/40 to-amber-500/20 flex items-center justify-center">
+              <Activity size={14} className="text-purple-300" />
+            </div>
+            <div>
+              <span className="text-[15px] font-semibold text-white/90">Admin Console</span>
+              <span className="text-[11px] text-white/25 ml-2">Creator Hive</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {pendingCount > 0 && (
+              <div className="flex items-center gap-1.5 mr-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20">
+                <AlertTriangle size={10} className="text-amber-400" />
+                <span className="text-[11px] text-amber-300 font-medium">{pendingCount} pending actions</span>
+              </div>
+            )}
+            <a href="/" className="px-3 py-1.5 rounded-lg text-xs text-white/40 hover:text-white/70 border border-white/[0.07] transition-colors">
+              Back to app
+            </a>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-6 flex gap-1">
+          {TABS.map((t) => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={"flex items-center gap-1.5 px-4 py-2.5 text-[12px] font-medium border-b-2 transition-colors " + (tab === t.id ? "border-purple-400 text-white" : "border-transparent text-white/40 hover:text-white/70")}>
+              {t.icon}
+              {t.label}
+              {t.id === "bookings" && (stats?.pendingBookings ?? 0) > 0 && (
+                <span className="ml-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500/30 text-amber-300 text-[9px] font-bold">
+                  {stats!.pendingBookings}
+                </span>
+              )}
+              {t.id === "talent" && (stats?.pendingTalent ?? 0) > 0 && (
+                <span className="ml-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-purple-500/30 text-purple-300 text-[9px] font-bold">
+                  {stats!.pendingTalent}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {tab === "overview" && <OverviewTab stats={stats} loading={statsLoading} />}
+        {tab === "bookings" && <BookingsTab />}
+        {tab === "campaigns" && <CampaignsTab />}
+        {tab === "talent" && <TalentTab initialCreators={creators} />}
+        {tab === "users" && <UsersTab />}
+      </div>
+    </div>
+  );
+}

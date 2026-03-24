@@ -1,0 +1,53 @@
+import { PrismaClient } from "@prisma/client";
+import { curatedTalent } from "../src/lib/curatedTalent";
+
+const prisma = new PrismaClient();
+
+async function main() {
+  let seeded = 0;
+  let skipped = 0;
+
+  for (const t of curatedTalent) {
+    const instagram = t.instagramHandle?.replace(/^@/, "") || null;
+
+    if (!instagram) {
+      console.warn(`Skipping ${t.name} — no instagram handle`);
+      skipped++;
+      continue;
+    }
+
+    const existing = await prisma.creatorProfile.findFirst({ where: { instagram } });
+
+    const data = {
+      name: t.name,
+      displayName: t.name.split(" ")[0],
+      instagram,
+      bio: t.shortBio,
+      skills: t.roleTags as string[],
+      niches: t.interests ?? [],
+      location: t.location ?? null,
+      avatarUrl: t.profileImageUrl ?? t.avatarUrl ?? null,
+      portfolioUrl: t.links?.website ?? t.links?.behance ?? null,
+      isVerified: true,
+      isActive: true,
+      talentStatus: "active",
+      source: "manual",
+    };
+
+    if (existing) {
+      await prisma.creatorProfile.update({ where: { id: existing.id }, data });
+    } else {
+      await prisma.creatorProfile.create({ data });
+    }
+    seeded++;
+  }
+
+  console.log(`✅ Seeded ${seeded} creator profiles (skipped ${skipped})`);
+}
+
+main()
+  .catch((e) => {
+    console.error("Seed failed:", e);
+    process.exit(1);
+  })
+  .finally(() => prisma.$disconnect());
