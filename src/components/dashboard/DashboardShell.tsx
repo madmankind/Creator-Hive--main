@@ -26,7 +26,8 @@ export function DashboardShell({
       className="relative"
       style={{
         minHeight: "100dvh",
-        overflow: "hidden",
+        overflowX: "hidden",
+        overflowY: "auto",
         color: feyTokens.colors.text.primary,
         background: "#07070B",
         isolation: "isolate",
@@ -67,7 +68,7 @@ export function DashboardShell({
           >
             <div
               className="h-full mx-auto flex items-center"
-              style={{ maxWidth: "1240px", paddingLeft: "32px", paddingRight: "32px" }}
+              style={{ maxWidth: "1240px", paddingLeft: "clamp(16px, 4vw, 32px)", paddingRight: "clamp(16px, 4vw, 32px)" }}
             >
               {/* Brand wordmark */}
               <span
@@ -92,7 +93,7 @@ export function DashboardShell({
         )}
 
         {/* Main scrollable area */}
-        <main className="flex-1 overflow-y-auto" style={{ paddingBottom: "calc(88px + 24px)" }}>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden" style={{ paddingBottom: "calc(88px + 24px + env(safe-area-inset-bottom, 0px))" }}>
           {fullBleed ? (
             children
           ) : (
@@ -100,9 +101,9 @@ export function DashboardShell({
               className="mx-auto"
               style={{
                 maxWidth: "1240px",
-                paddingLeft: "32px",
-                paddingRight: "32px",
-                paddingTop: "28px",
+                paddingLeft: "clamp(16px, 4vw, 32px)",
+                paddingRight: "clamp(16px, 4vw, 32px)",
+                paddingTop: "20px",
               }}
             >
               {children}

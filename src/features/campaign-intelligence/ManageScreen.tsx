@@ -193,10 +193,12 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
   // Original layout (fallback)
   return (
     <div
-      className="relative flex flex-col overflow-hidden"
+      className="relative flex flex-col"
       style={{
-        minHeight: "100vh",
-        width: "100vw",
+        minHeight: "100dvh",
+        width: "100%",
+        overflowX: "hidden",
+        overflowY: "auto",
         color: feyTokens.colors.text.primary,
         background: "#07070B",
         isolation: "isolate",
@@ -240,16 +242,16 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
       />
 
       {/* Centered Workspace Container */}
-      <div className="relative z-10 w-full flex-1 min-h-0 flex justify-center">
+      <div className="relative z-10 w-full flex-1 min-h-0 flex justify-center px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-[1240px] min-h-0 flex flex-col">
-          {/* Header (fixed height) */}
+          {/* Header */}
           <div
-            className="flex items-center justify-between"
-            style={{ flex: "0 0 64px" }}
+            className="flex items-center justify-between flex-wrap gap-2"
+            style={{ minHeight: "64px", paddingTop: "12px", paddingBottom: "12px" }}
           >
               {/* Left: Campaign Info */}
-              <div className="flex items-center gap-4">
-                <div className="w-[240px]">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-full max-w-[240px]">
                   <CampaignSwitcher />
                 </div>
                 <div
@@ -351,58 +353,29 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
               </div>
             </div>
 
-          {/* MainContent (scrollable, reserves dock) */}
+          {/* MainContent */}
           <div
-            className="flex-1 min-h-0 flex flex-col overflow-y-auto"
-            style={{
-              padding: "16px 24px 0",
-              gap: "16px",
-              paddingBottom: "calc(88px + 16px)", // reserve dock
-            }}
+            className="flex-1 flex flex-col gap-4 overflow-y-auto"
+            style={{ paddingBottom: "calc(88px + 24px + env(safe-area-inset-bottom, 0px))" }}
           >
-            {/* Grid layout: top big frame + bottom split frames */}
-            <div
-              className="w-full min-h-0"
-              style={{
-                display: "grid",
-                gridTemplateRows: "300px 260px",
-                gap: "16px",
-                minHeight: 0,
-              }}
-            >
-              {/* Talent frame row */}
-              <SectionFrame style={{ height: "300px" }}>
-                <div style={{ height: "100%", minHeight: 0 }}>
-                  <TalentCarousel
-                    cards={cards}
-                    selectedCardId={selectedCardId || selectedCard?.id || null}
-                    onCardSelect={handleCardSelect}
-                    highlightedCardId={highlightedCardId}
-                  />
-                </div>
+            {/* Talent frame */}
+            <SectionFrame style={{ minHeight: "280px" }}>
+              <TalentCarousel
+                cards={cards}
+                selectedCardId={selectedCardId || selectedCard?.id || null}
+                onCardSelect={handleCardSelect}
+                highlightedCardId={highlightedCardId}
+              />
+            </SectionFrame>
+
+            {/* Bottom row: stacks on mobile, side-by-side on lg+ */}
+            <div className="grid gap-4 grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
+              <SectionFrame style={{ minHeight: "260px" }}>
+                <ExecutionHubPanel cards={cards} campaignName={activeCampaign?.name} />
               </SectionFrame>
-
-              {/* Bottom row: Execution + Calendar */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "minmax(0, 7fr) minmax(0, 3fr)",
-                  gap: "16px",
-                  minHeight: 0,
-                }}
-              >
-                <SectionFrame style={{ height: "260px" }}>
-                  <div style={{ height: "100%", minHeight: 0 }}>
-                    <ExecutionHubPanel cards={cards} campaignName={activeCampaign?.name} />
-                  </div>
-                </SectionFrame>
-
-                <SectionFrame style={{ height: "260px" }}>
-                  <div style={{ height: "100%", minHeight: 0 }}>
-                    <WeeklyCalendarPanel cards={cards} onSelectTalent={handleTalentSelect} />
-                  </div>
-                </SectionFrame>
-              </div>
+              <SectionFrame style={{ minHeight: "260px" }}>
+                <WeeklyCalendarPanel cards={cards} onSelectTalent={handleTalentSelect} />
+              </SectionFrame>
             </div>
           </div>
         </div>

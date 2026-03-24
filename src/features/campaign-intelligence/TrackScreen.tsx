@@ -148,8 +148,8 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
   const headerLeft = (
     <>
       <CampaignSwitcher />
-      <div className="h-4 w-px flex-shrink-0" style={{ background: "rgba(255,255,255,0.08)" }} />
-      <div className="flex items-center gap-4">
+      <div className="hidden sm:block h-4 w-px flex-shrink-0" style={{ background: "rgba(255,255,255,0.08)" }} />
+      <div className="hidden sm:flex items-center gap-3">
         {TIME_RANGES.map((r) => (
           <button
             key={r}
@@ -194,7 +194,25 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
           </p>
         </div>
       ) : (
-      <div className="grid gap-6" style={{ gridTemplateColumns: showInsights ? "1fr 300px" : "1fr" }}>
+      <div className="space-y-6">
+        {/* Mobile time range strip */}
+        <div className="flex sm:hidden items-center gap-3 overflow-x-auto scrollbar-hide pb-1">
+          {TIME_RANGES.map((r) => (
+            <button
+              key={r}
+              onClick={() => setTimeRange(r)}
+              className="flex-shrink-0 text-[12px] transition-colors py-1"
+              style={{
+                color: timeRange === r ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.38)",
+                fontWeight: timeRange === r ? 500 : 400,
+              }}
+            >
+              {r === "custom" ? "Custom" : r}
+            </button>
+          ))}
+        </div>
+
+        <div className={showInsights ? "grid gap-6 lg:grid-cols-[1fr_300px]" : "grid gap-6"}>
         {/* Main column */}
         <div className="space-y-6 min-w-0">
 
@@ -297,15 +315,15 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
           </div>
 
           {/* Creator breakdown + timeline */}
-          <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 280px" }}>
+          <div className="grid gap-6 sm:grid-cols-[1fr_280px]">
             <CreatorBreakdownTable campaignIds={activeCampaign ? [activeCampaign.id] : []} />
             <EventTimeline campaignIds={activeCampaign ? [activeCampaign.id] : []} />
           </div>
-        </div>
+        </div>{/* end main column */}
 
         {/* Insights panel — only when expanded */}
         {showInsights && (
-          <div className="sticky top-6 self-start">
+          <div className="lg:sticky lg:top-6 self-start">
             <TrackInsightsPanel
               objective={objective}
               plannedData={plannedData}
@@ -323,6 +341,7 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
             />
           </div>
         )}
+        </div>
       </div>
       )}
     </DashboardShell>

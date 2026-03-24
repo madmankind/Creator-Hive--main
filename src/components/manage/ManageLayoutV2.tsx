@@ -137,8 +137,8 @@ export function ManageLayoutV2({
           className="w-full flex flex-col min-h-0"
           style={{
             maxWidth: "1240px",
-            paddingLeft: "32px",
-            paddingRight: "32px",
+            paddingLeft: "clamp(16px, 4vw, 32px)",
+            paddingRight: "clamp(16px, 4vw, 32px)",
             paddingTop: "0px",
             paddingBottom: BOTTOM_NAV_PADDING,
           }}

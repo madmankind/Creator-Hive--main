@@ -411,13 +411,14 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
 
       {/* Table */}
       <div
+        className="overflow-x-auto"
         style={{
           background: "rgba(255,255,255,0.03)",
           border: "1px solid rgba(255,255,255,0.07)",
           borderRadius: "14px",
-          overflow: "hidden",
         }}
       >
+        <div style={{ minWidth: "560px" }}>
         {/* Table header */}
         <div
           className="grid px-5 py-3"
@@ -518,6 +519,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
         {activeTab === "transactions" && (
           <EmptyState icon="🔄" title="No transactions yet" subtitle="Funding and releases will appear here" />
         )}
+        </div>{/* end minWidth wrapper */}
       </div>
     </DashboardShell>
     </>

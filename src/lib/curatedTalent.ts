@@ -106,6 +106,7 @@ export const curatedTalent: CuratedTalent[] = [
   {
     id: "talent-amro",
     name: "Amro",
+    languages: ["EN", "AR"],
     displayTitle: "Director of Photography · Filmmaker",
     instagramHandle: "amroqudah",
     instagramUrl: "https://instagram.com/amroqudah",
@@ -926,33 +927,6 @@ export const curatedTalent: CuratedTalent[] = [
     ],
     profileImageUrl: "https://ui-avatars.com/api/?name=Fils&background=0d0d1a&color=a78bfa&size=512",
     links: { website: "https://linkedin.com/in/anurag-ajith" },
-  },
-
-  // ── TALENT MANAGER ────────────────────────────────────────────────────────
-
-  {
-    id: "talent-yusuf",
-    name: "Yusuf",
-    displayTitle: "Talent Manager",
-    instagramHandle: "",
-    instagramUrl: "",
-    avatarUrl: "https://ui-avatars.com/api/?name=Yusuf&background=111827&color=c4b5fd&size=512",
-    primaryRole: "Talent Manager",
-    roleTags: ["Talent Manager", "Account Manager", "Strategist", "Project Manager"],
-    platformTags: ["LinkedIn"],
-    shortBio: "Sources and manages creative talent, handles creator onboarding, and builds roster relationships. Experienced in talent operations and creator management.",
-    nicheSummary: "Talent manager based in Dubai. Handles talent sourcing, onboarding, and roster management at Creator Hive.",
-    availability: ["Monthly"],
-    prismArchetype: "The Conductor",
-    location: "Dubai, UAE",
-    languages: ["EN", "AR"],
-    tier: "Tier 1",
-    portfolio: [
-      { type: "image", src: "/portfolio/work-1.svg", title: "Talent Management" },
-      { type: "image", src: "/portfolio/work-2.svg", title: "Creator Onboarding" },
-    ],
-    profileImageUrl: "https://ui-avatars.com/api/?name=Yusuf&background=111827&color=c4b5fd&size=512",
-    links: {},
   },
 
 ];

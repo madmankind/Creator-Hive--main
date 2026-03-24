@@ -31,8 +31,9 @@ function BottomDockInner() {
   const [dockHover, setDockHover] = useState(false);
 
   useEffect(() => {
+    const isTouchDevice = () => window.matchMedia("(pointer: coarse)").matches;
     const onScroll = () => {
-      if (hovered.current || isSettings) return;
+      if (isTouchDevice() || hovered.current || isSettings) return;
       setOpacity(0.18);
       if (scrollTimer.current) clearTimeout(scrollTimer.current);
       scrollTimer.current = setTimeout(() => setOpacity(1), 600);
@@ -80,7 +81,13 @@ function BottomDockInner() {
   return (
     <div
       className="fixed left-0 right-0 bottom-0 z-50"
-      style={{ height: "88px", pointerEvents: "none", opacity: effectiveOpacity, transition: "opacity 0.4s ease" }}
+      style={{
+        height: "calc(88px + env(safe-area-inset-bottom, 0px))",
+        pointerEvents: "none",
+        opacity: effectiveOpacity,
+        transition: "opacity 0.4s ease",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+      }}
       onMouseEnter={() => {
         hovered.current = true;
         if (!isSettings) setOpacity(1);
@@ -105,24 +112,14 @@ function BottomDockInner() {
                 key={item.id}
                 type="button"
                 onClick={() => router.push(item.route)}
-                className="flex flex-col items-center justify-center rounded-full transition-all duration-200"
+                className="flex flex-col items-center justify-center rounded-full transition-all duration-200 active:scale-95"
                 style={{
                   width: "64px",
                   height: "56px",
                   background: active ? "rgba(255,255,255,0.12)" : "transparent",
                   color: active ? feyTokens.colors.text.primary : feyTokens.colors.text.muted,
-                }}
-                onMouseEnter={(e) => {
-                  if (!active) {
-                    e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-                    e.currentTarget.style.color = feyTokens.colors.text.secondary;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!active) {
-                    e.currentTarget.style.background = "transparent";
-                    e.currentTarget.style.color = feyTokens.colors.text.muted;
-                  }
+                  touchAction: "manipulation",
+                  WebkitTapHighlightColor: "transparent",
                 }}
               >
                 <Icon size={20} />
@@ -152,20 +149,8 @@ function BottomDockInner() {
                 ? "0 10px 36px rgba(0,0,0,0.35)"
                 : "0 8px 32px rgba(0,0,0,0.5)",
             color: isHiveActive ? "rgba(251,176,36,0.95)" : feyTokens.colors.text.muted,
-          }}
-          onMouseEnter={(e) => {
-            if (!isHiveActive) {
-              e.currentTarget.style.background = "rgba(251,176,36,0.07)";
-              e.currentTarget.style.borderColor = "rgba(251,176,36,0.28)";
-              e.currentTarget.style.color = "rgba(251,176,36,0.70)";
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!isHiveActive) {
-              e.currentTarget.style.background = isHiveSurface ? "rgba(8,8,12,0.48)" : "rgba(12,12,18,0.88)";
-              e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
-              e.currentTarget.style.color = feyTokens.colors.text.muted;
-            }
+            touchAction: "manipulation",
+            WebkitTapHighlightColor: "transparent",
           }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
