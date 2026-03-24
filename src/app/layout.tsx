@@ -7,7 +7,6 @@ import { AppShell } from "@/components/AppShell";
 import { MetaPixel } from "@/components/MetaPixel";
 import { PostHogProvider } from "@/components/PostHogProvider";
 import { PostHogPageView } from "@/components/PostHogPageView";
-import { ClerkProvider } from "@clerk/nextjs";
 import { Suspense } from "react";
 import clsx from 'clsx'
 
@@ -46,27 +45,25 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider>
-      <html lang="en" className={clsx(inter.className, inter.variable)}>
-        <body className="bg-[#0B0F14] text-white antialiased font-sans">
-          <div
-            aria-hidden
-            className="pointer-events-none fixed inset-0 mx-auto max-w-[980px]
-                       bg-[radial-gradient(50%_40%_at_50%_0%,rgba(255,255,255,0.08),rgba(0,0,0,0)_60%)]
-                       opacity-80"
-          />
-          <PostHogProvider>
-            <Suspense><PostHogPageView /></Suspense>
-            <Providers>
-              <AppShell>
-                {children}
-              </AppShell>
-            </Providers>
-          </PostHogProvider>
-          <Analytics />
-          <MetaPixel />
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" className={clsx(inter.className, inter.variable)}>
+      <body className="bg-[#0B0F14] text-white antialiased font-sans">
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 mx-auto max-w-[980px]
+                     bg-[radial-gradient(50%_40%_at_50%_0%,rgba(255,255,255,0.08),rgba(0,0,0,0)_60%)]
+                     opacity-80"
+        />
+        <PostHogProvider>
+          <Suspense><PostHogPageView /></Suspense>
+          <Providers>
+            <AppShell>
+              {children}
+            </AppShell>
+          </Providers>
+        </PostHogProvider>
+        <Analytics />
+        <MetaPixel />
+      </body>
+    </html>
   )
 }
