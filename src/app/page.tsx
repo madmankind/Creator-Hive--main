@@ -244,6 +244,10 @@ function HomePageContent() {
         setHeroAuthSubmitting(false);
         return;
       }
+      // Auto-detect returning users — skip onboarding after OTP
+      if (data.isExistingUser) {
+        setHeroAuthAuthMode("login");
+      }
     } catch {
       setHeroAuthError("Network error. Check your connection.");
       setHeroAuthSubmitting(false);
