@@ -58,6 +58,54 @@ function RegionRule({ show }: { show: boolean }) {
   return <div className="h-px w-full" style={{ background: st.hairline }} />;
 }
 
+/* ─── Discovery / hiring preferences section for brand workspace ─── */
+function DiscoveryPrefsSection() {
+  const [brief, setBrief] = useState<Record<string, unknown> | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let c = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/discovery/brief", { credentials: "include" });
+        if (!r.ok) return;
+        const { brief: b } = await r.json();
+        if (!c && b) setBrief(b);
+      } catch { /* silent */ }
+      if (!c) setLoaded(true);
+    })();
+    return () => { c = true; };
+  }, []);
+
+  if (!loaded || !brief) return null;
+
+  const rows = [
+    brief.primaryObjective ? ["Hiring objective", String(brief.primaryObjective).replace(/_/g, " ")] as [string, string] : null,
+    (brief.requestedRoles as string[] | undefined)?.length ? ["Preferred roles", (brief.requestedRoles as string[]).join(", ")] as [string, string] : null,
+    brief.startTiming ? ["Timeline", String(brief.startTiming).replace(/_/g, " ")] as [string, string] : null,
+    brief.budgetRange ? ["Budget range", String(brief.budgetRange).replace(/_/g, " ")] as [string, string] : null,
+    brief.industry ? ["Industry", String(brief.industry)] as [string, string] : null,
+  ].filter((r): r is [string, string] => r !== null);
+
+  if (rows.length === 0) return null;
+
+  return (
+    <>
+      <SettingsInsetLabel>Hiring preferences</SettingsInsetLabel>
+      <SettingsList>
+        {rows.map(([label, value]) => (
+          <SettingsMetaRow key={label} label={label} value={value} hint="From your discovery brief. Edit by re-running discovery." />
+        ))}
+        <SettingsMetaRow
+          label="Discovery status"
+          value={brief.status === "COMPLETE" ? "Complete" : "Incomplete"}
+          hint={brief.completedAt ? `Completed ${new Date(brief.completedAt as string).toLocaleDateString("en-AE", { month: "short", day: "numeric", year: "numeric" })}` : undefined}
+        />
+      </SettingsList>
+    </>
+  );
+}
+
 function SaveBar({ busy, disabled, onClick, label = "Save changes" }: { busy: boolean; disabled?: boolean; onClick: () => void; label?: string }) {
   return (
     <div className="flex items-center justify-end gap-3 border-b border-white/[0.055] px-5 py-3 lg:px-6">
@@ -554,6 +602,9 @@ export function WorkspacePanel({
           {agencyErr ? (
             <p className="border-b border-white/[0.055] px-5 py-2 text-[12px] text-amber-200/90 lg:px-6">{agencyErr}</p>
           ) : null}
+
+          {/* ─── Discovery / hiring preferences (read from discovery brief) ─── */}
+          <DiscoveryPrefsSection />
         </>
       ) : null}
 

@@ -13,6 +13,9 @@ import { curatedTalent, getTalentDisplayName } from "@/lib/curatedTalent";
 import { PACKAGES, type PackageConfig } from "@/lib/packages";
 import { useSession, signIn } from "next-auth/react";
 import { HomeProfileMenu } from "@/components/nav/HomeProfileMenu";
+import { ClientDiscoveryFlow } from "@/components/discovery/ClientDiscoveryFlow";
+import { AdvisorRequestModal } from "@/components/discovery/AdvisorRequestModal";
+import { useDiscoveryStore } from "@/store/useDiscoveryStore";
 import { useSearchParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Sparkles } from "lucide-react";
@@ -122,6 +125,10 @@ function HomePageContent() {
   const [selectedPackage, setSelectedPackage] = useState<PackageConfig | null>(null);
   const [selectedPodIds, setSelectedPodIds] = useState<string[]>([]);
   const [showCampaignBoard, setShowCampaignBoard] = useState(false);
+  // Discovery flow state
+  const [showDiscovery, setShowDiscovery] = useState(false);
+  const [showAdvisorModal, setShowAdvisorModal] = useState(false);
+  const discoveryStore = useDiscoveryStore();
   // Inline hero auth (replaces full-screen modal for initial sign-in)
   const [heroAuthStep, setHeroAuthStep] = useState<"idle" | "email" | "phone" | "otp" | "loading">("idle");
   const [heroAuthEmail, setHeroAuthEmail] = useState("");
@@ -323,7 +330,7 @@ function HomePageContent() {
   const handleHeroGoogleClick = async () => {
     setHeroAuthGoogleLoading(true);
     try {
-      await signIn("google", { callbackUrl: mode === "talent" ? "/onboarding/step-1" : "/dashboard/campaigns" });
+      await signIn("google", { callbackUrl: mode === "talent" ? "/onboarding/step-1" : "/" });
     } catch {
       setHeroAuthGoogleLoading(false);
     }
@@ -363,6 +370,41 @@ function HomePageContent() {
     if (session?.user) setHeroAuthStep("idle");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
+
+  // ─── Discovery gate: check if client needs to complete discovery ───
+  useEffect(() => {
+    if (!session?.user || role !== "AGENCY") return;
+    // If already completed in local store, skip
+    if (discoveryStore.completed) return;
+    // Check server
+    (async () => {
+      try {
+        const res = await fetch("/api/discovery/brief");
+        const { brief } = await res.json();
+        if (brief?.status === "COMPLETE") {
+          discoveryStore.hydrate({ ...brief, completed: true });
+          return;
+        }
+        // Hydrate partial data if exists
+        if (brief) {
+          discoveryStore.hydrate({
+            primaryObjective: brief.primaryObjective ?? "",
+            requestedRoles: brief.requestedRoles ?? [],
+            startTiming: brief.startTiming ?? "",
+            budgetRange: brief.budgetRange ?? "",
+            companyName: brief.companyName ?? "",
+            industry: brief.industry ?? "",
+            notes: brief.notes ?? "",
+            currentStep: brief.currentStep ?? 0,
+            completed: false,
+          });
+        }
+        // Show discovery flow
+        setShowDiscovery(true);
+      } catch { /* silent */ }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, role]);
 
   const openGallery = () => {
     if (!session?.user) {
@@ -901,6 +943,31 @@ function HomePageContent() {
         initialStep={talentModalOpen ?? "auth"}
         onClose={() => setTalentModalOpen(null)}
         onSuccess={() => {}}
+      />
+
+      {/* ─── Discovery flow overlay ─── */}
+      {showDiscovery && (
+        <ClientDiscoveryFlow
+          onComplete={() => {
+            setShowDiscovery(false);
+            // Pre-populate roles into HeroBar if user selected any
+            if (discoveryStore.requestedRoles.length > 0) {
+              setSelectedRoles(discoveryStore.requestedRoles);
+            }
+            setShowTalentGallery(true);
+            setShowPackages(true);
+            setTimeout(() => scrollToRef(galleryRef, "start"), 300);
+          }}
+          onAdvisor={() => setShowAdvisorModal(true)}
+          initialStep={discoveryStore.currentStep}
+        />
+      )}
+
+      {/* ─── Advisor request modal ─── */}
+      <AdvisorRequestModal
+        open={showAdvisorModal}
+        onClose={() => setShowAdvisorModal(false)}
+        source={showDiscovery ? `discovery_step_${discoveryStore.currentStep}` : "homepage"}
       />
 
       {/* Bottom dock — always visible; account menu on marketing home when logged in */}

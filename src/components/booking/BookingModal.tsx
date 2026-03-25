@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Talent } from "@/store/useCampaignPodStore";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDiscoveryStore } from "@/store/useDiscoveryStore";
+import { mapTimingToStartDate, mapBudgetToDisplay, getObjectiveLabel } from "@/lib/discovery";
 
 type BookingModalProps = {
   open: boolean;
@@ -33,20 +35,35 @@ export function BookingModal({ open, onClose, talents, onViewPod }: BookingModal
   const [tradeLicenseFile, setTradeLicenseFile] = useState<File | null>(null);
   const [tradeLicenseFileName, setTradeLicenseFileName] = useState<string>("");
 
-  // Reset form state when modal opens - ensures we always start at brief step
+  // Reset form state when modal opens - prefill from discovery if available
   useEffect(() => {
     if (open) {
       setSuccess(false);
       setBookingOrder(null);
       setSubmitting(false);
       setError(null);
-      setBookingType("short");
-      setStartDate("");
-      setCampaignDescription("");
-      setBudgetRange("");
-      setEmail("");
       setTradeLicenseFile(null);
       setTradeLicenseFileName("");
+
+      // Prefill from discovery brief
+      const ds = useDiscoveryStore.getState();
+      if (ds.completed) {
+        setBookingType(ds.startTiming === "exploring" || ds.startTiming === "next_month" ? "long" : "short");
+        setStartDate(mapTimingToStartDate(ds.startTiming));
+        setBudgetRange(mapBudgetToDisplay(ds.budgetRange));
+        const parts: string[] = [];
+        if (ds.primaryObjective) parts.push(`Objective: ${getObjectiveLabel(ds.primaryObjective)}`);
+        if (ds.requestedRoles.length > 0) parts.push(`Roles: ${ds.requestedRoles.join(", ")}`);
+        if (ds.notes) parts.push(ds.notes);
+        setCampaignDescription(parts.join("\n"));
+        setEmail(""); // email comes from session, not discovery
+      } else {
+        setBookingType("short");
+        setStartDate("");
+        setCampaignDescription("");
+        setBudgetRange("");
+        setEmail("");
+      }
     }
   }, [open]);
 

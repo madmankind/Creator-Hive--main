@@ -53,6 +53,8 @@ model User {
   bookingRequests BookingRequest[]
   pods            PodSelection[]
   creatorShopProjects CreatorShopProject[]
+  discoveryBrief  DiscoveryBrief?
+  advisorRequests AdvisorRequest[]
 
   @@index([email])
   @@map("users")
@@ -173,6 +175,11 @@ model AgencyAccount {
   name               String
   website            String?
   location           String?
+  industry           String?
+  primaryMarket      String?
+  preferredLanguage  String?
+  companySize        String?
+  instagramHandle    String?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
@@ -473,6 +480,52 @@ model BookingRequest {
   @@map("booking_requests")
 }
 
+// ============================================
+// CLIENT DISCOVERY & ADVISOR
+// ============================================
+
+model DiscoveryBrief {
+  id                 String            @id @default(cuid())
+  userId             String            @unique
+  primaryObjective   String?
+  requestedRoles     String[]
+  startTiming        String?
+  budgetRange        String?
+  companyName        String?
+  industry           String?
+  notes              String?           @db.Text
+  advisorRequested   Boolean           @default(false)
+  currentStep        Int               @default(0)
+  status             DiscoveryStatus   @default(INCOMPLETE)
+  completedAt        DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("discovery_briefs")
+}
+
+model AdvisorRequest {
+  id              String   @id @default(cuid())
+  userId          String
+  contactMethod   String   // call | whatsapp | email
+  preferredTiming String   // today | tomorrow | this_week
+  note            String?  @db.Text
+  source          String?  // step1 | step2 | dashboard | booking
+  status          String   @default("PENDING") // PENDING | CONTACTED | RESOLVED
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("advisor_requests")
+}
+
 model PodSelection {
   id        String   @id @default(cuid())
   userId    String
@@ -745,6 +798,11 @@ enum BookingStatus {
   PENDING
   REVIEWING
   CONFIRMED
+}
+
+enum DiscoveryStatus {
+  INCOMPLETE
+  COMPLETE
 }
 
 enum CampaignInviteStatus {

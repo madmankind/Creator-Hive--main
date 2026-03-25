@@ -12,10 +12,56 @@ import { EventTimeline } from "@/components/campaigns/EventTimeline";
 import { useCampaign } from "@/contexts/CampaignContext";
 import { CAMPAIGN_OBJECTIVES, type CampaignObjective } from "@/lib/campaignObjectives";
 import { type KPIData } from "@/components/campaigns/KPIPlanner";
-import { SlidersHorizontal, Sparkles, Paperclip, Send, Loader2 } from "lucide-react";
+import { SlidersHorizontal, Sparkles, Paperclip, Send, Loader2, Phone } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { DiscoverySummaryCard } from "@/components/discovery/DiscoverySummaryCard";
+import { useDiscoveryStore } from "@/store/useDiscoveryStore";
 
 export type TimeRange = "1D" | "7D" | "30D" | "90D" | "YTD" | "custom";
+
+/* ─── Empty dashboard with discovery summary ─── */
+function EmptyDashboard() {
+  const ds = useDiscoveryStore();
+  const brief = ds.completed ? {
+    primaryObjective: ds.primaryObjective,
+    requestedRoles: ds.requestedRoles,
+    startTiming: ds.startTiming,
+    budgetRange: ds.budgetRange,
+    companyName: ds.companyName,
+    industry: ds.industry,
+  } : null;
+  const [showAdvisor, setShowAdvisor] = useState(false);
+
+  return (
+    <div className="max-w-xl mx-auto py-12 space-y-6">
+      <div className="text-center space-y-2">
+        <h3 className="text-[18px] font-medium text-white/80">Welcome to your workspace</h3>
+        <p className="text-[13px] text-white/30">
+          {brief ? "Here's your discovery brief. Browse talent or start a campaign to get going." : "Select or create a campaign to get started."}
+        </p>
+      </div>
+
+      {brief && (
+        <DiscoverySummaryCard
+          brief={brief}
+          onBrowseTalent={() => window.location.href = "/?skip=gallery"}
+          onAdvisor={() => setShowAdvisor(true)}
+        />
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        <a href="/?skip=gallery"
+          className="rounded-2xl px-4 py-4 text-center text-[13px] bg-white/[0.04] ring-1 ring-white/[0.07] text-white/50 hover:bg-white/[0.07] transition">
+          Browse talent
+        </a>
+        <a href="/dashboard/campaigns/new"
+          className="rounded-2xl px-4 py-4 text-center text-[13px] bg-white/[0.08] ring-1 ring-white/[0.12] text-white/70 hover:bg-white/[0.12] transition font-medium">
+          New campaign
+        </a>
+      </div>
+    </div>
+  );
+}
 
 interface TrackScreenProps {
   selectedCampaignIds: string[];
@@ -185,14 +231,7 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
   return (
     <DashboardShell headerLeft={headerLeft} headerRight={headerRight}>
       {!activeCampaign ? (
-        <div className="flex flex-col items-center justify-center py-24 gap-4">
-          <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.35)" }}>
-            No campaign selected
-          </p>
-          <p className="text-[12px]" style={{ color: "rgba(255,255,255,0.22)" }}>
-            Use the campaign switcher above to select or start a campaign
-          </p>
-        </div>
+        <EmptyDashboard />
       ) : (
       <div className="space-y-6">
         {/* Mobile time range strip */}

@@ -9,6 +9,8 @@ import type { PackageConfig } from "@/lib/packages";
 import { formatAED, getPackagePriceLabel, PACKAGES } from "@/lib/packages";
 import { useSession } from "next-auth/react";
 import { useLocalCampaignStore } from "@/store/useLocalCampaignStore";
+import { useDiscoveryStore } from "@/store/useDiscoveryStore";
+import { mapObjectiveToCampaign } from "@/lib/discovery";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -177,16 +179,23 @@ export function CampaignSetupBoard({
   const { data: session } = useSession();
   const router = useRouter();
 
-  const [state, setState] = useState<CampaignBoardState>(() => ({
-    campaignName: "",
-    objectives: selectedPkg ? [selectedPkg.defaultObjective] : [],
-    bookingType: selectedPkg?.bookingType ?? "campaign",
-    startDate: "",
-    endDate: "",
-    totalBudget: "",
-    paymentSchedule: "milestone_50_50",
-    notes: "",
-  }));
+  const [state, setState] = useState<CampaignBoardState>(() => {
+    // Prefill from discovery brief if available
+    const ds = useDiscoveryStore.getState();
+    const discoveryObj = ds.completed && ds.primaryObjective
+      ? mapObjectiveToCampaign(ds.primaryObjective) as CampaignObjective | null
+      : null;
+    return {
+      campaignName: ds.completed && ds.companyName ? `${ds.companyName} Campaign` : "",
+      objectives: selectedPkg ? [selectedPkg.defaultObjective] : discoveryObj ? [discoveryObj] : [],
+      bookingType: selectedPkg?.bookingType ?? (ds.completed && ds.startTiming === "exploring" ? "retainer" as BookingType : "campaign"),
+      startDate: "",
+      endDate: "",
+      totalBudget: "",
+      paymentSchedule: "milestone_50_50",
+      notes: ds.completed && ds.notes ? ds.notes : "",
+    };
+  });
 
   const [showReview, setShowReview] = useState(false);
   const [submitted, setSubmitted] = useState(false);
