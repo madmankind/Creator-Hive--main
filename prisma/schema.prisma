@@ -753,6 +753,7 @@ enum CampaignStatus {
   CONFIRMED_BRIEF_PENDING  // Talent accepted, brief not yet sent
   BRIEF_SENT               // Brief sent to talent, awaiting content
   IN_PROGRESS              // Content submitted, in production
+  PAUSED                   // Temporarily paused — billing/delivery on hold
   COMPLETED
   CANCELLED
   DRAFT                    // Legacy: kept for backward compatibility

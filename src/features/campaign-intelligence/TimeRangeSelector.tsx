@@ -1,49 +1,40 @@
 "use client";
 
-import { campaignTheme } from "@/lib/campaign-theme";
-import type { TimeRange } from "./CampaignIntelligenceDashboard";
+import type { WeekTimeRange } from "@/components/campaigns/TrackChart";
 
 interface TimeRangeSelectorProps {
-  value: TimeRange;
-  onChange: (range: TimeRange) => void;
+  value: WeekTimeRange;
+  onChange: (range: WeekTimeRange) => void;
 }
 
-const ranges: TimeRange[] = ["1D", "7D", "30D", "90D", "YTD", "custom"];
+const TIME_RANGES: { id: WeekTimeRange; label: string }[] = [
+  { id: "week1", label: "Week 1" },
+  { id: "week2", label: "Week 2" },
+  { id: "week3", label: "Week 3" },
+  { id: "week4", label: "Week 4" },
+  { id: "total", label: "Total" },
+  { id: "custom", label: "Custom" },
+];
 
 export function TimeRangeSelector({ value, onChange }: TimeRangeSelectorProps) {
   return (
     <div className="flex items-center gap-1 rounded-full border border-white/20 bg-white/5 p-1">
-      {ranges.map((range) => {
-        const isActive = value === range;
+      {TIME_RANGES.map((range) => {
+        const isActive = value === range.id;
         return (
           <button
-            key={range}
-            onClick={() => onChange(range)}
+            key={range.id}
+            onClick={() => onChange(range.id)}
             className={`rounded-full px-4 py-1.5 text-xs font-medium transition-all ${
               isActive
                 ? "bg-white/10 text-[#EDEDED]"
                 : "text-[#9B9B9B] hover:text-[#EDEDED] hover:bg-white/5"
             }`}
-            style={
-              isActive
-                ? {
-                    boxShadow: `0 0 0 1px ${campaignTheme.colors.primary}40`,
-                  }
-                : {}
-            }
           >
-            {range === "custom" ? "Custom" : range}
+            {range.label}
           </button>
         );
       })}
     </div>
   );
 }
-
-
-
-
-
-
-
-

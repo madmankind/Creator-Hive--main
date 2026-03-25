@@ -15,6 +15,10 @@ interface CreatorData {
   name: string;
   role: string;
   deliverables: string;
+  deliverablesCompleted: number;
+  deliverablesTotal: number;
+  approvalStatus: "Pending" | "NeedsRevision" | "Approved" | "—";
+  paymentStatus: "UNFUNDED" | "PARTIALLY_FUNDED" | "FUNDED" | "RELEASED" | "REFUNDED" | "—";
   reach: number;
   impressions: number;
   er: number;
@@ -64,28 +68,43 @@ export function CreatorBreakdownTable({ campaignIds }: CreatorBreakdownTableProp
         const res = await fetch(`/api/campaigns/${activeCampaignId}/talents`);
         if (!res.ok) return false;
         const json = await res.json();
-        const cards: Array<{ id: string; talentName: string; talentRole: string; deliverables: Array<{type: string}>; agreedRate: number; status: string }> = json.cards ?? [];
+        const cards: Array<{
+          id: string;
+          talentName: string;
+          talentRole: string;
+          deliverables: Array<{ type: string; status?: string }>;
+          agreedRate: number;
+          status: string;
+          paymentStatus?: string;
+        }> = json.cards ?? [];
         if (cards.length === 0) return false;
 
-        const mapped: CreatorData[] = cards.map((c) => ({
-          id: c.id,
-          name: c.talentName,
-          role: c.talentRole,
-          deliverables: c.deliverables.length > 0
-            ? c.deliverables.map((d) => d.type).join(", ")
-            : "TBD",
-          reach: 0,
-          impressions: 0,
-          er: 0,
-          spend: c.agreedRate,
-          status: (c.status === "IN_PRODUCTION" || c.status === "APPROVED" || c.status === "PAID")
-            ? "On Track"
-            : c.status === "SUBMITTED"
-            ? "Needs Review"
-            : c.status === "UNAVAILABLE"
-            ? "At Risk"
-            : "On Track",
-        }));
+        const mapped: CreatorData[] = cards.map((c) => {
+          const totalD = c.deliverables.length;
+          const doneD = c.deliverables.filter((d) => d.status === "Approved").length;
+          const anyRevision = c.deliverables.some((d) => d.status === "NeedsRevision");
+          return {
+            id: c.id,
+            name: c.talentName,
+            role: c.talentRole,
+            deliverables: totalD > 0 ? c.deliverables.map((d: { type: string }) => d.type).join(", ") : "TBD",
+            deliverablesCompleted: doneD,
+            deliverablesTotal: totalD,
+            approvalStatus: anyRevision ? "NeedsRevision" : doneD === totalD && totalD > 0 ? "Approved" : "Pending",
+            paymentStatus: (c.paymentStatus as CreatorData["paymentStatus"]) ?? "—",
+            reach: 0,
+            impressions: 0,
+            er: 0,
+            spend: c.agreedRate,
+            status: (c.status === "IN_PRODUCTION" || c.status === "APPROVED" || c.status === "PAID")
+              ? "On Track"
+              : c.status === "SUBMITTED"
+              ? "Needs Review"
+              : c.status === "UNAVAILABLE"
+              ? "At Risk"
+              : "On Track",
+          };
+        });
 
         // Merge with any locally-saved metric overrides
         const saved = localStorage.getItem(storageKey);
@@ -232,75 +251,41 @@ export function CreatorBreakdownTable({ campaignIds }: CreatorBreakdownTableProp
               style={{ borderColor: "rgba(255,255,255,0.04)" }}
             >
               <th className="px-5 py-3.5 text-left">
-                <span
-                  className="text-[9px] font-medium uppercase tracking-wider"
-                  style={{ color: feyTokens.colors.text.label }}
-                >
-                  Creator
-                </span>
+                <span className="text-[9px] font-medium uppercase tracking-wider" style={{ color: feyTokens.colors.text.label }}>Creator</span>
               </th>
               <th className="px-5 py-3.5 text-left">
-                <span
-                  className="text-[9px] font-medium uppercase tracking-wider"
-                  style={{ color: feyTokens.colors.text.label }}
-                >
-                  Role
-                </span>
+                <span className="text-[9px] font-medium uppercase tracking-wider" style={{ color: feyTokens.colors.text.label }}>Role</span>
               </th>
               <th className="px-5 py-3.5 text-left">
-                <span
-                  className="text-[9px] font-medium uppercase tracking-wider"
-                  style={{ color: feyTokens.colors.text.label }}
-                >
-                  Deliverables
-                </span>
-              </th>
-              <th className="px-5 py-3.5 text-right">
-                <span
-                  className="text-[9px] font-medium uppercase tracking-wider"
-                  style={{ color: feyTokens.colors.text.label }}
-                >
-                  Reach
-                </span>
-              </th>
-              <th className="px-5 py-3.5 text-right">
-                <span
-                  className="text-[9px] font-medium uppercase tracking-wider"
-                  style={{ color: feyTokens.colors.text.label }}
-                >
-                  Impressions
-                </span>
-              </th>
-              <th className="px-5 py-3.5 text-right">
-                <span
-                  className="text-[9px] font-medium uppercase tracking-wider"
-                  style={{ color: feyTokens.colors.text.label }}
-                >
-                  ER%
-                </span>
-              </th>
-              <th className="px-5 py-3.5 text-right">
-                <span
-                  className="text-[9px] font-medium uppercase tracking-wider"
-                  style={{ color: feyTokens.colors.text.label }}
-                >
-                  Spend
-                </span>
+                <span className="text-[9px] font-medium uppercase tracking-wider" style={{ color: feyTokens.colors.text.label }}>Deliverables</span>
               </th>
               <th className="px-5 py-3.5 text-center">
-                <span
-                  className="text-[9px] font-medium uppercase tracking-wider"
-                  style={{ color: feyTokens.colors.text.label }}
-                >
-                  Status
-                </span>
+                <span className="text-[9px] font-medium uppercase tracking-wider" style={{ color: feyTokens.colors.text.label }}>Approval</span>
+              </th>
+              <th className="px-5 py-3.5 text-center">
+                <span className="text-[9px] font-medium uppercase tracking-wider" style={{ color: feyTokens.colors.text.label }}>Payment</span>
+              </th>
+              <th className="px-5 py-3.5 text-right">
+                <span className="text-[9px] font-medium uppercase tracking-wider" style={{ color: feyTokens.colors.text.label }}>Reach</span>
+              </th>
+              <th className="px-5 py-3.5 text-right">
+                <span className="text-[9px] font-medium uppercase tracking-wider" style={{ color: feyTokens.colors.text.label }}>Impressions</span>
+              </th>
+              <th className="px-5 py-3.5 text-right">
+                <span className="text-[9px] font-medium uppercase tracking-wider" style={{ color: feyTokens.colors.text.label }}>ER%</span>
+              </th>
+              <th className="px-5 py-3.5 text-right">
+                <span className="text-[9px] font-medium uppercase tracking-wider" style={{ color: feyTokens.colors.text.label }}>Spend</span>
+              </th>
+              <th className="px-5 py-3.5 text-center">
+                <span className="text-[9px] font-medium uppercase tracking-wider" style={{ color: feyTokens.colors.text.label }}>Status</span>
               </th>
             </tr>
           </thead>
           <tbody>
             {displayCreators.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-5 py-10 text-center text-[12px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+                <td colSpan={10} className="px-5 py-10 text-center text-[12px]" style={{ color: "rgba(255,255,255,0.35)" }}>
                   No creator rows yet. Data loads from your campaign when you are assigned (creator) or when your agency books talent (client).
                 </td>
               </tr>
@@ -353,18 +338,43 @@ export function CreatorBreakdownTable({ campaignIds }: CreatorBreakdownTableProp
                       value={creator.deliverables}
                       onChange={(e) => updateCreatorField(creator.id, "deliverables", e.target.value)}
                       className="w-full rounded-md bg-[rgba(255,255,255,0.06)] px-2 py-1 text-xs outline-none transition-colors focus:bg-[rgba(255,255,255,0.08)]"
-                      style={{
-                        color: feyTokens.colors.text.primary,
-                        border: "1px solid rgba(255,255,255,0.08)",
-                      }}
+                      style={{ color: feyTokens.colors.text.primary, border: "1px solid rgba(255,255,255,0.08)" }}
                     />
                   ) : (
-                    <span
-                      className="text-xs"
-                      style={{ color: feyTokens.colors.text.secondary }}
-                    >
-                      {creator.deliverables}
-                    </span>
+                    <div>
+                      <span className="text-xs block" style={{ color: feyTokens.colors.text.secondary }}>{creator.deliverables}</span>
+                      {creator.deliverablesTotal > 0 && (
+                        <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.28)" }}>
+                          {creator.deliverablesCompleted}/{creator.deliverablesTotal} done
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </td>
+                {/* Approval status column */}
+                <td className="px-5 py-3.5 text-center">
+                  {creator.approvalStatus === "Approved" ? (
+                    <span className="rounded-full px-2 py-0.5 text-[9px] font-medium" style={{ background: "rgba(52,211,153,0.12)", color: "rgba(52,211,153,0.85)" }}>Approved</span>
+                  ) : creator.approvalStatus === "NeedsRevision" ? (
+                    <span className="rounded-full px-2 py-0.5 text-[9px] font-medium" style={{ background: "rgba(251,146,60,0.12)", color: "rgba(251,146,60,0.85)" }}>Revision</span>
+                  ) : creator.approvalStatus === "Pending" ? (
+                    <span className="rounded-full px-2 py-0.5 text-[9px] font-medium" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.40)" }}>Pending</span>
+                  ) : (
+                    <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.25)" }}>—</span>
+                  )}
+                </td>
+                {/* Payment status column */}
+                <td className="px-5 py-3.5 text-center">
+                  {creator.paymentStatus === "RELEASED" ? (
+                    <span className="rounded-full px-2 py-0.5 text-[9px] font-medium" style={{ background: "rgba(52,211,153,0.12)", color: "rgba(52,211,153,0.85)" }}>Released</span>
+                  ) : creator.paymentStatus === "FUNDED" ? (
+                    <span className="rounded-full px-2 py-0.5 text-[9px] font-medium" style={{ background: "rgba(96,165,250,0.12)", color: "rgba(96,165,250,0.85)" }}>Funded</span>
+                  ) : creator.paymentStatus === "PARTIALLY_FUNDED" ? (
+                    <span className="rounded-full px-2 py-0.5 text-[9px] font-medium" style={{ background: "rgba(251,146,60,0.12)", color: "rgba(251,146,60,0.85)" }}>Partial</span>
+                  ) : creator.paymentStatus === "UNFUNDED" ? (
+                    <span className="rounded-full px-2 py-0.5 text-[9px] font-medium" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.35)" }}>Unfunded</span>
+                  ) : (
+                    <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.25)" }}>—</span>
                   )}
                 </td>
                 <td className="px-5 py-3.5 text-right">

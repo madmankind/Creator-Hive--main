@@ -25,64 +25,87 @@ export function EventTimeline({ campaignIds }: EventTimelineProps) {
   // Load from localStorage or use mock
   useEffect(() => {
     const storageKey = `campaign_events_${campaignIds.join("_")}`;
+    const activeCampaignId = campaignIds[0];
+
+    const applyEvents = (evts: TimelineEvent[]) => {
+      setEvents(evts);
+      setEditedEvents(evts);
+    };
+
+    const buildMock = (): TimelineEvent[] => [
+      { id: "1",   type: "started",              date: new Date(Date.now() - 7 * 86400000), label: "Campaign started" },
+      { id: "2",   type: "talentAdded",           date: new Date(Date.now() - 5 * 86400000), label: "Talent added" },
+      { id: "3",   type: "deliverableApproved",   date: new Date(Date.now() - 3 * 86400000), label: "Deliverable approved" },
+      { id: "3.5", type: "campaignLive",          date: new Date(Date.now() - 2.5 * 86400000), label: "Campaign live" },
+      { id: "4",   type: "invoiceSent",           date: new Date(Date.now() - 2 * 86400000), label: "Invoice sent" },
+      { id: "5",   type: "paymentCompleted",      date: new Date(Date.now() - 1 * 86400000), label: "Payment completed" },
+    ];
+
+    // Try to fetch real data from API
+    // TODO: wire to real data — CampaignTalent and Invoice records
+    const fetchRealEvents = async (): Promise<TimelineEvent[] | null> => {
+      if (!activeCampaignId) return null;
+      try {
+        const res = await fetch(`/api/campaigns/${activeCampaignId}`);
+        if (!res.ok) return null;
+        const data = await res.json();
+        const campaign = data.campaign;
+        if (!campaign) return null;
+
+        const realEvents: TimelineEvent[] = [];
+
+        // Real event: campaign created
+        if (campaign.createdAt) {
+          realEvents.push({
+            id: "real-created",
+            type: "started",
+            date: new Date(campaign.createdAt),
+            label: "Campaign created",
+          });
+        }
+
+        // Real event: each talent assigned
+        if (Array.isArray(campaign.talents)) {
+          for (const t of campaign.talents) {
+            if (t.assignedAt || t.createdAt) {
+              realEvents.push({
+                id: `real-talent-${t.talentId ?? t.id}`,
+                type: "talentAdded",
+                date: new Date(t.assignedAt ?? t.createdAt),
+                label: `${t.talent?.name ?? "Talent"} added`,
+              });
+            }
+          }
+        }
+
+        // Real event: brief sent
+        if (campaign.campaignBrief?.sentAt) {
+          realEvents.push({
+            id: "real-brief-sent",
+            type: "campaignLive",
+            date: new Date(campaign.campaignBrief.sentAt),
+            label: "Brief sent to talent",
+          });
+        }
+
+        return realEvents.length > 0 ? realEvents : null;
+      } catch {
+        return null;
+      }
+    };
+
+    // Check localStorage first for user-edited events
     const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Convert date strings back to Date objects
-        const eventsWithDates = parsed.map((e: any) => ({
-          ...e,
-          date: new Date(e.date),
-        }));
-        setEvents(eventsWithDates);
-        setEditedEvents(eventsWithDates);
+        applyEvents(parsed.map((e: TimelineEvent & { date: string }) => ({ ...e, date: new Date(e.date) })));
         return;
-      } catch (e) {
-        console.warn("Failed to parse saved events", e);
-      }
+      } catch { /* fall through */ }
     }
-    
-    // Mock events
-    const mockEvents: TimelineEvent[] = [
-      {
-        id: "1",
-        type: "started",
-        date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        label: "Campaign started",
-      },
-      {
-        id: "2",
-        type: "talentAdded",
-        date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-        label: "Talent added",
-      },
-      {
-        id: "3",
-        type: "deliverableApproved",
-        date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-        label: "Deliverable approved",
-      },
-      {
-        id: "3.5",
-        type: "campaignLive",
-        date: new Date(Date.now() - 2.5 * 24 * 60 * 60 * 1000),
-        label: "Campaign live",
-      },
-      {
-        id: "4",
-        type: "invoiceSent",
-        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-        label: "Invoice sent",
-      },
-      {
-        id: "5",
-        type: "paymentCompleted",
-        date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-        label: "Payment completed",
-      },
-    ];
-    setEvents(mockEvents);
-    setEditedEvents(mockEvents);
+
+    // Fetch real events, fall back to mock
+    fetchRealEvents().then((real) => applyEvents(real ?? buildMock()));
   }, [campaignIds]);
 
   const handleEdit = () => {

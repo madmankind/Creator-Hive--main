@@ -2,8 +2,11 @@
 
 import { useState, useRef, useEffect } from "react";
 import { feyTokens } from "@/lib/fey-design-tokens";
-import { Settings2, FileText, BookOpen } from "lucide-react";
+import { Settings2, FileText, BookOpen, Pause, CheckCircle, XCircle } from "lucide-react";
 import { CampaignSwitcher } from "@/components/campaigns/CampaignSwitcher";
+import { CampaignStatusBadge } from "@/components/campaigns/CampaignStatusBadge";
+import { CampaignLifecycleModal } from "@/components/campaigns/CampaignLifecycleModal";
+import { useCampaign } from "@/contexts/CampaignContext";
 import { Tooltip } from "./Tooltip";
 import { TalentCarousel } from "./TalentCarousel";
 import { ExecutionHubPanel } from "./ExecutionHubPanel";
@@ -59,7 +62,9 @@ export function ManageLayoutV2({
   onPayClick,
   onPrimaryAction,
 }: ManageLayoutV2Props) {
+  const { activeCampaign } = useCampaign();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [lifecycleAction, setLifecycleAction] = useState<"PAUSED" | "COMPLETED" | "CANCELLED" | null>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -180,6 +185,11 @@ export function ManageLayoutV2({
               {cards.length} talent · {cards.reduce((acc, c) => acc + c.deliverables.length, 0)} deliverables
             </div>
 
+            {/* Campaign lifecycle status badge */}
+            {activeCampaign?.status && (
+              <CampaignStatusBadge status={activeCampaign.status} />
+            )}
+
             {/* Spacer */}
             <div style={{ flex: "1 1 auto", minWidth: 0 }} />
 
@@ -244,33 +254,59 @@ export function ManageLayoutV2({
                   }}
                 >
                   <button
-                    className="w-full text-left px-3 py-2 text-[12px] transition-colors"
+                    className="w-full text-left px-3 py-2 text-[12px] transition-colors flex items-center gap-2"
                     style={{ color: feyTokens.colors.text.secondary }}
-                    onClick={() => {
-                      setIsSettingsOpen(false);
-                      onContractClick?.();
-                    }}
+                    onClick={() => { setIsSettingsOpen(false); onContractClick?.(); }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                   >
+                    <FileText size={12} />
                     Contract hub
                   </button>
+                  <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", margin: "2px 0" }} />
                   <button
-                    className="w-full text-left px-3 py-2 text-[12px] transition-colors"
-                    style={{ color: feyTokens.colors.text.secondary }}
-                    onClick={() => {
-                      setIsSettingsOpen(false);
-                      // TODO: settings route
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+                    className="w-full text-left px-3 py-2 text-[12px] transition-colors flex items-center gap-2"
+                    style={{ color: "rgba(251,146,60,0.80)" }}
+                    onClick={() => { setIsSettingsOpen(false); setLifecycleAction("PAUSED"); }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(251,146,60,0.08)")}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                   >
-                    Settings
+                    <Pause size={12} />
+                    Pause campaign
+                  </button>
+                  <button
+                    className="w-full text-left px-3 py-2 text-[12px] transition-colors flex items-center gap-2"
+                    style={{ color: "rgba(52,211,153,0.80)" }}
+                    onClick={() => { setIsSettingsOpen(false); setLifecycleAction("COMPLETED"); }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(52,211,153,0.08)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <CheckCircle size={12} />
+                    End campaign
+                  </button>
+                  <button
+                    className="w-full text-left px-3 py-2 text-[12px] transition-colors flex items-center gap-2"
+                    style={{ color: "rgba(248,113,113,0.80)" }}
+                    onClick={() => { setIsSettingsOpen(false); setLifecycleAction("CANCELLED"); }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(248,113,113,0.08)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <XCircle size={12} />
+                    Cancel campaign
                   </button>
                 </div>
               )}
             </div>
           </div>
+
+          {/* Lifecycle confirmation modal */}
+          {lifecycleAction && activeCampaign?.id && (
+            <CampaignLifecycleModal
+              action={lifecycleAction}
+              campaignId={activeCampaign.id}
+              onClose={() => setLifecycleAction(null)}
+            />
+          )}
 
           {/* Main Content Area */}
           <div

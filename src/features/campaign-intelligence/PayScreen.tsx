@@ -9,6 +9,7 @@ import { CampaignSwitcher } from "@/components/campaigns/CampaignSwitcher";
 import { CreditCard, FileText, Download, Plus, ArrowUpRight } from "lucide-react";
 import { useCampaign } from "@/contexts/CampaignContext";
 import type { Invoice, Payout } from "@/components/campaigns/types";
+import { CampaignStatusBadge } from "@/components/campaigns/CampaignStatusBadge";
 
 interface PayScreenProps {
   selectedCampaignIds: string[];
@@ -532,6 +533,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
         {activeCampaign && (activeCampaign.talentNames?.length || scheduleLabel) && (
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 mb-4 px-4 py-2.5 rounded-xl"
             style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            {activeCampaign.status && <CampaignStatusBadge status={activeCampaign.status} />}
             {scheduleLabel && (
               <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.45)" }}>
                 <span style={{ color: "rgba(255,255,255,0.25)" }}>Schedule </span>{scheduleLabel}
@@ -549,6 +551,38 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
                 {activeCampaign.talentNames.slice(0, 3).join(", ")}{activeCampaign.talentNames.length > 3 ? ` +${activeCampaign.talentNames.length - 3}` : ""}
               </span>
             )}
+          </div>
+        )}
+
+        {/* Lifecycle state banners */}
+        {activeCampaign?.status === "COMPLETED" && (
+          <div className="flex items-center justify-between px-4 py-3 rounded-xl mb-4"
+            style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.20)" }}>
+            <div>
+              <span className="text-[12px] font-medium" style={{ color: "rgba(52,211,153,0.90)" }}>Campaign Complete — Final Settlement</span>
+              <span className="text-[12px] ml-2" style={{ color: "rgba(52,211,153,0.55)" }}>Review unpaid invoices below and release remaining payouts.</span>
+            </div>
+            {outstanding > 0 && (
+              <span className="text-[11px] px-3 py-1.5 rounded-lg font-medium" style={{ background: "rgba(248,113,113,0.12)", color: "rgba(248,113,113,0.85)", border: "1px solid rgba(248,113,113,0.25)" }}>
+                AED {outstanding.toLocaleString()} outstanding
+              </span>
+            )}
+          </div>
+        )}
+        {activeCampaign?.status === "PAUSED" && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl mb-4"
+            style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.20)" }}>
+            <span className="text-[12px] font-medium" style={{ color: "rgba(251,146,60,0.90)" }}>Campaign Paused</span>
+            <span className="text-[12px]" style={{ color: "rgba(251,146,60,0.55)" }}>— Billing is on hold. No new invoices will be generated while paused.</span>
+          </div>
+        )}
+        {activeCampaign?.status === "CANCELLED" && (
+          <div className="flex items-center justify-between px-4 py-3 rounded-xl mb-4"
+            style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.20)" }}>
+            <div>
+              <span className="text-[12px] font-medium" style={{ color: "rgba(248,113,113,0.90)" }}>Campaign Cancelled</span>
+              <span className="text-[12px] ml-2" style={{ color: "rgba(248,113,113,0.55)" }}>Financial summary preserved for reference. Unfunded commitments have been released.</span>
+            </div>
           </div>
         )}
         <div className="flex items-end gap-3 mb-2">

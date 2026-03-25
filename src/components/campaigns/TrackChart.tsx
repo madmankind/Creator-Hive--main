@@ -20,10 +20,12 @@ import { FeyMeshLayer } from "./primitives/FeyMeshLayer";
 import { CAMPAIGN_OBJECTIVES, type CampaignObjective, getValueFromAsset, getValueFromPlanned, formatValue } from "@/lib/campaignObjectives";
 import { feyTokens } from "@/lib/fey-design-tokens";
 
-type TimeRange = "1D" | "7D" | "30D" | "90D" | "YTD" | "custom";
+export type WeekTimeRange = "week1" | "week2" | "week3" | "week4" | "total" | "custom"
+  // Legacy aliases kept for backward compat with CampaignIntelligenceDashboard components
+  | "1D" | "7D" | "30D" | "90D" | "YTD";
 
 export interface TrackChartProps {
-  timeRange: TimeRange;
+  timeRange: WeekTimeRange;
   campaignIds: string[];
   metrics: string[];
   talentNames?: string[];
@@ -85,53 +87,33 @@ export function TrackChart({ timeRange, campaignIds, metrics, talentNames, objec
   const objectiveConfig = CAMPAIGN_OBJECTIVES[objective as CampaignObjective];
 
   // Generate correct date range ending today
-  const getDateRange = (range: TimeRange): { startDate: Date; endDate: Date; days: number } => {
+  const getDateRange = (range: WeekTimeRange): { startDate: Date; endDate: Date; days: number } => {
     const endDate = new Date();
-    endDate.setHours(23, 59, 59, 999); // End of today
-    
+    endDate.setHours(23, 59, 59, 999);
+
     let startDate = new Date();
-    let days = 1;
+    let days = 28; // default: total (4 weeks)
 
     switch (range) {
-      case "1D":
-        days = 1;
-        startDate = new Date(endDate);
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case "7D":
-        days = 7;
-        startDate = new Date(endDate);
-        startDate.setDate(startDate.getDate() - 6); // 7 days including today
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case "30D":
-        days = 30;
-        startDate = new Date(endDate);
-        startDate.setDate(startDate.getDate() - 29); // 30 days including today
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case "90D":
-        days = 90;
-        startDate = new Date(endDate);
-        startDate.setDate(startDate.getDate() - 89); // 90 days including today
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case "YTD":
-        startDate = new Date(endDate.getFullYear(), 0, 1);
-        days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-        break;
-      default:
-        days = 30;
-        startDate = new Date(endDate);
-        startDate.setDate(startDate.getDate() - 29);
-        startDate.setHours(0, 0, 0, 0);
+      case "week1": days = 7;  startDate = new Date(endDate); startDate.setDate(startDate.getDate() - 27); break;
+      case "week2": days = 7;  startDate = new Date(endDate); startDate.setDate(startDate.getDate() - 20); break;
+      case "week3": days = 7;  startDate = new Date(endDate); startDate.setDate(startDate.getDate() - 13); break;
+      case "week4": days = 7;  startDate = new Date(endDate); startDate.setDate(startDate.getDate() - 6);  break;
+      case "total": days = 28; startDate = new Date(endDate); startDate.setDate(startDate.getDate() - 27); break;
+      // Legacy aliases from old CampaignIntelligenceDashboard — map to nearest equivalent
+      case "1D":  days = 7;  startDate = new Date(endDate); startDate.setDate(startDate.getDate() - 6);  break;
+      case "7D":  days = 7;  startDate = new Date(endDate); startDate.setDate(startDate.getDate() - 6);  break;
+      case "30D": days = 28; startDate = new Date(endDate); startDate.setDate(startDate.getDate() - 27); break;
+      case "90D": days = 28; startDate = new Date(endDate); startDate.setDate(startDate.getDate() - 27); break;
+      case "YTD": days = 28; startDate = new Date(endDate); startDate.setDate(startDate.getDate() - 27); break;
+      default:    days = 28; startDate = new Date(endDate); startDate.setDate(startDate.getDate() - 27);
     }
-
+    startDate.setHours(0, 0, 0, 0);
     return { startDate, endDate, days };
   };
 
   // Generate data based on objective with correct date range
-  const generateData = (range: TimeRange): CampaignDataPoint[] => {
+  const generateData = (range: WeekTimeRange): CampaignDataPoint[] => {
     const { startDate, endDate, days } = getDateRange(range);
     const points: CampaignDataPoint[] = [];
 
@@ -199,9 +181,6 @@ export function TrackChart({ timeRange, campaignIds, metrics, talentNames, objec
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    if (timeRange === "1D") {
-      return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-    }
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 

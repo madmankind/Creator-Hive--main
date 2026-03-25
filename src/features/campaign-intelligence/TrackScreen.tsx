@@ -16,8 +16,10 @@ import { SlidersHorizontal, Sparkles, Paperclip, Send, Loader2, Phone } from "lu
 import { AnimatePresence, motion } from "framer-motion";
 import { DiscoverySummaryCard } from "@/components/discovery/DiscoverySummaryCard";
 import { useDiscoveryStore } from "@/store/useDiscoveryStore";
+import { CampaignStatusBadge } from "@/components/campaigns/CampaignStatusBadge";
+import type { WeekTimeRange } from "@/components/campaigns/TrackChart";
 
-export type TimeRange = "1D" | "7D" | "30D" | "90D" | "YTD" | "custom";
+export type TimeRange = WeekTimeRange;
 
 /* ─── Empty dashboard with discovery summary ─── */
 function EmptyDashboard() {
@@ -68,12 +70,19 @@ interface TrackScreenProps {
   onCampaignChange?: (ids: string[]) => void;
 }
 
-const TIME_RANGES: TimeRange[] = ["1D", "7D", "30D", "90D", "YTD", "custom"];
+const TIME_RANGES: { id: WeekTimeRange; label: string }[] = [
+  { id: "week1", label: "Week 1" },
+  { id: "week2", label: "Week 2" },
+  { id: "week3", label: "Week 3" },
+  { id: "week4", label: "Week 4" },
+  { id: "total", label: "Total" },
+  { id: "custom", label: "Custom" },
+];
 export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScreenProps) {
   const { activeCampaign } = useCampaign();
 
   // Pre-populate from activeCampaign context (set by booking flow)
-  const [timeRange, setTimeRange] = useState<TimeRange>("30D");
+  const [timeRange, setTimeRange] = useState<WeekTimeRange>("total");
   const [objective, setObjective] = useState<CampaignObjective>(
     activeCampaign?.objective ?? "awareness"
   );
@@ -198,15 +207,15 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
       <div className="hidden sm:flex items-center gap-3">
         {TIME_RANGES.map((r) => (
           <button
-            key={r}
-            onClick={() => setTimeRange(r)}
+            key={r.id}
+            onClick={() => setTimeRange(r.id)}
             className="text-[12px] transition-colors"
             style={{
-              color: timeRange === r ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.38)",
-              fontWeight: timeRange === r ? 500 : 400,
+              color: timeRange === r.id ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.38)",
+              fontWeight: timeRange === r.id ? 500 : 400,
             }}
           >
-            {r === "custom" ? "Custom" : r}
+            {r.label}
           </button>
         ))}
       </div>
@@ -238,15 +247,15 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
         <div className="flex sm:hidden items-center gap-3 overflow-x-auto scrollbar-hide pb-1">
           {TIME_RANGES.map((r) => (
             <button
-              key={r}
-              onClick={() => setTimeRange(r)}
+              key={r.id}
+              onClick={() => setTimeRange(r.id)}
               className="flex-shrink-0 text-[12px] transition-colors py-1"
               style={{
-                color: timeRange === r ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.38)",
-                fontWeight: timeRange === r ? 500 : 400,
+                color: timeRange === r.id ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.38)",
+                fontWeight: timeRange === r.id ? 500 : 400,
               }}
             >
-              {r === "custom" ? "Custom" : r}
+              {r.label}
             </button>
           ))}
         </div>
@@ -259,6 +268,7 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
           {activeCampaign && (activeCampaign.talentNames?.length || activeCampaign.startDate || activeCampaign.objectives?.length) && (
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 rounded-xl"
               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <CampaignStatusBadge status={activeCampaign.status} />
               {activeCampaign.objectives && activeCampaign.objectives.length > 0 && (
                 <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.45)" }}>
                   <span style={{ color: "rgba(255,255,255,0.25)" }}>Objectives </span>
@@ -283,6 +293,29 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
                   AED {activeCampaign.budget.toLocaleString()}
                 </span>
               )}
+            </div>
+          )}
+
+          {/* Lifecycle state banners */}
+          {activeCampaign?.status === "PAUSED" && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
+              style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.20)" }}>
+              <span className="text-[12px] font-medium" style={{ color: "rgba(251,146,60,0.90)" }}>Campaign Paused</span>
+              <span className="text-[12px]" style={{ color: "rgba(251,146,60,0.55)" }}>— Weekly inputs and billing are on hold. Resume from Manage.</span>
+            </div>
+          )}
+          {activeCampaign?.status === "COMPLETED" && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
+              style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.20)" }}>
+              <span className="text-[12px] font-medium" style={{ color: "rgba(52,211,153,0.90)" }}>Campaign Completed</span>
+              <span className="text-[12px]" style={{ color: "rgba(52,211,153,0.55)" }}>— Final performance summary below. No further inputs required.</span>
+            </div>
+          )}
+          {activeCampaign?.status === "CANCELLED" && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
+              style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.20)" }}>
+              <span className="text-[12px] font-medium" style={{ color: "rgba(248,113,113,0.90)" }}>Campaign Cancelled</span>
+              <span className="text-[12px]" style={{ color: "rgba(248,113,113,0.55)" }}>— This campaign has been cancelled. Data is preserved for reference.</span>
             </div>
           )}
 

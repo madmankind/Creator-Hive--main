@@ -7,7 +7,7 @@ import { requireUser } from "@/server/authz";
 const updateSchema = z.object({
   title: z.string().min(2).optional(),
   brief: z.string().min(2).optional(),
-  status: z.enum(["DRAFT", "ACTIVE", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).optional(),
+  status: z.enum(["DRAFT", "ACTIVE", "IN_PROGRESS", "PAUSED", "COMPLETED", "CANCELLED"]).optional(),
   startDate: z.string().datetime().optional(),
   dueDate: z.string().datetime().optional(),
   budget: z.number().int().nonnegative().optional(),

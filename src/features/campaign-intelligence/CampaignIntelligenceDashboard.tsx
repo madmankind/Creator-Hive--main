@@ -10,9 +10,10 @@ import { ModeToggle } from "./ModeToggle";
 import { MetricSelectorPanel } from "./MetricSelectorPanel";
 import { CampaignHealthSnapshot } from "./CampaignHealthSnapshot";
 import { EventTimeline } from "./EventTimeline";
+import type { WeekTimeRange } from "@/components/campaigns/TrackChart";
 
 export type DashboardMode = "track" | "manage" | "pay";
-export type TimeRange = "1D" | "7D" | "30D" | "90D" | "YTD" | "custom";
+export type TimeRange = WeekTimeRange;
 
 interface CampaignIntelligenceDashboardProps {
   initialMode?: DashboardMode;
@@ -24,7 +25,7 @@ export function CampaignIntelligenceDashboard({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<DashboardMode>(initialMode);
-  const [timeRange, setTimeRange] = useState<TimeRange>("30D");
+  const [timeRange, setTimeRange] = useState<TimeRange>("total");
   const [selectedCampaignIds, setSelectedCampaignIds] = useState<string[]>([]);
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
 
