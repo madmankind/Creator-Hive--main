@@ -12,7 +12,7 @@ import { feyTokens } from "@/lib/fey-design-tokens";
 ───────────────────────────────────────── */
 type Mode = "client" | "talent";
 type TalentAccountType = "independent" | "manager" | "agency";
-type Step = "auth" | "otp" | "phone" | "loading" | "inbox" | "talent-type" | "prism-intro" | "prism-q" | "prism-result" | "profile" | "manager-profile" | "done";
+type Step = "auth" | "otp" | "phone" | "loading" | "inbox" | "brand-setup" | "talent-type" | "prism-intro" | "prism-q" | "prism-result" | "profile" | "manager-profile" | "done";
 
 export type HiveAuthModalProps = {
   open: boolean;
@@ -507,15 +507,22 @@ function OTPStep({
   const submit = async (code: string) => {
     setError("");
     setVerifying(true);
-    await new Promise(r => setTimeout(r, 900));
-    // In production: verify code against backend
-    // Accept any 6-digit code for now (demo mode)
-    if (code.length === 6) {
-      onVerify();
-    } else {
-      setError("Invalid code. Please try again.");
-      setDigits(["", "", "", "", "", ""]);
-      refs[0].current?.focus();
+    try {
+      const res = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: destination, otp: code }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Invalid code. Please try again.");
+        setDigits(["", "", "", "", "", ""]);
+        refs[0].current?.focus();
+      } else {
+        onVerify();
+      }
+    } catch {
+      setError("Network error. Please try again.");
     }
     setVerifying(false);
   };
@@ -1525,6 +1532,8 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
   const [otpVia, setOtpVia]       = useState<"email" | "whatsapp">("email");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]         = useState("");
+  const [brandName, setBrandName] = useState("");
+  const [brandType, setBrandType] = useState<"brand" | "agency" | "founder" | "">("");
   const [prismAnswers, setPrismAnswers] = useState<Record<string, string>>({});
   const [qIndex, setQIndex]       = useState(0);
   const [archetype, setArchetype] = useState<ReturnType<typeof scoreArchetype> | null>(null);
@@ -1586,12 +1595,11 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
   };
 
   const handleOTPVerify = () => {
-    // OTP verified — decide next step based on mode + authMode
-    if (authMode === "login" || mode === "client") {
-      setStep("loading");
+    if (mode === "client" && authMode === "signup") {
+      // New client — collect brand details before signing in
+      setStep("brand-setup");
     } else {
-      // talent new signup — first choose account type
-      setStep("talent-type");
+      setStep("loading");
     }
   };
 
@@ -1657,7 +1665,7 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
     }, 2000);
   };
 
-  const SIMPLE_STEPS = ["auth", "otp", "phone", "loading", "talent-type"];
+  const SIMPLE_STEPS = ["auth", "otp", "phone", "brand-setup", "loading", "talent-type"];
   const isSimple = SIMPLE_STEPS.includes(step);
 
   return (
@@ -1732,6 +1740,48 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
                       <PhoneStep onSubmit={handlePhoneSubmit} onBack={() => setStep("auth")} />
                     </motion.div>
                   )}
+
+                  {step === "brand-setup" && (
+                    <motion.div key="brand-setup" {...SLIDE}>
+                      <div className="w-full flex flex-col gap-6">
+                        <div className="text-center space-y-2">
+                          <p className="text-[11px] font-semibold tracking-[0.15em] uppercase" style={{ color: "rgba(255,255,255,0.30)" }}>Step 1 of 2</p>
+                          <h1 className="text-[28px] sm:text-[32px] font-medium tracking-[-0.025em] text-white leading-[1.12]">Who are you booking for?</h1>
+                          <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.40)" }}>This helps us match you with the right talent.</p>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2.5">
+                          {([
+                            { id: "brand", label: "A brand", sub: "I manage marketing for a company" },
+                            { id: "agency", label: "An agency", sub: "I book talent on behalf of clients" },
+                            { id: "founder", label: "A founder", sub: "Building or launching my own product" },
+                          ] as const).map((opt) => (
+                            <button key={opt.id} type="button"
+                              onClick={() => setBrandType(opt.id)}
+                              className="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-left transition-all"
+                              style={{
+                                background: brandType === opt.id ? "rgba(124,92,255,0.14)" : "rgba(255,255,255,0.04)",
+                                border: `1px solid ${brandType === opt.id ? "rgba(124,92,255,0.45)" : "rgba(255,255,255,0.08)"}`,
+                              }}>
+                              <div className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center" style={{ border: `2px solid ${brandType === opt.id ? "rgba(124,92,255,0.9)" : "rgba(255,255,255,0.25)"}` }}>
+                                {brandType === opt.id && <div className="w-2 h-2 rounded-full" style={{ background: "rgba(124,92,255,0.9)" }} />}
+                              </div>
+                              <div>
+                                <p className="text-[14px] font-medium" style={{ color: brandType === opt.id ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.70)" }}>{opt.label}</p>
+                                <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>{opt.sub}</p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                        <button type="button" disabled={!brandType}
+                          onClick={() => { if (brandType) setStep("loading"); }}
+                          className="w-full py-3 rounded-2xl text-[14px] font-semibold transition-all disabled:opacity-30"
+                          style={{ background: "rgba(255,255,255,0.95)", color: "#07070B" }}>
+                          Continue →
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+
                   {step === "loading" && (
                     <motion.div key="loading"
                       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -1742,7 +1792,7 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
                               redirect: false,
                               email: email.trim(),
                               userType: mode,
-                              displayName: email.split("@")[0],
+                              displayName: brandName || email.split("@")[0],
                             });
                             if (result?.ok !== true) {
                               throw new Error(result?.error || "Sign in failed");
