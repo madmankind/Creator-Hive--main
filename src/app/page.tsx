@@ -451,8 +451,11 @@ function HomePageContent() {
             currentStep: brief.currentStep ?? 0,
             completed: false,
           });
+          // Brief exists (even if incomplete) — returning user. Don't force discovery on login.
+          // They can initiate discovery from the search bar if they want to.
+          return;
         }
-        // Show discovery flow
+        // No brief at all — brand new user completing signup for the first time
         setShowDiscovery(true);
       } catch { /* silent */ }
     })();
