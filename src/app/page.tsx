@@ -259,11 +259,12 @@ function HomePageContent() {
     setHeroAuthStep("otp");
   };
 
-  const handleHeroOTPVerify = async () => {
+  const handleHeroOTPVerify = async (otpOverride?: string) => {
     if (heroOtpVerifying) return;
     setHeroOtpVerifying(true);
     setHeroAuthError("");
 
+    const otp = otpOverride || heroOtpCode.trim();
     const email =
       heroAuthEmail.trim() ||
       (heroAuthPhone ? `${heroAuthPhone.replace(/\D/g, "")}@creatorhive.phone` : "");
@@ -278,7 +279,7 @@ function HomePageContent() {
       const verifyRes = await fetch("/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp: heroOtpCode.trim() }),
+        body: JSON.stringify({ email, otp }),
       });
       const verifyData = await verifyRes.json();
       if (!verifyRes.ok) {
@@ -611,7 +612,8 @@ function HomePageContent() {
                             onChange={e => {
                               if (heroOtpVerifying) return;
                               const v = e.target.value.replace(/\D/g, "").slice(0, 6);
-                              if (v.length === 6) void handleHeroOTPVerify();
+                              setHeroOtpCode(v);
+                              if (v.length === 6) void handleHeroOTPVerify(v);
                             }}
                           />
                         </div>
