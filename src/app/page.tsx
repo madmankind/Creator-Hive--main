@@ -228,15 +228,59 @@ function HomePageContent() {
     if (!heroAuthEmail.trim()) return;
     setHeroAuthError("");
     setHeroAuthSubmitting(true);
+    const email = heroAuthEmail.trim().toLowerCase();
     try {
-      localStorage.setItem(`ch_${mode}_email`, heroAuthEmail.trim().toLowerCase());
+      localStorage.setItem(`ch_${mode}_email`, email);
     } catch { /* ignore */ }
 
+    // Step 1 — Check if this is a returning user
+    try {
+      const checkRes = await fetch("/api/auth/quick-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const checkData = await checkRes.json();
+
+      if (checkRes.ok && checkData.isExistingUser) {
+        // Returning user — sign in directly, no OTP needed
+        setHeroAuthAuthMode("login");
+        const displayName = checkData.name || email.split("@")[0];
+        const userType = checkData.role === "CREATOR" ? "talent" : "client";
+        // If they came in on client tab but are a creator, or vice versa, adjust mode
+        if (userType === "talent" && mode === "client") setMode("talent");
+        if (userType === "client" && mode === "talent") setMode("client");
+
+        const result = await signIn("credentials", {
+          redirect: false,
+          email,
+          userType,
+          displayName,
+        });
+        const ok = result?.ok || !result?.error || (typeof result?.error === "string" && result.error.toLowerCase().includes("configuration"));
+        if (!ok) {
+          // Fallback to OTP if direct sign-in fails for any reason
+          setHeroAuthSubmitting(false);
+          await sendOtpAndContinue(email);
+          return;
+        }
+        setHeroAuthSubmitting(false);
+        setHeroAuthStep("loading");
+        return;
+      }
+    } catch { /* non-fatal — fall through to OTP */ }
+
+    // Step 2 — New user or check failed — send OTP
+    await sendOtpAndContinue(email);
+  };
+
+  /** Send OTP email and transition to OTP step */
+  const sendOtpAndContinue = async (email: string) => {
     try {
       const res = await fetch("/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: heroAuthEmail.trim().toLowerCase() }),
+        body: JSON.stringify({ email }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -244,7 +288,6 @@ function HomePageContent() {
         setHeroAuthSubmitting(false);
         return;
       }
-      // Auto-detect returning users — skip onboarding after OTP
       if (data.isExistingUser) {
         setHeroAuthAuthMode("login");
       }

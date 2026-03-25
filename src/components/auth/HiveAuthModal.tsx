@@ -1556,11 +1556,44 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
     if (!email.trim()) return;
     setError("");
     setSubmitting(true);
+    const normalEmail = email.trim().toLowerCase();
+
+    // Step 1 — Check if returning user → sign in directly, no OTP
+    try {
+      const checkRes = await fetch("/api/auth/quick-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: normalEmail }),
+      });
+      const checkData = await checkRes.json();
+
+      if (checkRes.ok && checkData.isExistingUser) {
+        setAuthMode("login");
+        const displayName = checkData.name || normalEmail.split("@")[0];
+        const userType = checkData.role === "CREATOR" ? "talent" : "client";
+        const result = await signIn("credentials", {
+          redirect: false,
+          email: normalEmail,
+          userType,
+          displayName,
+        });
+        const ok = result?.ok || !result?.error || (typeof result?.error === "string" && result.error.toLowerCase().includes("configuration"));
+        if (ok) {
+          localStorage.setItem(`ch_${mode}_email`, normalEmail);
+          setSubmitting(false);
+          setStep("loading");
+          return;
+        }
+        // Fallback to OTP if direct sign-in fails
+      }
+    } catch { /* non-fatal — fall through to OTP */ }
+
+    // Step 2 — New user or check failed — send OTP
     try {
       const res = await fetch("/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+        body: JSON.stringify({ email: normalEmail }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -1568,16 +1601,15 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
         setSubmitting(false);
         return;
       }
-      // Auto-detect returning vs new user
       if (data.isExistingUser) {
-        setAuthMode("login"); // treat as returning user — skip brand-setup after OTP
+        setAuthMode("login");
       }
     } catch {
       setError("Network error. Check your connection.");
       setSubmitting(false);
       return;
     }
-    localStorage.setItem(`ch_${mode}_email`, email.trim().toLowerCase());
+    localStorage.setItem(`ch_${mode}_email`, normalEmail);
     setSubmitting(false);
     setOtpVia("email");
     setStep("otp");
