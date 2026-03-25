@@ -15,6 +15,14 @@ export async function POST(req: Request) {
     }
 
     const normalised = email.toLowerCase().trim();
+
+    // Check if user already exists
+    let isExistingUser = false;
+    try {
+      const existing = await db.user.findUnique({ where: { email: normalised }, select: { id: true } });
+      isExistingUser = !!existing;
+    } catch { /* non-fatal */ }
+
     const otp = generateOtp();
     const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
@@ -54,7 +62,7 @@ export async function POST(req: Request) {
       });
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, isExistingUser });
   } catch (err) {
     console.error("[send-otp]", err);
     return NextResponse.json({ error: "Failed to send code" }, { status: 500 });

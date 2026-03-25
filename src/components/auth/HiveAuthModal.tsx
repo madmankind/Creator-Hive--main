@@ -1568,6 +1568,10 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
         setSubmitting(false);
         return;
       }
+      // Auto-detect returning vs new user
+      if (data.isExistingUser) {
+        setAuthMode("login"); // treat as returning user — skip brand-setup after OTP
+      }
     } catch {
       setError("Network error. Check your connection.");
       setSubmitting(false);
@@ -1595,12 +1599,18 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
   };
 
   const handleOTPVerify = () => {
-    if (mode === "client" && authMode === "signup") {
-      // New client — collect brand details before signing in
-      setStep("brand-setup");
-    } else {
+    // Returning user (login) — go straight to dashboard
+    if (authMode === "login") {
       setStep("loading");
+      return;
     }
+    // New client — collect brand type before signing in
+    if (mode === "client") {
+      setStep("brand-setup");
+      return;
+    }
+    // New talent — choose account type
+    setStep("talent-type");
   };
 
   const handleTalentTypeSelect = (type: TalentAccountType) => {
