@@ -81,12 +81,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   cookies: {
     sessionToken: {
-      name: `__Secure-next-auth.session-token`,
+      name: isDev ? `next-auth.session-token` : `__Secure-next-auth.session-token`,
       options: {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: true,
+        secure: !isDev,
         maxAge: 30 * 24 * 60 * 60,
       },
     },

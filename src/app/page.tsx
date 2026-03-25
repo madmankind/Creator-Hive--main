@@ -380,6 +380,11 @@ function HomePageContent() {
     if (!session?.user || role !== "AGENCY") return;
     // If already completed in local store, skip
     if (discoveryStore.completed) return;
+    // Don't show discovery if user explicitly navigated to gallery or has a deep link
+    const skip = searchParams.get("skip");
+    const bookId = searchParams.get("book");
+    const pkgId = searchParams.get("package");
+    if (skip === "gallery" || bookId || pkgId) return;
     // Check server
     (async () => {
       try {
