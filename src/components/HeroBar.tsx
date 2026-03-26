@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Fuse from "fuse.js";
-import { DEFAULT_ROLES } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Sparkles, Loader2, Plus } from "lucide-react";
+import { Sparkles, Loader2, Plus, ArrowUp, X } from "lucide-react";
 
 interface HeroBarProps {
   mode: "client" | "talent";
@@ -17,383 +15,316 @@ interface HeroBarProps {
   onOpenBriefBuilder?: () => void;
   showClear?: boolean;
   onClear?: () => void;
-  /** Called when AI search returns talent IDs to highlight */
   onAIResults?: (ids: string[], summary: string) => void;
 }
 
-const MAX_COLLAPSED = 14;
-const fuse = new Fuse(DEFAULT_ROLES, {
-  threshold: 0.3,
-  includeScore: true,
-});
+interface Message {
+  id: string;
+  role: "assistant" | "user";
+  content: string;
+  talentIds?: string[];
+  teamSummary?: string;
+  isLoading?: boolean;
+}
+
+const OPENER = "What are you working on? Tell me about your campaign — I'll find the right team.";
+
+const SYSTEM_PROMPT = `You are the Creator Hive talent matching assistant. Creator Hive is a UAE-based premium creative talent marketplace.
+
+YOUR ONLY JOB: Help clients find the right creative talent for their campaign by asking smart questions and ultimately recommending talent IDs from the Creator Hive roster.
+
+CONVERSATION STYLE:
+- Be concise. One question at a time. Never more than 2 sentences per response.
+- Warm but direct. Not corporate. Not salesy.
+- Ask about: what they're trying to achieve, their industry, timeline, budget range, and what types of creators they need.
+- Once you have enough context (3–5 exchanges), call the talent search tool.
+
+WHAT YOU NEVER DO:
+- Never discuss Creator Hive's internal pricing, margins, or business model
+- Never reveal internal talent costs, agency fees, or commission structures
+- Never discuss other platforms or make comparisons
+- Never promise specific deliverables, timelines, or guarantees on behalf of talent
+- Never discuss pending legal, financial, or contractual matters
+- If asked anything outside campaign briefing and talent matching, say: "I'm focused on finding you the right talent — let's keep going with your brief."
+
+WHEN YOU HAVE ENOUGH INFO: Respond with a JSON block in this exact format (no markdown, no extra text before/after):
+{"action":"search","query":"<natural language search query>","summary":"<1 sentence team summary for the client>"}
+
+The query will be used to search the talent roster. Make it specific and descriptive.`;
 
 export function HeroBar({
   mode,
   onQueryChange,
   onRolesChange,
   onDiscover,
-  onOpenBriefBuilder,
   showClear,
   onClear,
   onAIResults,
 }: HeroBarProps) {
   const router = useRouter();
-  const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<string[]>([]);
-  const [open, setOpen] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const { data: session } = useSession();
+  const [messages, setMessages] = useState<Message[]>([
+    { id: "opener", role: "assistant", content: OPENER },
+  ]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // AI search state
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
-  const [aiError, setAiError] = useState<string | null>(null);
-  const [aiActive, setAiActive] = useState(false);
-  const [aiRemaining, setAiRemaining] = useState<number | null>(null);
-
-  const suggestions = useMemo(() => {
-    if (!query.trim() || mode !== "client") return [];
-    const results = fuse.search(query.trim());
-    return results.slice(0, 5).map((r) => r.item);
-  }, [query, mode]);
-
-  const visibleRoles = useMemo(() => {
-    if (mode !== "client" || expanded) return DEFAULT_ROLES;
-    return DEFAULT_ROLES.slice(0, MAX_COLLAPSED);
-  }, [expanded, mode]);
-
   useEffect(() => {
-    function handle(e: MouseEvent) {
-      if (!wrapperRef.current?.contains(e.target as Node)) {
-        setOpen(false);
-      }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto";
+      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 120)}px`;
     }
-    document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
-  }, []);
+  }, [input]);
 
-  const handleRoleClick = (role: string) => {
-    const next = selected.includes(role)
-      ? selected.filter((r) => r !== role)
-      : [...selected, role];
-    setSelected(next);
-    onRolesChange?.(next);
-  };
+  const buildHistory = useCallback(() =>
+    messages
+      .filter((m) => !m.isLoading)
+      .map((m) => ({ role: m.role, content: m.content })),
+    [messages]
+  );
 
-  const handleClientSubmit = () => {
-    if (onDiscover) {
-      onDiscover();
-    }
-  };
-
-  const handleDiscover = useCallback(async () => {
-    const q = query.trim();
-    const hasRoles = selected.length > 0;
-
-    // Always open the gallery — roles and/or text will filter
+  const runSearch = useCallback(async (query: string, summary: string) => {
+    setSearched(true);
     onDiscover?.();
-
-    // If there's text, run AI search for smart matching
-    if (q) {
-      setAiLoading(true);
-      setAiError(null);
-      setAiSummary(null);
-      try {
-        const res = await fetch("/api/ai-search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: q }),
-        });
-        const data = await res.json();
-        if (res.status === 429) {
-          setAiError(data?.message ?? `Daily AI search limit reached. Resets at midnight UTC.`);
-          setAiRemaining(0);
-          onQueryChange?.(q);
-          setAiActive(false);
-        } else if (!res.ok) {
-          setAiError(data?.detail ?? "AI search unavailable — showing keyword results");
-          onQueryChange?.(q);
-          setAiActive(false);
-        } else {
-          setAiSummary(data.teamSummary ?? null);
-          setAiActive(true);
-          if (data.rateLimit?.remaining !== undefined) {
-            setAiRemaining(data.rateLimit.remaining);
-          }
-          onAIResults?.(data.talentIds ?? [], data.teamSummary ?? "");
-          onQueryChange?.(hasRoles ? q : "");
-        }
-      } catch {
-        setAiError("AI search unavailable — showing keyword results");
-        onQueryChange?.(q);
-        setAiActive(false);
-      } finally {
-        setAiLoading(false);
+    try {
+      const res = await fetch("/api/ai-search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      const data = await res.json();
+      if (res.status === 429) {
+        setMessages((prev) => [...prev, {
+          id: Date.now().toString(),
+          role: "assistant",
+          content: data.message ?? "You've reached your daily AI search limit. Resets at midnight UTC.",
+        }]);
+        return;
       }
-      return;
+      if (res.ok && data.talentIds?.length) {
+        if (data.rateLimit?.remaining !== undefined) setRemaining(data.rateLimit.remaining);
+        onAIResults?.(data.talentIds, data.teamSummary ?? summary);
+        onQueryChange?.("");
+        setMessages((prev) => [...prev, {
+          id: Date.now().toString(),
+          role: "assistant",
+          content: summary || data.teamSummary || "Here's your team. You can select anyone below to add them to your campaign.",
+          talentIds: data.talentIds,
+          teamSummary: data.teamSummary,
+        }]);
+      }
+    } catch {
+      setMessages((prev) => [...prev, {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: "Search is unavailable right now — try again in a moment.",
+      }]);
     }
+  }, [onDiscover, onAIResults, onQueryChange]);
 
-    // No text — just roles selected: open gallery with role filtering (no AI)
-    if (hasRoles) {
-      onRolesChange?.(selected);
-      onQueryChange?.("");
-      return;
+  const send = useCallback(async () => {
+    const text = input.trim();
+    if (!text || loading) return;
+
+    const userMsg: Message = { id: Date.now().toString(), role: "user", content: text };
+    const loadingMsg: Message = { id: "loading", role: "assistant", content: "", isLoading: true };
+    setMessages((prev) => [...prev, userMsg, loadingMsg]);
+    setInput("");
+    setLoading(true);
+    if (!chatOpen) setChatOpen(true);
+
+    try {
+      const res = await fetch("/api/ai-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [...buildHistory(), { role: "user", content: text }],
+          systemPrompt: SYSTEM_PROMPT,
+        }),
+      });
+      const data = await res.json();
+      const reply: string = data.content ?? "Something went wrong — try again.";
+
+      // Check if model wants to trigger a search
+      const trimmed = reply.trim();
+      if (trimmed.startsWith("{") && trimmed.includes('"action":"search"')) {
+        try {
+          const parsed = JSON.parse(trimmed) as { action: string; query: string; summary: string };
+          if (parsed.action === "search") {
+            setMessages((prev) => prev.filter((m) => m.id !== "loading"));
+            setLoading(false);
+            await runSearch(parsed.query, parsed.summary);
+            return;
+          }
+        } catch { /* not JSON, treat as text */ }
+      }
+
+      setMessages((prev) => [
+        ...prev.filter((m) => m.id !== "loading"),
+        { id: Date.now().toString(), role: "assistant", content: reply },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev.filter((m) => m.id !== "loading"),
+        { id: Date.now().toString(), role: "assistant", content: "Connection error — try again." },
+      ]);
+    } finally {
+      setLoading(false);
     }
+  }, [input, loading, buildHistory, chatOpen, runSearch]);
 
-    // Nothing selected — just open the full gallery
-    onQueryChange?.("");
-  }, [query, selected, onDiscover, onQueryChange, onAIResults, onRolesChange]);
-
-  const handleClearAI = useCallback(() => {
-    setAiActive(false);
-    setAiSummary(null);
-    setAiError(null);
+  const handleClear = useCallback(() => {
+    setMessages([{ id: "opener", role: "assistant", content: OPENER }]);
+    setInput("");
+    setSearched(false);
+    setChatOpen(false);
     onAIResults?.([], "");
     onQueryChange?.("");
-  }, [onAIResults, onQueryChange]);
+    onClear?.();
+  }, [onAIResults, onQueryChange, onClear]);
 
-
+  if (mode === "talent") {
+    return (
+      <div className="flex flex-1 items-center gap-3">
+        <div className="rounded-full bg-[#0D0D14] ring-1 ring-white/10 hover:ring-white/15 transition p-2 pl-5 pr-3 flex-1">
+          <span className={cn("w-full block text-[15px] leading-8", session?.user ? "text-slate-200" : "text-slate-400/40")}>
+            {session?.user ? "Welcome back" : "Apply to join as a creator or talent"}
+          </span>
+        </div>
+        <button type="button"
+          onClick={() => session?.user ? router.push("/dashboard/creator") : onDiscover?.()}
+          className="rounded-full bg-white px-5 py-2 text-xs font-semibold text-black hover:bg-white/90 transition">
+          {session?.user ? "Dashboard" : "Continue"}
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <motion.div
-      layout
-      ref={wrapperRef}
-      className="flex w-full items-center justify-between"
-    >
-      <AnimatePresence mode="wait">
-        {mode === "client" ? (
+    <div ref={wrapperRef} className="w-full flex flex-col">
+      {/* Chat history — shows above input when open */}
+      <AnimatePresence>
+        {chatOpen && messages.length > 1 && (
           <motion.div
-            key="client"
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 8 }}
-            transition={{ duration: 0.18 }}
-            className="flex flex-col flex-1 gap-0"
+            key="chat-history"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="mb-3 rounded-2xl overflow-hidden"
+            style={{ background: "rgba(13,13,20,0.80)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(16px)" }}
           >
-            <div className="flex flex-1 items-center gap-3">
-            <div className="relative flex-1">
-              <div
-                className="rounded-full bg-[#0D0D14] ring-1 ring-white/10 hover:ring-white/15 transition p-2 pl-5 pr-3"
-              >
-                {selected.length > 0 && (
-                  <div className="mb-1 -mt-1 flex flex-wrap gap-1">
-                    {selected.map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRoleClick(r);
-                        }}
-                        className={cn(
-                          "flex items-center gap-1 rounded-full px-3 py-1 text-[11px]",
-                          "bg-white text-black"
-                        )}
-                      >
-                        {r}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <div className="relative flex items-center min-h-[36px] pr-10">
-                  <input
-                    value={query}
-                    onChange={(e) => {
-                      setQuery(e.target.value);
-                      onQueryChange?.(e.target.value);
-                    }}
-                    onFocus={() => setOpen(true)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleDiscover();
-                    }}
-                    placeholder="Describe your campaign — AI will build your team"
-                    className="w-full min-w-0 bg-transparent outline-none text-slate-200 placeholder:text-slate-400/40 text-[15px] leading-8 pr-1"
-                  />
-                  <label
-                    className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full transition-all cursor-pointer shrink-0"
-                    style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.15)"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; }}
-                    title="Upload brief, image, or presentation"
-                  >
-                    <Plus className="w-3.5 h-3.5 text-white/45" />
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept=".pdf,.pptx,.ppt,.docx,.doc,.xlsx,.csv,.png,.jpg,.jpeg,.webp"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setQuery((prev) => prev ? `${prev} [brief: ${file.name}]` : `Match talent for brief: ${file.name}`);
-                        }
-                      }}
-                    />
-                  </label>
-                </div>
-              </div>
-
-              {open && (suggestions.length > 0 || visibleRoles.length > 0) && (
-                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-2xl border border-white/10 bg-[rgba(9,12,16,0.96)] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)] backdrop-blur-md">
-                  <div className="p-3">
-                    {suggestions.length > 0 && (
-                      <div className="mb-3">
-                        <div className="text-xs text-white/50 mb-2 px-1">Suggestions</div>
-                        <div className="flex flex-wrap gap-2">
-                          {suggestions.map((role) => (
-                            <button
-                              key={role}
-                              type="button"
-                              onClick={() => {
-                                handleRoleClick(role);
-                                setQuery("");
-                              }}
-                              className={cn(
-                                "flex items-center gap-1 rounded-full px-3 py-1 text-[11px]",
-                                selected.includes(role)
-                                  ? "bg-white text-black"
-                                  : "bg-white/5 text-white/70"
-                              )}
-                            >
-                              {role}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <div className="flex flex-wrap gap-2">
-                      {visibleRoles.map((role) => (
-                        <button
-                          key={role}
-                          type="button"
-                          onClick={() => handleRoleClick(role)}
-                          className={cn(
-                            "flex items-center gap-1 rounded-full px-3 py-1 text-[11px]",
-                            selected.includes(role)
-                              ? "bg-white text-black"
-                              : "bg-white/5 text-white/70"
-                          )}
-                        >
-                          {role}
-                        </button>
-                      ))}
+            <div className="max-h-64 overflow-y-auto p-4 space-y-3">
+              {messages.filter((m) => m.id !== "opener").map((msg) => (
+                <div key={msg.id} className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
+                  {msg.isLoading ? (
+                    <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl"
+                      style={{ background: "rgba(124,92,255,0.10)", border: "1px solid rgba(124,92,255,0.18)" }}>
+                      <Loader2 size={12} className="animate-spin text-purple-400" />
+                      <span className="text-[12px] text-white/40">Thinking…</span>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-end px-3 pb-3">
-                    <button
-                      type="button"
-                      onClick={() => setExpanded((v) => !v)}
-                      className="text-xs text-slate-300/80 hover:text-slate-100 transition"
-                    >
-                      {expanded ? "Show less" : "Show more"} ▾
-                    </button>
-                  </div>
+                  ) : (
+                    <div className={cn(
+                      "max-w-[82%] px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed",
+                      msg.role === "user"
+                        ? "bg-white/[0.09] text-white/85"
+                        : "text-white/70"
+                    )}
+                      style={msg.role === "assistant" ? { background: "rgba(124,92,255,0.08)", border: "1px solid rgba(124,92,255,0.15)" } : {}}>
+                      {msg.role === "assistant" && <Sparkles size={11} className="inline mr-1.5 text-purple-400 mb-0.5" />}
+                      {msg.content}
+                      {msg.talentIds && msg.talentIds.length > 0 && (
+                        <div className="mt-1.5 text-[10px] text-purple-300/60">
+                          {msg.talentIds.length} creators matched ↓
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
+              <div ref={messagesEndRef} />
             </div>
-
-            <div className="flex items-center gap-2">
-              {(showClear || aiActive) ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelected([]);
-                    setQuery("");
-                    onRolesChange?.([]);
-                    handleClearAI();
-                    onClear?.();
-                  }}
-                  className="flex items-center gap-1 text-[11px] text-white/45 hover:text-white/70 transition px-2 py-1 rounded-full hover:bg-white/5"
-                >
-                  <span style={{ fontSize: "10px" }}>✕</span> Clear
-                </button>
-              ) : selected.length > 0 || query ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelected([]);
-                    setQuery("");
-                    onRolesChange?.([]);
-                    onQueryChange?.("");
-                  }}
-                  className="text-[11px] text-white/45 hover:text-white/70 transition"
-                >
-                  Clear
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={handleDiscover}
-                disabled={aiLoading}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-full px-5 py-2 text-xs font-semibold transition",
-                  aiLoading
-                    ? "bg-white/20 text-white/50 cursor-not-allowed"
-                    : "bg-white text-black hover:bg-white/90"
-                )}
-              >
-                {aiLoading ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="w-3.5 h-3.5" />
-                )}
-                {aiLoading ? "Searching…" : "Discover"}
-              </button>
-            </div>
-            </div>
-
-          {/* AI summary / error strip — shown below the bar */}
-          <AnimatePresence>
-            {(aiSummary || aiError) && (
-              <motion.div
-                key="ai-strip"
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.2 }}
-                className={cn(
-                  "mt-2 flex items-start gap-2 px-4 py-2.5 rounded-2xl text-[12px]",
-                  aiSummary
-                    ? "bg-purple-500/10 ring-1 ring-purple-400/20 text-purple-200"
-                    : "bg-white/[0.04] ring-1 ring-white/[0.08] text-white/45"
-                )}
-              >
-                {aiSummary && <Sparkles className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-400" />}
-                <span className="flex-1">{aiSummary ?? aiError}</span>
-                {aiRemaining !== null && aiRemaining > 0 && (
-                  <span className="shrink-0 text-[10px] text-white/25 tabular-nums">{aiRemaining} left today</span>
-                )}
-                {aiRemaining === 0 && (
-                  <span className="shrink-0 text-[10px] text-amber-400/60">Limit reached</span>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="talent"
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 8 }}
-            transition={{ duration: 0.18 }}
-            className="flex flex-1 items-center gap-3"
-          >
-            <div className="rounded-full bg-[#0D0D14] ring-1 ring-white/10 hover:ring-white/15 transition p-2 pl-5 pr-3 flex-1">
-              <span className={"w-full block text-[15px] leading-8 " + (session?.user ? "text-slate-200" : "text-slate-400/40")}>
-                {session?.user ? "Welcome back" : "Apply to join as a creator or talent"}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => session?.user ? router.push("/dashboard/creator") : onDiscover?.()}
-              className="rounded-full bg-white px-5 py-2 text-xs font-semibold text-black hover:bg-white/90 transition"
-            >
-              {session?.user ? "Dashboard" : "Continue"}
-            </button>
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+
+      {/* Input bar */}
+      <div className="rounded-2xl bg-[#0D0D14] ring-1 ring-white/10 hover:ring-white/15 transition px-4 py-3"
+        style={{ border: chatOpen ? "1px solid rgba(124,92,255,0.25)" : undefined }}>
+
+        {/* Opener message inline when chat not yet open */}
+        {!chatOpen && (
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles size={12} className="text-purple-400/60 shrink-0" />
+            <span className="text-[12px] text-white/35">{OPENER}</span>
+          </div>
+        )}
+
+        <div className="flex items-end gap-3">
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+            }}
+            onFocus={() => !chatOpen && messages.length <= 1 && setChatOpen(false)}
+            placeholder={chatOpen ? "Reply…" : "Describe your campaign, brand, or what you need…"}
+            rows={1}
+            className="flex-1 bg-transparent outline-none text-[14px] text-white/85 placeholder:text-white/25 resize-none leading-relaxed"
+            style={{ minHeight: "28px", maxHeight: "120px" }}
+          />
+
+          <div className="flex items-center gap-2 shrink-0 pb-0.5">
+            {/* File upload */}
+            <label className="cursor-pointer p-1.5 rounded-lg text-white/25 hover:text-white/50 hover:bg-white/[0.06] transition" title="Attach brief or image">
+              <Plus size={14} />
+              <input type="file" className="hidden" accept=".pdf,.pptx,.docx,.png,.jpg,.jpeg"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) setInput((p) => p ? `${p} [brief: ${f.name}]` : `Brief attached: ${f.name}`);
+                }} />
+            </label>
+
+            {/* Clear */}
+            {(searched || chatOpen || showClear) && (
+              <button type="button" onClick={handleClear}
+                className="p-1.5 rounded-lg text-white/20 hover:text-white/50 hover:bg-white/[0.05] transition" title="Clear">
+                <X size={13} />
+              </button>
+            )}
+
+            {/* Send */}
+            <button type="button" onClick={send} disabled={!input.trim() || loading}
+              className={cn(
+                "flex items-center justify-center w-8 h-8 rounded-xl transition-all",
+                input.trim() && !loading
+                  ? "bg-white text-black hover:bg-white/90"
+                  : "bg-white/[0.07] text-white/25 cursor-not-allowed"
+              )}>
+              {loading ? <Loader2 size={13} className="animate-spin" /> : <ArrowUp size={13} />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Search count */}
+      {remaining !== null && remaining >= 0 && (
+        <p className="text-[10px] text-right mt-1 text-white/20 tabular-nums">
+          {remaining > 0 ? `${remaining} AI searches left today` : "Daily limit reached"}
+        </p>
+      )}
+    </div>
   );
 }

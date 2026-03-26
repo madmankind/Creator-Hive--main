@@ -424,15 +424,13 @@ function HomePageContent() {
   // ─── Discovery gate: check if client needs to complete discovery ───
   useEffect(() => {
     if (!session?.user || role !== "AGENCY") return;
-    // If already completed in local store, skip
     if (discoveryStore.completed) return;
-    // Don't show discovery if user explicitly navigated to gallery or has a deep link
     const skip = searchParams.get("skip");
     const bookId = searchParams.get("book");
     const pkgId = searchParams.get("package");
     if (skip === "gallery" || bookId || pkgId) return;
-    // Check server
-    (async () => {
+    // Delay so HiveAuthModal close animation finishes before we show discovery
+    const timer = setTimeout(async () => {
       try {
         const res = await fetch("/api/discovery/brief");
         const { brief } = await res.json();
@@ -440,7 +438,6 @@ function HomePageContent() {
           discoveryStore.hydrate({ ...brief, completed: true });
           return;
         }
-        // Hydrate partial data if exists
         if (brief) {
           discoveryStore.hydrate({
             primaryObjective: brief.primaryObjective ?? "",
@@ -453,14 +450,14 @@ function HomePageContent() {
             currentStep: brief.currentStep ?? 0,
             completed: false,
           });
-          // Brief exists (even if incomplete) — returning user. Don't force discovery on login.
-          // They can initiate discovery from the search bar if they want to.
+          // Returning user with partial brief — don't force, let them use search bar
           return;
         }
-        // No brief at all — brand new user completing signup for the first time
+        // No brief at all — brand new user
         setShowDiscovery(true);
       } catch { /* silent */ }
-    })();
+    }, 600); // Wait for auth modal close animation
+    return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, role]);
 

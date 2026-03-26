@@ -11,11 +11,12 @@ import {
   DISCOVERY_ROLES,
   DISCOVERY_TIMING,
   DISCOVERY_BUDGET,
-  DISCOVERY_INDUSTRIES,
   getObjectiveLabel,
   getTimingLabel,
   getBudgetLabel,
 } from "@/lib/discovery";
+import { FuzzyPillSelector } from "./FuzzyPillSelector";
+import { IndustrySelector } from "./IndustrySelector";
 
 interface Props {
   onComplete: () => void;
@@ -57,6 +58,7 @@ export function ClientDiscoveryFlow({ onComplete, onAdvisor, initialStep = 0 }: 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           primaryObjective: store.primaryObjective,
+          rankedObjectives: store.rankedObjectives,
           requestedRoles: store.requestedRoles,
           startTiming: store.startTiming,
           budgetRange: store.budgetRange,
@@ -93,17 +95,10 @@ export function ClientDiscoveryFlow({ onComplete, onAdvisor, initialStep = 0 }: 
   }, [saveProgress, store, onComplete]);
 
   const canProceed = step === 0
-    ? store.primaryObjective !== ""
+    ? store.rankedObjectives.length > 0
     : step === 1
     ? store.startTiming !== "" && store.budgetRange !== ""
     : true;
-
-  const toggleRole = (role: string) => {
-    const next = store.requestedRoles.includes(role)
-      ? store.requestedRoles.filter((r) => r !== role)
-      : [...store.requestedRoles, role];
-    store.setField("requestedRoles", next);
-  };
 
   const anim = dir >= 0
     ? { initial: { opacity: 0, x: 40 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -40 } }
@@ -122,20 +117,33 @@ export function ClientDiscoveryFlow({ onComplete, onAdvisor, initialStep = 0 }: 
     >{label}</button>
   );
 
-  /* ─── Shared objective card ─── */
+  /* ─── Shared objective card — ranked multi-select ─── */
   const ObjCard = ({ id, icon, label, compact }: { id: string; icon: string; label: string; compact?: boolean }) => {
-    const active = store.primaryObjective === id;
+    const rank = store.rankedObjectives.indexOf(id); // -1 = not selected
+    const active = rank !== -1;
+    const maxed = !active && store.rankedObjectives.length >= 3;
     return (
       <button type="button"
-        onClick={() => store.setField("primaryObjective", active ? "" : id)}
+        onClick={() => store.toggleObjective(id)}
+        disabled={maxed}
         className={cn(
-          "text-left rounded-2xl transition-all duration-150",
+          "text-left rounded-2xl transition-all duration-150 relative",
           compact ? "px-3 py-2.5" : "px-4 py-3.5",
           active
             ? "bg-white/[0.10] ring-1 ring-white/25"
+            : maxed
+            ? "bg-white/[0.02] ring-1 ring-white/[0.04] opacity-40 cursor-not-allowed"
             : "bg-white/[0.03] ring-1 ring-white/[0.06] hover:bg-white/[0.06]",
         )}
       >
+        {active && (
+          <span className={cn(
+            "absolute top-2 right-2 flex items-center justify-center rounded-full font-bold text-black",
+            compact ? "w-4 h-4 text-[9px]" : "w-5 h-5 text-[10px]",
+          )} style={{ background: "rgba(255,255,255,0.90)" }}>
+            {rank + 1}
+          </span>
+        )}
         <span className={cn("block", compact ? "text-[14px] mb-0.5" : "text-[18px] mb-1.5")}>{icon}</span>
         <span className={cn("leading-tight block", compact ? "text-[11px]" : "text-[13px]", active ? "text-white/90" : "text-white/50")}>{label}</span>
       </button>
@@ -163,7 +171,9 @@ export function ClientDiscoveryFlow({ onComplete, onAdvisor, initialStep = 0 }: 
 
   /* ─── Summary rows ─── */
   const summaryRows = [
-    ["Objective", getObjectiveLabel(store.primaryObjective)],
+    ["Objectives", store.rankedObjectives.length > 0
+      ? store.rankedObjectives.map((id, i) => `${i + 1}. ${getObjectiveLabel(id)}`).join(" · ")
+      : "—"],
     ["Roles", store.requestedRoles.length > 0 ? store.requestedRoles.join(", ") : "Any"],
     ["Timeline", getTimingLabel(store.startTiming)],
     ["Budget", getBudgetLabel(store.budgetRange)],
@@ -235,6 +245,9 @@ export function ClientDiscoveryFlow({ onComplete, onAdvisor, initialStep = 0 }: 
                 <h2 className={cn("font-medium tracking-[-0.02em] text-white leading-tight", isMobile ? "text-[20px]" : "text-[32px]")}>
                   What are you trying to achieve?
                 </h2>
+                <p className={cn("text-white/30 mt-1", isMobile ? "text-[11px]" : "text-[13px]")}>
+                  Pick up to 3 in priority order — tap to rank
+                </p>
               </div>
 
               {/* Objective grid */}
@@ -244,17 +257,18 @@ export function ClientDiscoveryFlow({ onComplete, onAdvisor, initialStep = 0 }: 
                 ))}
               </div>
 
-              {/* Roles */}
+              {/* Roles — fuzzy searchable with custom input */}
               <div>
-                <p className={cn("text-white/25", isMobile ? "text-[10px] mb-1.5" : "text-[11px] mb-2")}>
-                  Roles you need <span className="text-white/15">(optional)</span>
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {DISCOVERY_ROLES.slice(0, isMobile ? 10 : 16).map((role) => (
-                    <Pill key={role} active={store.requestedRoles.includes(role)} label={role}
-                      onClick={() => toggleRole(role)} size={isMobile ? "sm" : "md"} />
-                  ))}
-                </div>
+                <FuzzyPillSelector
+                  label="Roles you need"
+                  hint="(optional)"
+                  options={[...DISCOVERY_ROLES]}
+                  selected={store.requestedRoles}
+                  onChange={(roles) => store.setField("requestedRoles", roles)}
+                  placeholder="Search roles…"
+                  allowCustom={true}
+                  size={isMobile ? "sm" : "md"}
+                />
               </div>
 
               {/* CTA — desktop: right-aligned, mobile: full width at bottom */}
@@ -322,18 +336,10 @@ export function ClientDiscoveryFlow({ onComplete, onAdvisor, initialStep = 0 }: 
                   </div>
                   <div>
                     <p className={cn("text-white/25", isMobile ? "text-[10px] mb-1" : "text-[11px] mb-1.5")}>Industry</p>
-                    <select value={store.industry}
-                      onChange={(e) => store.setField("industry", e.target.value)}
-                      className={cn(
-                        "w-full rounded-xl bg-white/[0.04] ring-1 ring-white/[0.08] text-white/85 outline-none focus:ring-white/20 transition appearance-none",
-                        isMobile ? "px-3 py-2 text-[12px]" : "px-3.5 py-2.5 text-[13px]",
-                      )}
-                    >
-                      <option value="">Select</option>
-                      {DISCOVERY_INDUSTRIES.map((ind) => (
-                        <option key={ind} value={ind}>{ind}</option>
-                      ))}
-                    </select>
+                    <IndustrySelector
+                      value={store.industry}
+                      onChange={(v) => store.setField("industry", v)}
+                    />
                   </div>
                 </div>
               </div>
@@ -351,7 +357,7 @@ export function ClientDiscoveryFlow({ onComplete, onAdvisor, initialStep = 0 }: 
             <motion.div key="s2" {...anim} transition={{ duration: 0.25, ease: "easeOut" }}
               className={cn(
                 "flex w-full mx-auto",
-                isMobile ? "flex-col gap-3 max-w-lg" : "flex-col gap-5 max-w-2xl",
+                isMobile ? "flex-col gap-4 max-w-lg" : "flex-col gap-6 max-w-2xl",
               )}
             >
               <div>
@@ -360,56 +366,52 @@ export function ClientDiscoveryFlow({ onComplete, onAdvisor, initialStep = 0 }: 
                   Your brief
                 </h2>
                 <p className={cn("text-white/30 mt-1", isMobile ? "text-[11px]" : "text-[14px]")}>
-                  We&apos;ll use this to match you with the right talent.
+                  Review and add any extra context. We&apos;ll match you with the right talent.
                 </p>
               </div>
 
-              {/* Desktop: 2-col summary + notes / Mobile: stacked */}
-              <div className={cn(isMobile ? "space-y-3" : "grid grid-cols-5 gap-5")}>
-                {/* Summary card */}
-                <div className={cn(
-                  "rounded-2xl bg-white/[0.04] ring-1 ring-white/[0.08] space-y-2.5",
-                  isMobile ? "p-3 col-span-full" : "p-5 col-span-3",
-                )}>
-                  {summaryRows.map(([label, value]) => (
-                    <div key={label} className="flex items-center justify-between">
-                      <span className={cn("text-white/25", isMobile ? "text-[10px]" : "text-[12px]")}>{label}</span>
-                      <span className={cn("text-white/65 text-right max-w-[60%] truncate", isMobile ? "text-[11px]" : "text-[13px]")}>{value}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Notes + CTAs */}
-                <div className={cn(isMobile ? "" : "col-span-2 flex flex-col gap-3")}>
-                  <div>
-                    <p className={cn("text-white/25 mb-1.5", isMobile ? "text-[10px]" : "text-[11px]")}>Anything else?</p>
-                    <textarea
-                      value={store.notes}
-                      onChange={(e) => store.setField("notes", e.target.value.slice(0, 250))}
-                      maxLength={250}
-                      rows={isMobile ? 2 : 3}
-                      placeholder="Optional — max 250 chars"
-                      className={cn(
-                        "w-full rounded-xl bg-white/[0.04] ring-1 ring-white/[0.08] text-white/85 placeholder:text-white/20 outline-none focus:ring-white/20 transition resize-none",
-                        isMobile ? "px-3 py-2 text-[11px]" : "px-3.5 py-2.5 text-[13px]",
-                      )}
-                    />
+              {/* Summary card — full width, clean rows */}
+              <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                {summaryRows.map(([label, value], i) => (
+                  <div key={label}
+                    className={cn("flex items-start justify-between px-5 py-3.5", i > 0 && "border-t border-white/[0.06]")}
+                  >
+                    <span className={cn("text-white/35 shrink-0 w-24", isMobile ? "text-[11px]" : "text-[12px]")}>{label}</span>
+                    <span className={cn("text-white/75 text-right flex-1 min-w-0", isMobile ? "text-[12px]" : "text-[13px]")}>{value}</span>
                   </div>
-                </div>
+                ))}
+              </div>
+
+              {/* Notes — full width below summary */}
+              <div>
+                <p className={cn("text-white/25 mb-1.5", isMobile ? "text-[10px]" : "text-[11px]")}>Anything else? <span className="text-white/15">(optional, max 250 chars)</span></p>
+                <textarea
+                  value={store.notes}
+                  onChange={(e) => store.setField("notes", e.target.value.slice(0, 250))}
+                  maxLength={250}
+                  rows={3}
+                  placeholder="e.g. We're launching in Q2, need bilingual Arabic/English content…"
+                  className={cn(
+                    "w-full rounded-xl bg-white/[0.04] ring-1 ring-white/[0.08] text-white/85 placeholder:text-white/20 outline-none focus:ring-white/20 transition resize-none",
+                    isMobile ? "px-3 py-2.5 text-[12px]" : "px-4 py-3 text-[13px]",
+                  )}
+                />
+                {store.notes.length > 200 && (
+                  <p className="text-[10px] text-right mt-1" style={{ color: "rgba(255,255,255,0.28)" }}>
+                    {250 - store.notes.length} chars left
+                  </p>
+                )}
               </div>
 
               {/* CTAs */}
-              <div className={cn(
-                "flex gap-3",
-                isMobile ? "flex-col" : "justify-end pt-1",
-              )}>
+              <div className={cn("flex gap-3", isMobile ? "flex-col" : "justify-between items-center pt-1")}>
                 <button onClick={onAdvisor}
                   className={cn(
                     "rounded-xl text-white/40 hover:text-white/65 transition ring-1 ring-white/[0.06] hover:ring-white/[0.12] flex items-center justify-center gap-1.5",
                     isMobile ? "py-2.5 text-[12px]" : "px-6 py-3 text-[13px]",
                   )}
                 >
-                  <Phone size={13} /> Request a call
+                  <Phone size={13} /> Speak to an advisor instead
                 </button>
                 <CTA label="Find my team" onClick={handleComplete} loading={saving} variant="accent" />
               </div>
