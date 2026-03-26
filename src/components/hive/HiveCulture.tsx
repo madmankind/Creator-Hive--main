@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { CultureStory } from "@/lib/editorial/queries";
@@ -51,6 +51,118 @@ const FALLBACKS = [
 ];
 
 const CAP = "rounded-sm bg-[#f4f1eb]/[0.97] text-stone-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_1px_3px_rgba(0,0,0,0.04)] border border-stone-300/30";
+
+// ── Showreel clips — swap these for your own videos anytime ─────────────────
+// Drop MP4s into /public/showreel/ and update this list.
+// Current: curated Pexels free videos (fashion / beauty / creator aesthetic)
+const SHOWREEL: { src: string; poster?: string }[] = [
+  {
+    src: "https://videos.pexels.com/video-files/3196154/3196154-uhd_2560_1440_30fps.mp4",
+    poster: "https://images.pexels.com/videos/3196154/free-video-3196154.jpg?auto=compress&cs=tinysrgb&w=1280",
+  },
+  {
+    src: "https://videos.pexels.com/video-files/3209045/3209045-uhd_2560_1440_25fps.mp4",
+    poster: "https://images.pexels.com/videos/3209045/free-video-3209045.jpg?auto=compress&cs=tinysrgb&w=1280",
+  },
+  {
+    src: "https://videos.pexels.com/video-files/3191593/3191593-uhd_2560_1440_25fps.mp4",
+    poster: "https://images.pexels.com/videos/3191593/free-video-3191593.jpg?auto=compress&cs=tinysrgb&w=1280",
+  },
+  {
+    src: "https://videos.pexels.com/video-files/5704720/5704720-hd_1920_1080_25fps.mp4",
+    poster: "https://images.pexels.com/videos/5704720/free-video-5704720.jpg?auto=compress&cs=tinysrgb&w=1280",
+  },
+  {
+    src: "https://videos.pexels.com/video-files/3249539/3249539-uhd_2560_1440_25fps.mp4",
+    poster: "https://images.pexels.com/videos/3249539/free-video-3249539.jpg?auto=compress&cs=tinysrgb&w=1280",
+  },
+];
+
+const CLIP_DURATION = 8000; // ms per clip before crossfade
+
+function ShowreelBg() {
+  const [current, setCurrent] = useState(0);
+  const [next, setNext] = useState<number | null>(null);
+  const [fading, setFading] = useState(false);
+  const currentRef = useRef<HTMLVideoElement>(null);
+  const nextRef = useRef<HTMLVideoElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const advance = useCallback(() => {
+    const n = (current + 1) % SHOWREEL.length;
+    setNext(n);
+    setFading(true);
+    setTimeout(() => {
+      setCurrent(n);
+      setNext(null);
+      setFading(false);
+    }, 900); // crossfade duration
+  }, [current]);
+
+  // Auto-advance every CLIP_DURATION
+  useEffect(() => {
+    timerRef.current = setTimeout(advance, CLIP_DURATION);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [current, advance]);
+
+  // Ensure video plays (autoplay may need user gesture on mobile — silent autoplay is fine)
+  useEffect(() => {
+    currentRef.current?.play().catch(() => {});
+  }, [current]);
+
+  useEffect(() => {
+    if (next !== null) nextRef.current?.play().catch(() => {});
+  }, [next]);
+
+  return (
+    <>
+      {/* Current clip */}
+      <video
+        ref={currentRef}
+        key={`cur-${current}`}
+        src={SHOWREEL[current].src}
+        poster={SHOWREEL[current].poster}
+        autoPlay
+        muted
+        loop
+        playsInline
+        className="absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-900"
+        style={{ opacity: fading ? 0 : 1, transitionDuration: "900ms" }}
+      />
+      {/* Next clip — fades in behind */}
+      {next !== null && (
+        <video
+          ref={nextRef}
+          key={`nxt-${next}`}
+          src={SHOWREEL[next].src}
+          poster={SHOWREEL[next].poster}
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 h-full w-full object-cover object-center"
+          style={{ opacity: fading ? 1 : 0, transitionDuration: "900ms", transition: "opacity 900ms ease" }}
+        />
+      )}
+      {/* Clip indicator dots */}
+      <div className="absolute bottom-4 right-5 flex items-center gap-1.5 z-10">
+        {SHOWREEL.map((_, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => { setCurrent(i); setNext(null); setFading(false); }}
+            className="rounded-full transition-all duration-300"
+            style={{
+              width: i === current ? "16px" : "5px",
+              height: "5px",
+              background: i === current ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.30)",
+            }}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
 
 type Card = { id: string; cat: string; title: string; meta: string; image: string; url: string; summary: string | null };
 
@@ -111,13 +223,16 @@ export function HiveCulture({ dbStories = [], activeCategory = "Global" }: Props
         </p>
       </header>
 
-      {/* ── Hero — full bleed cover story ── */}
+      {/* ── Hero — showreel background + top story overlay ── */}
       <section className="relative left-1/2 mb-8 w-screen max-w-[100vw] -translate-x-1/2 lg:mb-9">
         <MaybeLink href={hero.url}>
           <div className="relative aspect-[21/9] min-h-[200px] w-full overflow-hidden sm:aspect-[21/8] lg:aspect-[3.2/1]">
-            <StoryImage src={hero.image} alt={hero.title} fill priority className="object-cover object-[center_35%]" sizes="100vw" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-[#050508]/40 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 flex flex-col justify-end p-5 sm:p-7 lg:p-8">
+            {/* Running showreel */}
+            <ShowreelBg />
+            {/* Gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-[#050508]/50 to-transparent" />
+            {/* Story text overlay */}
+            <div className="absolute inset-x-0 bottom-0 flex flex-col justify-end p-5 sm:p-7 lg:p-8 z-10">
               <span className={`inline-block w-fit px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-600 ${CAP}`}>
                 {hero.cat}
               </span>
