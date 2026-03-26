@@ -84,6 +84,7 @@ function ShowreelBg() {
   const [current, setCurrent] = useState(0);
   const [next, setNext] = useState<number | null>(null);
   const [fading, setFading] = useState(false);
+  const [videoFailed, setVideoFailed] = useState(false);
   const currentRef = useRef<HTMLVideoElement>(null);
   const nextRef = useRef<HTMLVideoElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -92,77 +93,96 @@ function ShowreelBg() {
     const n = (current + 1) % SHOWREEL.length;
     setNext(n);
     setFading(true);
-    setTimeout(() => {
-      setCurrent(n);
-      setNext(null);
-      setFading(false);
-    }, 900); // crossfade duration
+    setTimeout(() => { setCurrent(n); setNext(null); setFading(false); }, 900);
   }, [current]);
 
-  // Auto-advance every CLIP_DURATION
   useEffect(() => {
     timerRef.current = setTimeout(advance, CLIP_DURATION);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [current, advance]);
 
-  // Ensure video plays (autoplay may need user gesture on mobile — silent autoplay is fine)
   useEffect(() => {
-    currentRef.current?.play().catch(() => {});
+    const v = currentRef.current;
+    if (!v) return;
+    v.play().catch(() => setVideoFailed(true));
   }, [current]);
 
   useEffect(() => {
     if (next !== null) nextRef.current?.play().catch(() => {});
   }, [next]);
 
+  const clip = SHOWREEL[current];
+
   return (
     <>
-      {/* Current clip */}
-      <video
-        ref={currentRef}
-        key={`cur-${current}`}
-        src={SHOWREEL[current].src}
-        poster={SHOWREEL[current].poster}
-        autoPlay
-        muted
-        loop
-        playsInline
-        className="absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-900"
-        style={{ opacity: fading ? 0 : 1, transitionDuration: "900ms" }}
+      {/* Poster image fallback — always shown, video renders on top when it loads */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={clip.poster}
+        alt=""
+        aria-hidden
+        className="absolute inset-0 h-full w-full object-cover object-center"
+        style={{ opacity: videoFailed ? 1 : 0.6 }}
       />
-      {/* Next clip — fades in behind */}
-      {next !== null && (
+
+      {/* Video layer — muted autoplay, crossOrigin for broad compatibility */}
+      {!videoFailed && (
+        <video
+          ref={currentRef}
+          key={`cur-${current}`}
+          src={clip.src}
+          poster={clip.poster}
+          autoPlay muted loop playsInline
+          crossOrigin="anonymous"
+          className="absolute inset-0 h-full w-full object-cover object-center"
+          style={{ opacity: fading ? 0 : 1, transition: "opacity 900ms ease" }}
+          onError={() => setVideoFailed(true)}
+        />
+      )}
+      {next !== null && !videoFailed && (
         <video
           ref={nextRef}
           key={`nxt-${next}`}
           src={SHOWREEL[next].src}
           poster={SHOWREEL[next].poster}
-          autoPlay
-          muted
-          loop
-          playsInline
+          autoPlay muted loop playsInline
+          crossOrigin="anonymous"
           className="absolute inset-0 h-full w-full object-cover object-center"
-          style={{ opacity: fading ? 1 : 0, transitionDuration: "900ms", transition: "opacity 900ms ease" }}
+          style={{ opacity: fading ? 1 : 0, transition: "opacity 900ms ease" }}
         />
       )}
-      {/* Clip indicator dots */}
-      <div className="absolute bottom-4 right-5 flex items-center gap-1.5 z-10">
+
+      {/* Clip dots */}
+      <div className="absolute bottom-5 right-6 flex items-center gap-1.5 z-10">
         {SHOWREEL.map((_, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => { setCurrent(i); setNext(null); setFading(false); }}
+          <button key={i} type="button"
+            onClick={() => { setCurrent(i); setNext(null); setFading(false); setVideoFailed(false); }}
             className="rounded-full transition-all duration-300"
-            style={{
-              width: i === current ? "16px" : "5px",
-              height: "5px",
-              background: i === current ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.30)",
-            }}
-          />
+            style={{ width: i === current ? "18px" : "5px", height: "5px", background: i === current ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.28)" }} />
         ))}
       </div>
     </>
   );
 }
+
+// ── Spotlight feature — manually curated, swapped weekly ─────────────────────
+// This is the hero slot. Swap this object to feature a creator, campaign, or brand collab.
+// For paid publisher content, set isPaid: true and add partnerName.
+const SPOTLIGHT: {
+  label: string;
+  headline: string;
+  subline: string;
+  cta?: { text: string; href: string };
+  isPaid?: boolean;
+  partnerName?: string;
+} = {
+  label: "In the Spotlight",
+  headline: "UAE Creative Talent, Front and Centre",
+  subline: "Each week we feature creators, campaigns, and collaborations shaping the regional scene. This is their space.",
+  cta: { text: "Explore talent →", href: "/dashboard/campaigns?mode=discover" },
+  isPaid: false,
+};
+
 
 type Card = { id: string; cat: string; title: string; meta: string; image: string; url: string; summary: string | null };
 
@@ -212,36 +232,67 @@ export function HiveCulture({ dbStories = [], activeCategory = "Global" }: Props
 
   return (
     <div className="w-full pb-10">
-      {/* ── Header ── */}
+
+      {/* ── Spotlight hero — full bleed, decoupled from RSS ── */}
+      <section className="relative left-1/2 mb-10 w-screen max-w-[100vw] -translate-x-1/2">
+        <div className="relative aspect-[21/9] min-h-[240px] w-full overflow-hidden sm:aspect-[21/8] lg:aspect-[3.2/1]">
+          <ShowreelBg />
+          {/* Rich gradient — heavier at bottom for text legibility */}
+          <div className="absolute inset-0"
+            style={{ background: "linear-gradient(to top, rgba(5,5,8,0.96) 0%, rgba(5,5,8,0.55) 40%, rgba(5,5,8,0.10) 100%)" }} />
+          {/* Left edge vignette */}
+          <div className="absolute inset-y-0 left-0 w-1/3"
+            style={{ background: "linear-gradient(to right, rgba(5,5,8,0.60), transparent)" }} />
+
+          {/* Spotlight content */}
+          <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col justify-end px-6 pb-7 sm:px-8 sm:pb-8 lg:px-10 lg:pb-10">
+            {/* Label row */}
+            <div className="mb-3 flex items-center gap-3">
+              <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]"
+                style={{ background: "rgba(251,176,36,0.15)", border: "1px solid rgba(251,176,36,0.35)", color: "rgba(251,176,36,0.90)" }}>
+                ✦ {SPOTLIGHT.label}
+              </span>
+              {SPOTLIGHT.isPaid && SPOTLIGHT.partnerName && (
+                <span className="text-[10px] text-white/30 tracking-wide">
+                  Presented by <span className="text-white/50">{SPOTLIGHT.partnerName}</span>
+                </span>
+              )}
+            </div>
+
+            {/* Headline */}
+            <h1 className="max-w-2xl text-[clamp(1.6rem,3.2vw,2.4rem)] font-semibold leading-[1.06] tracking-[-0.03em] text-white">
+              {SPOTLIGHT.headline}
+            </h1>
+
+            {/* Subline */}
+            <p className="mt-2.5 max-w-xl text-[13px] leading-relaxed text-white/48">
+              {SPOTLIGHT.subline}
+            </p>
+
+            {/* CTA */}
+            {SPOTLIGHT.cta && (
+              <Link href={SPOTLIGHT.cta.href}
+                className="mt-5 inline-flex w-fit items-center gap-2 rounded-full px-5 py-2.5 text-[12px] font-semibold transition-all"
+                style={{ background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.85)" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.18)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.10)"; }}>
+                {SPOTLIGHT.cta.text}
+              </Link>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ── News feed header ── */}
       <header className="mb-6 max-w-3xl lg:mb-8">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/40">Culture</p>
-        <h1 className="mt-2 text-[clamp(1.75rem,3.8vw,2.35rem)] font-semibold leading-[1.06] tracking-[-0.04em] text-white/[0.97]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/40">News Feed</p>
+        <h2 className="mt-1.5 text-[clamp(1.3rem,2.4vw,1.65rem)] font-semibold leading-[1.08] tracking-[-0.03em] text-white/90">
           What&apos;s moving in culture now
-        </h1>
-        <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-white/44">
+        </h2>
+        <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-white/38">
           Fashion, beauty, creator brands, and the commerce reshaping taste.
         </p>
       </header>
-
-      {/* ── Hero — showreel background + top story overlay ── */}
-      <section className="relative left-1/2 mb-8 w-screen max-w-[100vw] -translate-x-1/2 lg:mb-9">
-        <MaybeLink href={hero.url}>
-          <div className="relative aspect-[21/9] min-h-[200px] w-full overflow-hidden sm:aspect-[21/8] lg:aspect-[3.2/1]">
-            {/* Running showreel */}
-            <ShowreelBg />
-            {/* Gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-[#050508]/50 to-transparent" />
-            {/* Story text overlay */}
-            <div className="absolute inset-x-0 bottom-0 flex flex-col justify-end p-5 sm:p-7 lg:p-8 z-10">
-              <span className={`inline-block w-fit px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-600 ${CAP}`}>
-                {hero.cat}
-              </span>
-              <h2 className="mt-3 max-w-3xl text-[clamp(1.45rem,2.8vw,2rem)] font-semibold leading-[1.1] tracking-[-0.03em] text-white">{hero.title}</h2>
-              <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-white/50">{hero.summary ?? hero.meta}</p>
-            </div>
-          </div>
-        </MaybeLink>
-      </section>
 
       {/* ── Trending scroller with arrow nav ── */}
       {trending.length > 0 && (
