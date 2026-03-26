@@ -39,7 +39,7 @@ export function AppLogo({ showText = true, iconSize = 32, className }: AppLogoPr
         }}
       >
         <Image
-          src="/brand/ch-icon.svg"
+          src="/logo-mark.png"
           alt="Creator Hive"
           width={iconWidth}
           height={iconSize}
@@ -48,6 +48,7 @@ export function AppLogo({ showText = true, iconSize = 32, className }: AppLogoPr
           style={{
             width: "100%",
             height: "100%",
+            filter: "invert(1)",
           }}
         />
       </div>

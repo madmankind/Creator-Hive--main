@@ -152,6 +152,20 @@ function BottomDockInner() {
             touchAction: "manipulation",
             WebkitTapHighlightColor: "transparent",
           }}
+          onMouseEnter={(e) => {
+            if (isHiveActive) return;
+            e.currentTarget.style.background = "rgba(251,176,36,0.12)";
+            e.currentTarget.style.borderColor = "rgba(251,176,36,0.40)";
+            e.currentTarget.style.boxShadow = "0 0 24px rgba(251,176,36,0.28), 0 8px 32px rgba(0,0,0,0.5)";
+            e.currentTarget.style.color = "rgba(251,176,36,0.80)";
+          }}
+          onMouseLeave={(e) => {
+            if (isHiveActive) return;
+            e.currentTarget.style.background = isHiveSurface ? "rgba(8,8,12,0.48)" : "rgba(12,12,18,0.88)";
+            e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+            e.currentTarget.style.boxShadow = isHiveSurface ? "0 10px 36px rgba(0,0,0,0.35)" : "0 8px 32px rgba(0,0,0,0.5)";
+            e.currentTarget.style.color = feyTokens.colors.text.muted;
+          }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 2L19.5 6.5V15.5L12 20L4.5 15.5V6.5L12 2Z" />
