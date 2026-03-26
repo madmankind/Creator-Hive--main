@@ -226,20 +226,21 @@ function ShowreelBg() {
   );
 }
 
-// ── Spotlight feature — manually curated, swapped weekly ─────────────────────
-// This is the hero slot. Swap this object to feature a creator, campaign, or brand collab.
-// For paid publisher content, set isPaid: true and add partnerName.
+// ── Spotlight feature — swap weekly to feature a creator, campaign, or brand collab ──
+// talentName: creator's name — displayed as the headline
+// credits: small scrollable attribution text (keep brief — avoids copyright issues)
+// For paid publisher content: isPaid: true, partnerName: "Brand Name"
 const SPOTLIGHT: {
   label: string;
-  headline: string;
-  subline: string;
+  talentName: string;
+  credits: string;
   cta?: { text: string; href: string };
   isPaid?: boolean;
   partnerName?: string;
 } = {
   label: "In the Spotlight",
-  headline: "UAE Creative Talent, Front and Centre",
-  subline: "Each week we feature creators, campaigns, and collaborations shaping the regional scene. This is their space.",
+  talentName: "Creator Hive UAE",
+  credits: "A curated space for the region's most compelling creative talent. Each week we feature creators, campaigns, and brand collaborations shaping culture across the UAE and GCC. Reach out to feature your work.",
   cta: { text: "Explore talent →", href: "/dashboard/campaigns?mode=discover" },
   isPaid: false,
 };
@@ -320,15 +321,18 @@ export function HiveCulture({ dbStories = [], activeCategory = "Global" }: Props
               )}
             </div>
 
-            {/* Headline */}
-            <h1 className="max-w-2xl text-[clamp(1.6rem,3.2vw,2.4rem)] font-semibold leading-[1.06] tracking-[-0.03em] text-white">
-              {SPOTLIGHT.headline}
+            {/* Talent name — the headline */}
+            <h1 className="max-w-2xl text-[clamp(1.8rem,3.8vw,2.8rem)] font-semibold leading-[1.04] tracking-[-0.03em] text-white">
+              {SPOTLIGHT.talentName}
             </h1>
 
-            {/* Subline */}
-            <p className="mt-2.5 max-w-xl text-[13px] leading-relaxed text-white/48">
-              {SPOTLIGHT.subline}
-            </p>
+            {/* Credits — small, scrollable, low-key */}
+            <div className="mt-2.5 max-w-lg max-h-[3.6em] overflow-y-auto pr-2"
+              style={{ scrollbarWidth: "none" }}>
+              <p className="text-[11px] leading-relaxed text-white/32 font-light">
+                {SPOTLIGHT.credits}
+              </p>
+            </div>
 
             {/* CTA */}
             {SPOTLIGHT.cta && (
