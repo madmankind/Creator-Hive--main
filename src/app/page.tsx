@@ -20,6 +20,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Sparkles } from "lucide-react";
 import { LogoLoader } from "@/components/ui/LogoLoader";
+import { analytics } from "@/lib/analytics";
 
 const curatedLookup = new Map(curatedTalent.map((t) => [t.id, t]));
 
@@ -221,6 +222,7 @@ function HomePageContent() {
     setHeroAuthError("");
     setHeroAuthSubmitting(true);
     const email = heroAuthEmail.trim().toLowerCase();
+    analytics.heroEmailSubmitted(mode);
     try {
       localStorage.setItem(`ch_${mode}_email`, email);
     } catch { /* ignore */ }
@@ -258,6 +260,7 @@ function HomePageContent() {
         }
         setHeroAuthSubmitting(false);
         setHeroAuthStep("loading");
+        analytics.loginCompleted("email");
         return;
       }
     } catch { /* non-fatal — fall through to OTP */ }
@@ -282,6 +285,9 @@ function HomePageContent() {
       }
       if (data.isExistingUser) {
         setHeroAuthAuthMode("login");
+        analytics.loginStarted("email");
+      } else {
+        analytics.signupStarted(mode);
       }
     } catch {
       setHeroAuthError("Network error. Check your connection.");
@@ -359,16 +365,20 @@ function HomePageContent() {
     }
 
     setHeroOtpVerifying(false);
+    analytics.heroOtpVerified(mode);
     if (mode === "client" || heroAuthAuthMode === "login") {
       setHeroAuthStep("loading");
+      analytics.loginCompleted("otp");
     } else {
       setHeroAuthStep("idle");
       setTalentModalOpen("talent-type");
+      analytics.signupStepCompleted("otp_verified");
     }
   };
 
   const handleHeroGoogleClick = async () => {
     setHeroAuthGoogleLoading(true);
+    analytics.heroGoogleClicked(mode);
     try {
       await signIn("google", { callbackUrl: mode === "talent" ? "/onboarding/step-1" : "/" });
     } catch {

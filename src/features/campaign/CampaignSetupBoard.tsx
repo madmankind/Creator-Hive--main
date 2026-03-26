@@ -11,6 +11,7 @@ import { useSession } from "next-auth/react";
 import { useLocalCampaignStore } from "@/store/useLocalCampaignStore";
 import { useDiscoveryStore } from "@/store/useDiscoveryStore";
 import { mapObjectiveToCampaign } from "@/lib/discovery";
+import { analytics } from "@/lib/analytics";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -292,6 +293,7 @@ export function CampaignSetupBoard({
           ];
 
     // Fire-and-forget: booking API + contract creation per talent
+    analytics.bookingSubmitted(talents.length, state.totalBudget);
     const bookingPromise = fetch("/api/bookings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

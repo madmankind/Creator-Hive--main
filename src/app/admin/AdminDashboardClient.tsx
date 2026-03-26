@@ -5,7 +5,7 @@ import {
   LayoutDashboard, BookOpen, Megaphone, Users, UserCheck,
   CheckCircle2, XCircle, ArrowRight, RefreshCw,
   ChevronDown, ChevronUp, ExternalLink, Zap,
-  AlertTriangle, Activity, FileText, Download,
+  AlertTriangle, Activity, FileText, Download, TrendingUp,
 } from "lucide-react";
 
 type Stats = {
@@ -692,14 +692,189 @@ function UsersTab() {
   );
 }
 
-type Tab = "overview" | "bookings" | "campaigns" | "talent" | "users";
+type AnalyticsData = {
+  totals: { users: number; agencies: number; creators: number; newLast7d: number; newLast30d: number };
+  funnel: {
+    clientsSignedUp: number; clientsWithCampaigns: number;
+    campaignsActive: number; totalCampaigns: number;
+    bookingsTotal: number; bookingsPending: number; bookingsConfirmed: number;
+    discoveryBriefs: number; discoveryComplete: number;
+    creatorsTotal: number; creatorsPending: number; creatorsActive: number;
+    creatorsRejected: number; creatorsUnverified: number;
+  };
+  partialSignups: { noProfile: number; talentPendingReview: number };
+  dailySignups: Record<string, { clients: number; creators: number }>;
+};
+
+function FunnelBar({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
+  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+  return (
+    <div className="flex items-center gap-3">
+      <div className="w-32 shrink-0 text-[11px] text-white/50 text-right">{label}</div>
+      <div className="flex-1 h-5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.05)" }}>
+        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: color }} />
+      </div>
+      <div className="w-20 shrink-0 flex items-center gap-1.5">
+        <span className="text-[13px] font-semibold text-white/80 tabular-nums">{value.toLocaleString()}</span>
+        <span className="text-[10px] text-white/25">{pct}%</span>
+      </div>
+    </div>
+  );
+}
+
+function SparkLine({ data, color }: { data: number[]; color: string }) {
+  if (data.length < 2) return <span className="text-white/20 text-xs">—</span>;
+  const max = Math.max(...data, 1);
+  const w = 80; const h = 28;
+  const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - (v / max) * h}`).join(" ");
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible">
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function AnalyticsTab() {
+  const [data, setData] = useState<AnalyticsData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/admin/analytics")
+      .then((r) => r.json())
+      .then(setData)
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex items-center justify-center h-64 text-white/30 text-sm">Loading analytics…</div>;
+  if (!data) return <div className="text-center py-16 text-white/30 text-sm">Analytics unavailable.</div>;
+
+  const { totals, funnel, partialSignups, dailySignups } = data;
+
+  // Build 14-day sparkline arrays
+  const days14 = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(Date.now() - (13 - i) * 86400000).toISOString().slice(0, 10);
+    return dailySignups[d] ?? { clients: 0, creators: 0 };
+  });
+  const clientSpark = days14.map((d) => d.clients);
+  const creatorSpark = days14.map((d) => d.creators);
+
+  return (
+    <div className="space-y-8">
+
+      {/* Top stat row */}
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">Growth</h2>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {[
+            { label: "Total users",    value: totals.users,      spark: null,         color: "" },
+            { label: "Clients",        value: totals.agencies,   spark: clientSpark,  color: "rgba(96,165,250,0.8)" },
+            { label: "Creators",       value: totals.creators,   spark: creatorSpark, color: "rgba(52,211,153,0.8)" },
+            { label: "New (7d)",       value: totals.newLast7d,  spark: null,         color: "" },
+            { label: "New (30d)",      value: totals.newLast30d, spark: null,         color: "" },
+          ].map((s) => (
+            <div key={s.label} className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4">
+              <div className="flex items-end justify-between">
+                <div className="text-2xl font-semibold text-white">{s.value.toLocaleString()}</div>
+                {s.spark && <SparkLine data={s.spark} color={s.color} />}
+              </div>
+              <div className="mt-1 text-[11px] text-white/40 uppercase tracking-widest">{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Client funnel */}
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">Client funnel</h2>
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 space-y-3.5">
+          <FunnelBar label="Signed up"         value={funnel.clientsSignedUp}      total={funnel.clientsSignedUp}      color="rgba(96,165,250,0.7)" />
+          <FunnelBar label="Discovery done"    value={funnel.discoveryComplete}     total={funnel.clientsSignedUp}      color="rgba(96,165,250,0.6)" />
+          <FunnelBar label="Has campaign"      value={funnel.clientsWithCampaigns}  total={funnel.clientsSignedUp}      color="rgba(124,92,255,0.7)" />
+          <FunnelBar label="Booking submitted" value={funnel.bookingsTotal}         total={funnel.clientsSignedUp}      color="rgba(167,139,250,0.7)" />
+          <FunnelBar label="Booking confirmed" value={funnel.bookingsConfirmed}     total={funnel.clientsSignedUp}      color="rgba(52,211,153,0.7)" />
+          <div className="pt-2 border-t border-white/[0.05]">
+            <div className="flex gap-6 text-[11px] text-white/35">
+              <span>Discovery completion: <strong className="text-white/60">{funnel.clientsSignedUp > 0 ? Math.round((funnel.discoveryComplete / funnel.clientsSignedUp) * 100) : 0}%</strong></span>
+              <span>Campaign conversion: <strong className="text-white/60">{funnel.clientsSignedUp > 0 ? Math.round((funnel.clientsWithCampaigns / funnel.clientsSignedUp) * 100) : 0}%</strong></span>
+              <span>Booking rate: <strong className="text-white/60">{funnel.clientsSignedUp > 0 ? Math.round((funnel.bookingsTotal / funnel.clientsSignedUp) * 100) : 0}%</strong></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Talent funnel */}
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">Talent pipeline</h2>
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 space-y-3.5">
+          <FunnelBar label="Applied"     value={funnel.creatorsTotal}    total={funnel.creatorsTotal} color="rgba(52,211,153,0.7)" />
+          <FunnelBar label="Pending"     value={funnel.creatorsPending}  total={funnel.creatorsTotal} color="rgba(251,146,60,0.7)" />
+          <FunnelBar label="Active"      value={funnel.creatorsActive}   total={funnel.creatorsTotal} color="rgba(52,211,153,0.85)" />
+          <FunnelBar label="Rejected"    value={funnel.creatorsRejected} total={funnel.creatorsTotal} color="rgba(248,113,113,0.6)" />
+        </div>
+      </div>
+
+      {/* Partial signups */}
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">Incomplete signups</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-5">
+            <div className="text-2xl font-semibold text-amber-300">{partialSignups.noProfile.toLocaleString()}</div>
+            <div className="mt-1 text-[11px] text-white/40 uppercase tracking-widest">No profile created</div>
+            <div className="mt-1 text-[10px] text-white/25">Signed up but never completed client or talent profile</div>
+          </div>
+          <div className="rounded-2xl border border-purple-500/20 bg-purple-500/[0.04] p-5">
+            <div className="text-2xl font-semibold text-purple-300">{partialSignups.talentPendingReview.toLocaleString()}</div>
+            <div className="mt-1 text-[11px] text-white/40 uppercase tracking-widest">Talent awaiting review</div>
+            <div className="mt-1 text-[10px] text-white/25">Completed signup but not yet approved</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Daily signups table */}
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">Daily signups (last 14 days)</h2>
+        <div className="rounded-2xl border border-white/[0.07] overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/[0.07]">
+                {["Date", "Clients", "Creators", "Total"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-wider text-white/30">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {days14.map((d, i) => {
+                const date = new Date(Date.now() - (13 - i) * 86400000).toISOString().slice(0, 10);
+                const total = d.clients + d.creators;
+                return (
+                  <tr key={date} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
+                    <td className="px-4 py-2.5 text-sm text-white/50">{date}</td>
+                    <td className="px-4 py-2.5 text-sm text-blue-300/80 tabular-nums">{d.clients > 0 ? `+${d.clients}` : "—"}</td>
+                    <td className="px-4 py-2.5 text-sm text-emerald-300/80 tabular-nums">{d.creators > 0 ? `+${d.creators}` : "—"}</td>
+                    <td className="px-4 py-2.5 text-sm font-medium tabular-nums" style={{ color: total > 0 ? "rgba(255,255,255,0.70)" : "rgba(255,255,255,0.20)" }}>{total > 0 ? `+${total}` : "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-3 text-[10px] text-white/20">
+          PostHog captures all named events (search, booking, signup steps) — view funnels at app.posthog.com. DB data shown above is source of truth for registrations.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+type Tab = "overview" | "bookings" | "campaigns" | "talent" | "users" | "analytics";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: "overview", label: "Overview", icon: <LayoutDashboard size={14} /> },
-  { id: "bookings", label: "Bookings", icon: <BookOpen size={14} /> },
-  { id: "campaigns", label: "Campaigns", icon: <Megaphone size={14} /> },
-  { id: "talent", label: "Talent", icon: <UserCheck size={14} /> },
-  { id: "users", label: "Users", icon: <Users size={14} /> },
+  { id: "overview",   label: "Overview",   icon: <LayoutDashboard size={14} /> },
+  { id: "analytics",  label: "Analytics",  icon: <TrendingUp size={14} /> },
+  { id: "bookings",   label: "Bookings",   icon: <BookOpen size={14} /> },
+  { id: "campaigns",  label: "Campaigns",  icon: <Megaphone size={14} /> },
+  { id: "talent",     label: "Talent",     icon: <UserCheck size={14} /> },
+  { id: "users",      label: "Users",      icon: <Users size={14} /> },
 ];
 
 export default function AdminDashboardClient({ creators }: { creators: Creator[] }) {
@@ -762,11 +937,12 @@ export default function AdminDashboardClient({ creators }: { creators: Creator[]
         </div>
       </div>
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {tab === "overview" && <OverviewTab stats={stats} loading={statsLoading} />}
-        {tab === "bookings" && <BookingsTab />}
-        {tab === "campaigns" && <CampaignsTab />}
-        {tab === "talent" && <TalentTab initialCreators={creators} />}
-        {tab === "users" && <UsersTab />}
+        {tab === "overview"   && <OverviewTab stats={stats} loading={statsLoading} />}
+        {tab === "analytics"  && <AnalyticsTab />}
+        {tab === "bookings"   && <BookingsTab />}
+        {tab === "campaigns"  && <CampaignsTab />}
+        {tab === "talent"     && <TalentTab initialCreators={creators} />}
+        {tab === "users"      && <UsersTab />}
       </div>
     </div>
   );
