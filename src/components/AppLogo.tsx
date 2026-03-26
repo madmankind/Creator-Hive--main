@@ -48,7 +48,7 @@ export function AppLogo({ showText = true, iconSize = 32, className }: AppLogoPr
           style={{
             width: "100%",
             height: "100%",
-            filter: "invert(1)",
+            filter: "none",
           }}
         />
       </div>

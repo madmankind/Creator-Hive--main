@@ -70,7 +70,7 @@ function DesktopSidebarInner() {
           width={28}
           height={32}
           alt="Creator Hive"
-          style={{ filter: "brightness(0) invert(1) opacity(0.7)" }}
+          style={{ opacity: 0.75 }}
         />
       </div>
 

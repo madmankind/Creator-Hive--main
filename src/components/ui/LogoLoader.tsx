@@ -72,7 +72,7 @@ export function LogoLoader({
             position: "absolute", inset: 0,
             width: "100%", height: "100%",
             objectFit: "contain",
-            filter: "invert(1)",
+            filter: "none",
             opacity: 0.10,
           }}
         />
@@ -86,8 +86,8 @@ export function LogoLoader({
             width: "100%", height: "100%",
             objectFit: "contain",
             filter: fillPct > 85
-              ? "invert(1) brightness(1.3) drop-shadow(0 0 14px rgba(255,255,255,0.5))"
-              : "invert(1)",
+              ? "brightness(1.3) drop-shadow(0 0 14px rgba(255,255,255,0.5))"
+              : "none",
             clipPath: `inset(${100 - fillPct}% 0 0 0)`,
           }}
         />
