@@ -1,14 +1,17 @@
 import { auth } from "@/auth";
-import { redirect } from "next/navigation";
 import { db } from "@/server/db";
 import { BuildPageClient, type BuildProjectRow } from "./BuildPageClient";
 
 export default async function HiveBuildPage() {
   const session = await auth();
-  if (!session?.user?.email) redirect("/?signin=required");
+
+  // Open to all — unauthenticated visitors see the public build showcase
+  if (!session?.user?.email) {
+    return <BuildPageClient projects={[]} />;
+  }
 
   const user = await db.user.findUnique({ where: { email: session.user.email } });
-  if (!user) redirect("/?signin=required");
+  if (!user) return <BuildPageClient projects={[]} />;
 
   const agency = await db.agencyAccount.findUnique({
     where: { userId: user.id },

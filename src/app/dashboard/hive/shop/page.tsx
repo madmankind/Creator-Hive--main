@@ -1,10 +1,6 @@
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
 import { HiveShopStorefront } from "@/components/hive/HiveShopStorefront";
 
-export default async function HiveShopPage() {
-  const session = await auth();
-  if (!session?.user?.email) redirect("/?signin=required");
-
+// Open to all — editorial/shop is public
+export default function HiveShopPage() {
   return <HiveShopStorefront />;
 }

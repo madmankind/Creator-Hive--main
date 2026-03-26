@@ -4,13 +4,23 @@ import { headers } from 'next/headers'
 import { DashboardLayoutClient } from './DashboardLayoutClient'
 import { ensureLegalAccepted } from '@/server/legal-gate'
 
+// Hive sub-routes are public (editorial, shop, build)
+const PUBLIC_DASHBOARD_PATHS = ['/dashboard/hive']
+
 export default async function DashboardLayout({ children }:{children:React.ReactNode}) {
-  const session = await auth()
-  if (!session?.user) {
-    redirect('/?signin=required')
-  }
   const hdrs = await headers()
   const pathname = hdrs.get('x-pathname') ?? '/dashboard'
-  await ensureLegalAccepted(pathname)
+
+  const isPublicHive = PUBLIC_DASHBOARD_PATHS.some(p => pathname.startsWith(p))
+
+  const session = await auth()
+  if (!session?.user && !isPublicHive) {
+    redirect('/?signin=required')
+  }
+
+  if (session?.user) {
+    await ensureLegalAccepted(pathname)
+  }
+
   return <DashboardLayoutClient>{children}</DashboardLayoutClient>
 }
