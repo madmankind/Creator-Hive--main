@@ -1,0 +1,29 @@
+# Creator Hive — Cursor Rules
+
+## Working directory
+/Users/ajil/creator-hive-next
+
+## Before committing
+Always run: bash scripts/verify.sh (tsc + build must pass)
+
+## Critical rules
+
+1. SessionProvider must be outermost in src/app/layout.tsx — wraps PostHogProvider.
+   Breaking this causes build crash: "Cannot destructure property 'data' of useSession".
+
+2. After prisma/schema.prisma changes: run `npx prisma generate` locally.
+
+3. Never force-push main.
+
+4. All useSession hooks must be in components rendered inside <Providers> 
+   (src/components/Providers.tsx contains SessionProvider).
+
+5. Hive routes (/dashboard/hive/*) are public — no auth gate.
+   All other /dashboard/* routes require auth via src/app/dashboard/layout.tsx.
+
+## Stack
+Next.js 15, TypeScript, React 19, Tailwind v4, Prisma, Supabase, NextAuth v5, 
+Stripe Connect, PostHog, Grok (xAI), pnpm
+
+## Full context
+See AGENTS.md and docs/CURSOR_HANDOFF.md

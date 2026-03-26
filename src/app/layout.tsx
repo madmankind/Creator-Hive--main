@@ -53,14 +53,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                      bg-[radial-gradient(50%_40%_at_50%_0%,rgba(255,255,255,0.08),rgba(0,0,0,0)_60%)]
                      opacity-80"
         />
-        <PostHogProvider>
-          <Suspense><PostHogPageView /></Suspense>
-          <Providers>
+        <Providers>
+          <PostHogProvider>
+            <Suspense><PostHogPageView /></Suspense>
             <AppShell>
               {children}
             </AppShell>
-          </Providers>
-        </PostHogProvider>
+          </PostHogProvider>
+        </Providers>
         <Analytics />
         <MetaPixel />
       </body>
