@@ -19,6 +19,7 @@ import { useDiscoveryStore } from "@/store/useDiscoveryStore";
 import { useSearchParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Sparkles } from "lucide-react";
+import { LogoLoader } from "@/components/ui/LogoLoader";
 
 const curatedLookup = new Map(curatedTalent.map((t) => [t.id, t]));
 
@@ -96,16 +97,7 @@ function HeroPhoneStep({ onSubmit, onBack }: { onSubmit: (phone: string) => void
 }
 
 function HeroInlineLoading({ onDone }: { onDone: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onDone, 1600);
-    return () => clearTimeout(t);
-  }, [onDone]);
-  return (
-    <div className="flex items-center justify-center gap-3 py-4">
-      <span className="block w-5 h-5 rounded-full border-2 border-white/20 border-t-white/60 animate-spin" />
-      <span className="text-[14px] text-white/38">Signing you in…</span>
-    </div>
-  );
+  return <LogoLoader onDone={onDone} duration={1400} size={56} showWordmark={false} />;
 }
 
 function scrollToRef(ref: React.RefObject<HTMLElement | null>, block: ScrollLogicalPosition = "start") {

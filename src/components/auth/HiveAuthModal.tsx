@@ -6,6 +6,7 @@ import { X, ArrowRight, Check, ChevronRight } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { feyTokens } from "@/lib/fey-design-tokens";
+import { LogoLoader } from "@/components/ui/LogoLoader";
 
 /* ─────────────────────────────────────────
    TYPES
@@ -415,27 +416,7 @@ function LoadingStep({ onDone, signInFn, onError }: { onDone: () => void; signIn
   }, []);
 
   return (
-    <div className="flex flex-col items-center gap-5">
-      {/* Rotating CH icon */}
-      <div style={{ animation: "chSpin 1.6s linear infinite", transformOrigin: "center" }}>
-        <img
-          src="/brand/ch-icon.svg"
-          width={48} height={54}
-          alt="Creator Hive"
-          style={{
-            filter: "brightness(0) invert(1) opacity(0.6)",
-          }}
-        />
-      </div>
-      <p style={{
-        color: "rgba(255,255,255,0.32)",
-        fontSize: "13px",
-        fontWeight: 300,
-        letterSpacing: "0.03em",
-      }}>
-        Signing you in…
-      </p>
-    </div>
+    <LogoLoader duration={1600} size={64} showWordmark={true} />
   );
 }
 
