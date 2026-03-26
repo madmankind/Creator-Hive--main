@@ -66,7 +66,7 @@ function DesktopSidebarInner() {
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/logo-mark.png"
+          src="/logo-circle.png"
           width={28}
           height={32}
           alt="Creator Hive"

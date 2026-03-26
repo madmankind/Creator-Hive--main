@@ -28,7 +28,7 @@ export function LogoSpinner({ active }: { active: boolean }) {
           >
             <div className="absolute -inset-6 rounded-3xl bg-[radial-gradient(circle_at_top,_rgba(124,58,237,0.55),_transparent_65%)] blur-xl" />
             <Image
-              src="/logo-mark.png"
+              src="/logo-circle.png"
               alt="Creator Hive"
               width={50}
               height={56}

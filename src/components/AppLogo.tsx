@@ -32,14 +32,14 @@ export function AppLogo({ showText = true, iconSize = 32, className }: AppLogoPr
     <div className={`flex items-center gap-2 ${className || ""}`}>
       {/* Logo icon - tight-cropped SVG */}
       <div
-        className="relative flex-shrink-0 rounded-lg overflow-hidden"
+        className="relative flex-shrink-0 rounded-full overflow-hidden"
         style={{
           width: `${iconWidth}px`,
           height: `${iconSize}px`,
         }}
       >
         <Image
-          src="/logo-mark.png"
+          src="/logo-circle.png"
           alt="Creator Hive"
           width={iconWidth}
           height={iconSize}
