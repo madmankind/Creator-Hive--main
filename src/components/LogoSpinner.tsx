@@ -15,29 +15,27 @@ export function LogoSpinner({ active }: { active: boolean }) {
         >
           <motion.div
             initial={{ scale: 0.85, opacity: 0 }}
-            animate={{
-              scale: [0.95, 1.05, 0.95],
-              opacity: 1,
-            }}
-            transition={{
-              duration: 1.4,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            className="relative"
+            animate={{ scale: [0.95, 1.05, 0.95], opacity: 1 }}
+            transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+            className="relative flex items-center justify-center"
           >
-            <div className="absolute -inset-6 rounded-3xl bg-[radial-gradient(circle_at_top,_rgba(124,58,237,0.55),_transparent_65%)] blur-xl" />
-            <Image
-              src="/logo-circle.png"
-              alt="Creator Hive"
-              width={50}
-              height={56}
-              className="relative rounded-2xl shadow-lg"
-            />
+            {/* Ambient glow */}
+            <div className="absolute -inset-8 rounded-full"
+              style={{ background: "radial-gradient(circle, rgba(124,58,237,0.40) 0%, transparent 70%)", filter: "blur(20px)" }} />
+            {/* Logo circle container */}
+            <div className="relative flex items-center justify-center rounded-full"
+              style={{ width: 64, height: 64, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
+              <Image
+                src="/logo-mark.png"
+                alt="Creator Hive"
+                width={38}
+                height={38}
+                className="object-contain"
+              />
+            </div>
           </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
   );
 }
-

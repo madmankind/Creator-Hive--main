@@ -56,21 +56,24 @@ function DesktopSidebarInner() {
       {/* Logo mark */}
       <div
         style={{
-          width: "40px",
-          height: "40px",
+          width: "36px",
+          height: "36px",
           marginBottom: "24px",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          borderRadius: "50%",
+          background: "rgba(255,255,255,0.07)",
+          border: "1px solid rgba(255,255,255,0.10)",
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/logo-circle.png"
-          width={28}
-          height={32}
+          src="/logo-mark.png"
+          width={20}
+          height={20}
           alt="Creator Hive"
-          style={{ opacity: 0.75 }}
+          style={{ opacity: 0.85, objectFit: "contain" }}
         />
       </div>
 

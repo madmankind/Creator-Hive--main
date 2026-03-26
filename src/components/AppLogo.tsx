@@ -24,32 +24,25 @@ interface AppLogoProps {
 }
 
 export function AppLogo({ showText = true, iconSize = 32, className }: AppLogoProps) {
-  // Icon aspect ratio is ~108:120 (width:height), so we calculate width from height
-  const aspectRatio = 108 / 120;
-  const iconWidth = Math.round(iconSize * aspectRatio);
-
   return (
     <div className={`flex items-center gap-2 ${className || ""}`}>
-      {/* Logo icon - tight-cropped SVG */}
+      {/* Logo mark inside a dark circle — clean at any size */}
       <div
-        className="relative flex-shrink-0 rounded-full overflow-hidden"
+        className="relative flex-shrink-0 rounded-full flex items-center justify-center"
         style={{
-          width: `${iconWidth}px`,
+          width: `${iconSize}px`,
           height: `${iconSize}px`,
+          background: "rgba(255,255,255,0.08)",
+          border: "1px solid rgba(255,255,255,0.12)",
         }}
       >
         <Image
-          src="/logo-circle.png"
+          src="/logo-mark.png"
           alt="Creator Hive"
-          width={iconWidth}
-          height={iconSize}
+          width={Math.round(iconSize * 0.62)}
+          height={Math.round(iconSize * 0.62)}
           priority
           className="object-contain"
-          style={{
-            width: "100%",
-            height: "100%",
-            filter: "none",
-          }}
         />
       </div>
 
