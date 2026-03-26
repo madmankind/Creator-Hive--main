@@ -53,7 +53,9 @@ function buildTalentContext(): string {
     const er = t.engagementRate ? `${(t.engagementRate * 100).toFixed(1)}% ER` : "";
     const followers = t.followers ? `${(t.followers / 1000).toFixed(0)}K followers` : "";
     const stats = [followers, er].filter(Boolean).join(" · ");
-    return `[${t.id}] ${t.displayName ?? t.name} | ${roles} | ${t.location ?? "UAE"} | ${t.shortBio} | ${t.nicheSummary} | Brands: ${brands} | ${stats} | Archetype: ${t.prismArchetype}`;
+    const showreel = t.featuredVideoUrl ? ` | Showreel: ${t.featuredVideoUrl}` : "";
+    const langs = t.languages?.length ? ` | Languages: ${t.languages.join(", ")}` : "";
+    return `[${t.id}] ${t.displayName ?? t.name} | ${roles} | ${t.location ?? "UAE"} | ${t.shortBio} | ${t.nicheSummary} | Brands: ${brands} | ${stats} | Archetype: ${t.prismArchetype}${langs}${showreel}`;
   }).join("\n");
 }
 

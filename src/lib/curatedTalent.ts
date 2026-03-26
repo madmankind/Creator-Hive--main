@@ -718,6 +718,40 @@ export const curatedTalent: CuratedTalent[] = [
   },
 
 
+  // ── HIVE SELECT — Video Editors & Motion ─────────────────────────────────
+
+  {
+    id: "talent-irene",
+    name: "Irene Zoe Dattini",
+    displayName: "Irene",
+    displayTitle: "Video Editor · Art Director",
+    instagramHandle: "",
+    instagramUrl: "",
+    avatarUrl: "https://ui-avatars.com/api/?name=Irene+Zoe&background=1a0d2e&color=c4b5fd&size=512",
+    primaryRole: "Editor",
+    roleTags: ["Editor", "Creative Director", "Designer", "Other"],
+    platformTags: ["YouTube"],
+    shortBio: "Edits and art directs high-end brand films, music videos, and fashion campaigns with a distinct Italian-European aesthetic. Brings motion design and visual storytelling together for luxury, automotive, and fashion brands.",
+    nicheSummary: "Dual-based in Italy and UAE, Irene blends European editorial sensibility with Gulf market fluency — cutting fashion, luxury, and automotive content that holds its own on any international brief.",
+    availability: ["Hourly", "Monthly"],
+    prismArchetype: "The Auteur",
+    location: "Italy · Dubai, UAE",
+    isGlobal: true,
+    languages: ["EN", "IT"],
+    tier: "Tier 1",
+    brandPartners: [],
+    featuredVideoUrl: "https://www.youtube.com/watch?v=t9_9e4BcaAc&list=PLIsgxj5eY8rWJlWBq37w6SHdDuGpvAVVe",
+    portfolio: [
+      { type: "video", src: "https://www.youtube.com/watch?v=t9_9e4BcaAc", poster: "https://img.youtube.com/vi/t9_9e4BcaAc/maxresdefault.jpg", title: "Showreel" },
+      { type: "image", src: "/portfolio/work-1.svg", title: "Art Direction" },
+      { type: "image", src: "/portfolio/work-2.svg", title: "Motion Design" },
+    ],
+    profileImageUrl: "https://ui-avatars.com/api/?name=Irene+Zoe&background=1a0d2e&color=c4b5fd&size=512",
+    links: {
+      youtube: "https://www.youtube.com/watch?v=t9_9e4BcaAc&list=PLIsgxj5eY8rWJlWBq37w6SHdDuGpvAVVe",
+    },
+  },
+
   // ── HIVE SIGNATURE — Sound Design & Music Production ────────────────────
 
   {
