@@ -946,7 +946,26 @@ model CreatorShopProject {
 
 
 
-// ─── CULTURE: Editorial Ingestion ──────────────────────────────
+// ── AI Usage / Rate Limiting ────────────────────────────────────────────────
+
+model AiUsage {
+  id        String   @id @default(cuid())
+  userId    String?  // null = unauthenticated (keyed by IP)
+  ipKey     String?  // hashed IP for anon users
+  feature   String   // "ai_search" | "ai_analyze"
+  day       String   // "YYYY-MM-DD" in UTC
+  count     Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, feature, day])
+  @@unique([ipKey, feature, day])
+  @@index([userId])
+  @@index([ipKey])
+  @@index([day])
+  @@map("ai_usage")
+}
+
 
 enum EditorialSourceStatus {
   ACTIVE

@@ -91,7 +91,7 @@ export function LogoLoader({
         {/* Dim base — always visible at low opacity */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/logo-glow.png"
+          src="/logo-mark.svg"
           alt=""
           aria-hidden="true"
           style={{
@@ -106,7 +106,7 @@ export function LogoLoader({
         {/* Filled portion — clip rises from bottom */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/logo-glow.png"
+          src="/logo-mark.svg"
           alt="Creator Hive"
           style={{
             position: "absolute",
@@ -116,7 +116,7 @@ export function LogoLoader({
             objectFit: "contain",
             clipPath: `inset(${100 - fillPct}% 0 0 0)`,
             opacity: 1,
-            filter: fillPct > 85 ? "brightness(1.15)" : "none",
+            filter: fillPct > 85 ? "brightness(1.2) drop-shadow(0 0 12px rgba(255,255,255,0.4))" : "none",
           }}
         />
       </div>

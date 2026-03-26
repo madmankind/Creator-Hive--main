@@ -13,6 +13,7 @@ interface TrackInsightsPanelProps {
   actualData: KPIData | null;
   onPlannedChange: (data: KPIData) => void;
   onActualChange: (data: KPIData) => void;
+  onWeeklyInputsChange?: (inputs: Record<number, Record<string, number>>) => void;
   campaignId?: string;
   campaignName?: string;
   clientName?: string;
@@ -343,6 +344,7 @@ export function TrackInsightsPanel({
   actualData,
   onPlannedChange,
   onActualChange,
+  onWeeklyInputsChange,
   campaignId,
   campaignName,
   clientName,
@@ -357,7 +359,11 @@ export function TrackInsightsPanel({
   const [weeklyInputs, setWeeklyInputs] = useState<WeeklyInputState>({ 1: emptyWeek(), 2: emptyWeek(), 3: emptyWeek(), 4: emptyWeek() });
 
   const handleWeeklyChange = (w: WeekNumber, k: string, v: number) => {
-    setWeeklyInputs((prev) => ({ ...prev, [w]: { ...prev[w], [k]: v } }));
+    setWeeklyInputs((prev) => {
+      const next = { ...prev, [w]: { ...prev[w], [k]: v } };
+      onWeeklyInputsChange?.(next);
+      return next;
+    });
   };
 
   const isInactive = activeCampaign?.status === "PAUSED" || activeCampaign?.status === "COMPLETED" || activeCampaign?.status === "CANCELLED";

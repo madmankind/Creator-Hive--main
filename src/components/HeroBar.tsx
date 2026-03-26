@@ -49,7 +49,8 @@ export function HeroBar({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
-  const [aiActive, setAiActive] = useState(false); // true when AI results are showing
+  const [aiActive, setAiActive] = useState(false);
+  const [aiRemaining, setAiRemaining] = useState<number | null>(null);
 
   const suggestions = useMemo(() => {
     if (!query.trim() || mode !== "client") return [];

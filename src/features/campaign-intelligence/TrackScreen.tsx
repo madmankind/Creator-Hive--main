@@ -80,6 +80,7 @@ const TIME_RANGES: { id: WeekTimeRange; label: string }[] = [
 ];
 export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScreenProps) {
   const { activeCampaign } = useCampaign();
+  const ds = useDiscoveryStore();
 
   // Pre-populate from activeCampaign context (set by booking flow)
   const [timeRange, setTimeRange] = useState<WeekTimeRange>("total");
@@ -95,6 +96,12 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
   const [aiQuery, setAiQuery] = useState("");
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+
+  // Weekly inputs lifted from TrackInsightsPanel so AI can read them
+  type WeekNumber = 1 | 2 | 3 | 4;
+  const [weeklyInputs, setWeeklyInputs] = useState<Record<WeekNumber, Record<string, number>>>(
+    { 1: {}, 2: {}, 3: {}, 4: {} }
+  );
 
   // Sync objective when activeCampaign changes
   useEffect(() => {
@@ -184,8 +191,27 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
             objective: activeCampaign?.objective,
             budget: activeCampaign?.budget,
             spend: activeCampaign?.spend,
+            startDate: activeCampaign?.startDate ? String(activeCampaign.startDate) : undefined,
+            endDate: activeCampaign?.endDate ? String(activeCampaign.endDate) : undefined,
             talentNames: activeCampaign?.talentNames,
+            talentCount: activeCampaign?.talentNames?.length ?? 0,
+            bookingType: activeCampaign?.bookingType,
+            paymentSchedule: activeCampaign?.paymentSchedule,
+            status: activeCampaign?.status,
+            // Client company context from signup/discovery
+            companyName: ds.companyName || undefined,
+            industry: ds.industry || undefined,
+            discoveryObjective: ds.primaryObjective || undefined,
+            discoveryBudgetRange: ds.budgetRange || undefined,
+            // Live KPIs from API
             kpis,
+            // Weekly inputs entered by user in insights panel
+            weeklyInputs,
+            // Totals derived from weekly inputs
+            weeklyTotals: Object.values(weeklyInputs).reduce<Record<string, number>>((acc, w) => {
+              Object.entries(w).forEach(([k, v]) => { acc[k] = (acc[k] ?? 0) + v; });
+              return acc;
+            }, {}),
           },
           mode: "analyze",
         }),
@@ -269,6 +295,13 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 rounded-xl"
               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
               <CampaignStatusBadge status={activeCampaign.status} />
+              {/* Company / industry from discovery onboarding */}
+              {ds.companyName && (
+                <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.45)" }}>
+                  <span style={{ color: "rgba(255,255,255,0.25)" }}>Client </span>
+                  {ds.companyName}{ds.industry ? ` · ${ds.industry}` : ""}
+                </span>
+              )}
               {activeCampaign.objectives && activeCampaign.objectives.length > 0 && (
                 <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.45)" }}>
                   <span style={{ color: "rgba(255,255,255,0.25)" }}>Objectives </span>
@@ -327,7 +360,7 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
                 value={aiQuery}
                 onChange={(e) => setAiQuery(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleAiAnalyze(); }}
-                placeholder="Ask AI to analyze campaign performance..."
+                placeholder="Ask AI — e.g. How is my CPM vs benchmark? Am I pacing on budget?"
                 className="flex-1 bg-transparent outline-none text-[12px] text-white/80 placeholder:text-white/25"
               />
               <label className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-white/25 hover:text-white/50 hover:bg-white/[0.05] transition cursor-pointer">
@@ -402,13 +435,14 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
               actualData={actualData}
               onPlannedChange={setPlannedData}
               onActualChange={setActualData}
+              onWeeklyInputsChange={setWeeklyInputs}
               campaignId={activeCampaign?.id}
               campaignName={activeCampaign?.name}
               clientName={activeCampaign?.clientName}
               budget={activeCampaign?.budget}
               spent={activeCampaign?.spend}
-              creatorsCount={8}
-              deliverablesCount={12}
+              creatorsCount={activeCampaign?.talentNames?.length ?? 0}
+              deliverablesCount={activeCampaign?.talentNames ? activeCampaign.talentNames.length * 2 : 0}
               static={true}
             />
           </div>

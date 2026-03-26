@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { curatedTalent } from "@/lib/curatedTalent";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { auth } from "@/auth";
 
 // ── Roster context ────────────────────────────────────────────────────────────
 // Built once at module load — server-only, never sent to the browser
@@ -69,6 +71,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Query is required" }, { status: 400 });
     }
 
+    // ── Rate limiting ────────────────────────────────────────────────────────
+    const session = await auth();
+    const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+            ?? req.headers.get("x-real-ip")
+            ?? null;
+
+    const rl = await checkRateLimit("ai_search", { userId, ip });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        {
+          error: "Daily AI search limit reached",
+          limit: rl.limit,
+          remaining: 0,
+          resetAt: rl.resetAt,
+          message: userId
+            ? `You've used all ${rl.limit} AI searches for today. Resets at midnight UTC.`
+            : `Guest search limit reached (${rl.limit}/day). Sign in for more searches.`,
+        },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit":     String(rl.limit),
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset":     rl.resetAt,
+            "Retry-After":           "86400",
+          },
+        }
+      );
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     const provider = getProvider();
     if (!provider) {
       return NextResponse.json({ error: "AI search not configured" }, { status: 503 });
@@ -123,6 +157,7 @@ export async function POST(req: NextRequest) {
       talentIds: safeIds,
       teamSummary: parsed.teamSummary ?? "",
       roles: parsed.roles ?? {},
+      rateLimit: { remaining: rl.remaining - 1, limit: rl.limit, resetAt: rl.resetAt },
     });
   } catch (err) {
     console.error("AI search error:", err);
