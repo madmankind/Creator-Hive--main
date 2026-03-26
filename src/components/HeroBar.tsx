@@ -106,15 +106,22 @@ export function HeroBar({
           body: JSON.stringify({ query: q }),
         });
         const data = await res.json();
-        if (!res.ok) {
+        if (res.status === 429) {
+          setAiError(data?.message ?? `Daily AI search limit reached. Resets at midnight UTC.`);
+          setAiRemaining(0);
+          onQueryChange?.(q);
+          setAiActive(false);
+        } else if (!res.ok) {
           setAiError(data?.detail ?? "AI search unavailable — showing keyword results");
           onQueryChange?.(q);
           setAiActive(false);
         } else {
           setAiSummary(data.teamSummary ?? null);
           setAiActive(true);
+          if (data.rateLimit?.remaining !== undefined) {
+            setAiRemaining(data.rateLimit.remaining);
+          }
           onAIResults?.(data.talentIds ?? [], data.teamSummary ?? "");
-          // Pass query so carousel text filter still applies as secondary
           onQueryChange?.(hasRoles ? q : "");
         }
       } catch {
@@ -352,7 +359,13 @@ export function HeroBar({
                 )}
               >
                 {aiSummary && <Sparkles className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-400" />}
-                <span>{aiSummary ?? aiError}</span>
+                <span className="flex-1">{aiSummary ?? aiError}</span>
+                {aiRemaining !== null && aiRemaining > 0 && (
+                  <span className="shrink-0 text-[10px] text-white/25 tabular-nums">{aiRemaining} left today</span>
+                )}
+                {aiRemaining === 0 && (
+                  <span className="shrink-0 text-[10px] text-amber-400/60">Limit reached</span>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

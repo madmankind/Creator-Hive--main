@@ -217,7 +217,11 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
         }),
       });
       const data = await res.json();
-      setAiResponse(data.analysis ?? data.detail ?? "Analysis complete. Try a more specific question.");
+      if (res.status === 429) {
+        setAiResponse(data.message ?? `Daily AI analysis limit reached (${data.limit}/day). Resets at midnight UTC.`);
+      } else {
+        setAiResponse(data.analysis ?? data.detail ?? "Analysis complete. Try a more specific question.");
+      }
     } catch {
       setAiResponse("AI analysis unavailable. Try again later.");
     } finally {
