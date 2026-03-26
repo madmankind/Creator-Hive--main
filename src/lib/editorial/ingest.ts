@@ -92,7 +92,7 @@ async function ingestSource(sourceId: string, slug: string, feedUrl: string) {
         // Hero-tier sources get a lower threshold (0.25) to surface more content
         // Primary/brief sources still need 0.4+
         const source = await db.editorialSource.findUnique({ where: { id: sourceId }, select: { tier: true } });
-        const threshold = source?.tier === "hero" ? 0.25 : 0.4;
+        const threshold = source?.tier === "hero" ? 0.20 : 0.30;
         const status =
           e.duplicateHint ? "DUPLICATE" : e.relevance >= threshold ? "ENRICHED" : "HIDDEN";
 

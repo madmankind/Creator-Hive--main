@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,53 +5,32 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL") // Critical for migrations to work
+  directUrl = env("DIRECT_URL")
 }
-
-enum HireType {
-  PROJECT
-  MONTHLY
-  HOURLY
-}
-
-enum UsageRightsTier {
-  NONE
-  STANDARD
-  FULL
-  BUYOUT
-}
-
-// ============================================
-// USER & AUTHENTICATION
-// ============================================
 
 model User {
-  campaignFilesUploaded CampaignFile[]
-  userAgreements        UserAgreement[]
-  walletTransactions    WalletTransaction[]
-  id                    String              @id @default(cuid())
-  email                 String              @unique
+  id                    String               @id @default(cuid())
+  email                 String               @unique
   name                  String?
-  role                  UserRole            @default(CREATOR)
+  role                  UserRole             @default(CREATOR)
   emailVerified         DateTime?
   image                 String?
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
-
-  // Legal acceptance — captured at onboarding with version + timestamp
-  legalAcceptedAt      DateTime?
-  legalVersion         String?             // e.g. "2026-03"
-
-  // Relations
-  agencyAccount   AgencyAccount?
-  creatorProfile  CreatorProfile?
-  accounts        Account[]
-  sessions        Session[]
-  bookingRequests BookingRequest[]
-  pods            PodSelection[]
-  creatorShopProjects CreatorShopProject[]
-  discoveryBrief  DiscoveryBrief?
-  advisorRequests AdvisorRequest[]
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  legalAcceptedAt       DateTime?
+  legalVersion          String?
+  accounts              Account[]
+  advisorRequests       AdvisorRequest[]
+  agencyAccount         AgencyAccount?
+  bookingRequests       BookingRequest[]
+  campaignFilesUploaded CampaignFile[]
+  creatorProfile        CreatorProfile?
+  creatorShopProjects   CreatorShopProject[]
+  discoveryBrief        DiscoveryBrief?
+  pods                  PodSelection?
+  sessions              Session[]
+  userAgreements        UserAgreement[]
+  walletTransactions    WalletTransaction[]
 
   @@index([email])
   @@map("users")
@@ -70,8 +46,7 @@ model UserAgreement {
   storageUrl   String?
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([agreementRef])
@@ -79,22 +54,20 @@ model UserAgreement {
   @@map("user_agreements")
 }
 
-
 model Account {
   id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@index([userId])
@@ -154,9 +127,8 @@ model CampaignPodSelectionConfig {
   lineTotal        Int?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
-
-  campaign       Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  creatorProfile CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  campaign         Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creatorProfile   CreatorProfile  @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
 
   @@unique([campaignId, creatorProfileId])
   @@index([campaignId])
@@ -164,84 +136,77 @@ model CampaignPodSelectionConfig {
   @@map("campaign_pod_selection_configs")
 }
 
-// ============================================
-// AGENCY & TALENT MANAGEMENT
-// ============================================
-
 model AgencyAccount {
-  walletTransactions WalletTransaction[]
-  id                 String              @id @default(cuid())
-  userId             String              @unique
-  name               String
-  website            String?
-  location           String?
-  industry           String?
-  primaryMarket      String?
-  preferredLanguage  String?
-  companySize        String?
-  instagramHandle    String?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-
-  // Relations
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  creators        CreatorProfile[]
-  campaigns       Campaign[]
-  bookingRequests BookingRequest[]
+  id                  String               @id @default(cuid())
+  userId              String               @unique
+  name                String
+  website             String?
+  location            String?
+  industry            String?
+  primaryMarket       String?
+  preferredLanguage   String?
+  companySize         String?
+  instagramHandle     String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookingRequests     BookingRequest[]
+  campaigns           Campaign[]
+  creators            CreatorProfile[]
   creatorShopProjects CreatorShopProject[]
+  walletTransactions  WalletTransaction[]
 
   @@index([userId])
   @@map("agency_accounts")
 }
 
 model CreatorProfile {
-  walletTransactions     WalletTransaction[]
-  id                     String                 @id @default(cuid())
-  userId                 String?                @unique
-  agencyId               String?
-  name                   String
-  instagram              String?
-  tiktok                 String?
-  youtube                String?
-  bio                    String?                @db.Text
-  hourlyRate             Int?
-  dayRate                Int?
-  skills                 String[]
-  niches                 String[]
-  location               String?
-  avatarUrl              String?
-  portfolioUrl           String?
-  displayName            String?
-  fullName               String?
-  qualityScore           Int?
-  talentStatus           String                 @default("pending")
-  source                 String?
-  isVerified             Boolean                @default(false)
-  isActive               Boolean                @default(true)
-  prismArchetype         String?
-  stripeAccountId        String?                @unique
-  stripeOnboardingStatus StripeOnboardingStatus @default(NOT_STARTED)
-  availabilityStatus     String                 @default("AVAILABLE")
-  profileViews           Int                    @default(0)
-  totalEarned            Int                    @default(0)
-  responseRate           Float?
-  avgResponseHours       Int?
-  referralCode           String?                @unique
-  instagramVerified      Boolean                @default(false)
-  tiktokVerified         Boolean                @default(false)
-  createdAt              DateTime               @default(now())
-  updatedAt              DateTime               @updatedAt
-
-  agency                      AgencyAccount?               @relation(fields: [agencyId], references: [id], onDelete: SetNull)
-  user                        User?                        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  campaigns                   CampaignTalent[]
-  messages                    Message[]                    @relation("CreatorMessages")
-  invoices                    Invoice[]
+  id                          String                        @id @default(cuid())
+  userId                      String?                       @unique
+  agencyId                    String?
+  name                        String
+  instagram                   String?
+  tiktok                      String?
+  youtube                     String?
+  bio                         String?
+  hourlyRate                  Int?
+  dayRate                     Int?
+  skills                      String[]
+  niches                      String[]
+  location                    String?
+  avatarUrl                   String?
+  portfolioUrl                String?
+  displayName                 String?
+  fullName                    String?
+  qualityScore                Int?
+  talentStatus                String                        @default("pending")
+  source                      String?
+  isVerified                  Boolean                       @default(false)
+  isActive                    Boolean                       @default(true)
+  prismArchetype              String?
+  stripeAccountId             String?                       @unique
+  stripeOnboardingStatus      StripeOnboardingStatus        @default(NOT_STARTED)
+  availabilityStatus          String                        @default("AVAILABLE")
+  profileViews                Int                           @default(0)
+  totalEarned                 Int                           @default(0)
+  responseRate                Float?
+  avgResponseHours            Int?
+  referralCode                String?                       @unique
+  instagramVerified           Boolean                       @default(false)
+  tiktokVerified              Boolean                       @default(false)
+  createdAt                   DateTime                      @default(now())
+  updatedAt                   DateTime                      @updatedAt
   invites                     CampaignInvite[]
   campaignPodSelectionConfigs CampaignPodSelectionConfig[]
-  portfolioItems              PortfolioItem[]
+  campaigns                   CampaignTalent[]
   contracts                   Contract[]
   opportunityPreference       CreatorOpportunityPreference?
+  agency                      AgencyAccount?                @relation(fields: [agencyId], references: [id])
+  user                        User?                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoices                    Invoice[]
+  messages                    Message[]                     @relation("CreatorMessages")
+  portfolioItems              PortfolioItem[]
+  walletTransactions          WalletTransaction[]
 
   @@index([userId])
   @@index([agencyId])
@@ -251,35 +216,29 @@ model CreatorProfile {
   @@map("creator_profiles")
 }
 
-// ============================================
-// CAMPAIGNS & PROJECTS
-// ============================================
-
 model Campaign {
-  id                 String              @id @default(cuid())
-  agencyId           String
-  title              String
-  brief              String              @db.Text // Legacy: kept for backward compatibility
-  status             CampaignStatus      @default(DRAFT)
-  startDate          DateTime?
-  dueDate            DateTime?
-  budget             Int? // In cents
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  walletTransactions WalletTransaction[]
-
-  // Relations
-  agency                      AgencyAccount                @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  talents                     CampaignTalent[]
-  messages                    Message[]
-  invoices                    Invoice[]
-  pod                         CampaignPod?
-  invites                     CampaignInvite[]
+  id                          String                       @id @default(cuid())
+  agencyId                    String
+  title                       String
+  brief                       String
+  status                      CampaignStatus               @default(DRAFT)
+  startDate                   DateTime?
+  dueDate                     DateTime?
+  budget                      Int?
+  createdAt                   DateTime                     @default(now())
+  updatedAt                   DateTime                     @updatedAt
+  campaignBrief               CampaignBrief?
   files                       CampaignFile[]
-  campaignPodSelectionConfigs CampaignPodSelectionConfig[]
+  invites                     CampaignInvite[]
   metrics                     CampaignMetric[]
   payments                    CampaignPayment[]
-  campaignBrief               CampaignBrief?
+  campaignPodSelectionConfigs CampaignPodSelectionConfig[]
+  pod                         CampaignPod?
+  talents                     CampaignTalent[]
+  agency                      AgencyAccount                @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  invoices                    Invoice[]
+  messages                    Message[]
+  walletTransactions          WalletTransaction[]
 
   @@index([agencyId])
   @@index([status])
@@ -288,33 +247,25 @@ model Campaign {
 }
 
 model CampaignBrief {
-  id                String      @id @default(cuid())
-  campaignId        String      @unique
-  version           Int         @default(1)
-  status            BriefStatus @default(DRAFT)
-  isLocked          Boolean     @default(false)
-  lockedAt          DateTime?
-  sentAt            DateTime?
-  
-  // Audit fields
-  lastEditedBy      String?     // User ID or name (string for dev compatibility)
-  lastEditedByName   String?     // User name for display
-  
-  // Brief sections
-  primaryObjective  String?     // awareness | consideration | conversion
-  keyMessage        String?     @db.VarChar(280) // 280 chars max
-  creativeDirection Json?        // Checkbox-driven + optional notes
-  mandatoryRequirements String?  @db.Text
-  approvalRules     String?     @db.Text
-  postingRules      String?     @db.Text
-  
-  // Attachments (references to CampaignFile)
-  attachmentIds     String[]
-  
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  id                    String      @id @default(cuid())
+  campaignId            String      @unique
+  version               Int         @default(1)
+  status                BriefStatus @default(DRAFT)
+  isLocked              Boolean     @default(false)
+  lockedAt              DateTime?
+  sentAt                DateTime?
+  lastEditedBy          String?
+  lastEditedByName      String?
+  primaryObjective      String?
+  keyMessage            String?     @db.VarChar(280)
+  creativeDirection     Json?
+  mandatoryRequirements String?
+  approvalRules         String?
+  postingRules          String?
+  attachmentIds         String[]
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  campaign              Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId])
   @@index([isLocked])
@@ -327,14 +278,12 @@ model CampaignTalent {
   campaignId String
   talentId   String
   status     CampaignTalentStatus @default(ASSIGNED)
-  rate       Int? // Override rate for this campaign (in cents)
-  notes      String?              @db.Text
+  rate       Int?
+  notes      String?
   assignedAt DateTime             @default(now())
   updatedAt  DateTime             @updatedAt
-
-  // Relations
-  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  talent   CreatorProfile @relation(fields: [talentId], references: [id], onDelete: Cascade)
+  campaign   Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  talent     CreatorProfile       @relation(fields: [talentId], references: [id], onDelete: Cascade)
 
   @@unique([campaignId, talentId])
   @@index([campaignId])
@@ -349,8 +298,7 @@ model CampaignPod {
   talentIds  String[]
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId])
   @@map("campaign_pods")
@@ -364,9 +312,8 @@ model CampaignInvite {
   note             String?
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
-
-  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  creator  CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  campaign         Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creator          CreatorProfile       @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
 
   @@unique([campaignId, creatorProfileId])
   @@index([campaignId])
@@ -384,9 +331,8 @@ model CampaignFile {
   mimeType       String
   sizeBytes      Int
   createdAt      DateTime @default(now())
-
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  uploader User     @relation(fields: [uploaderUserId], references: [id], onDelete: Cascade)
+  campaign       Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  uploader       User     @relation(fields: [uploaderUserId], references: [id], onDelete: Cascade)
 
   @@index([campaignId])
   @@index([uploaderUserId])
@@ -402,8 +348,7 @@ model CampaignMetric {
   engagements Int      @default(0)
   spend       Decimal  @default(0) @db.Decimal(12, 2)
   createdAt   DateTime @default(now())
-
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@unique([campaignId, date])
   @@index([campaignId])
@@ -420,8 +365,7 @@ model CampaignPayment {
   paidAt     DateTime?
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
-
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign   Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId])
   @@index([status])
@@ -444,11 +388,10 @@ model WalletTransaction {
   stripeObjectId   String
   metadata         Json?
   createdAt        DateTime              @default(now())
-
-  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  creator  CreatorProfile? @relation(fields: [creatorProfileId], references: [id], onDelete: SetNull)
-  agency   AgencyAccount?  @relation(fields: [agencyAccountId], references: [id], onDelete: SetNull)
-  campaign Campaign?       @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  agency           AgencyAccount?        @relation(fields: [agencyAccountId], references: [id])
+  campaign         Campaign?             @relation(fields: [campaignId], references: [id])
+  creator          CreatorProfile?       @relation(fields: [creatorProfileId], references: [id])
+  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([creatorProfileId])
@@ -459,49 +402,43 @@ model WalletTransaction {
 }
 
 model BookingRequest {
-  id           String        @id @default(cuid())
+  id           String         @id @default(cuid())
   userId       String
   agencyId     String?
-  bookingType  BookingType   @default(SHORT)
+  bookingType  BookingType    @default(SHORT)
   startDate    String?
   budgetRange  String?
-  description  String        @db.Text
+  description  String
   contactEmail String
   talentIds    String[]
-  status       BookingStatus @default(PENDING)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-
-  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  agency AgencyAccount? @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  status       BookingStatus  @default(PENDING)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  agency       AgencyAccount? @relation(fields: [agencyId], references: [id])
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([agencyId])
   @@map("booking_requests")
 }
 
-// ============================================
-// CLIENT DISCOVERY & ADVISOR
-// ============================================
-
 model DiscoveryBrief {
-  id                 String            @id @default(cuid())
-  userId             String            @unique
-  primaryObjective   String?
-  requestedRoles     String[]
-  startTiming        String?
-  budgetRange        String?
-  companyName        String?
-  industry           String?
-  notes              String?           @db.Text
-  advisorRequested   Boolean           @default(false)
-  currentStep        Int               @default(0)
-  status             DiscoveryStatus   @default(INCOMPLETE)
-  completedAt        DateTime?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String          @id @default(cuid())
+  userId           String          @unique
+  primaryObjective String?
+  requestedRoles   String[]
+  startTiming      String?
+  budgetRange      String?
+  companyName      String?
+  industry         String?
+  notes            String?
+  advisorRequested Boolean         @default(false)
+  currentStep      Int             @default(0)
+  status           DiscoveryStatus @default(INCOMPLETE)
+  completedAt      DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
@@ -511,15 +448,14 @@ model DiscoveryBrief {
 model AdvisorRequest {
   id              String   @id @default(cuid())
   userId          String
-  contactMethod   String   // call | whatsapp | email
-  preferredTiming String   // today | tomorrow | this_week
-  note            String?  @db.Text
-  source          String?  // step1 | step2 | dashboard | booking
-  status          String   @default("PENDING") // PENDING | CONTACTED | RESOLVED
+  contactMethod   String
+  preferredTiming String
+  note            String?
+  source          String?
+  status          String   @default("PENDING")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
@@ -528,34 +464,26 @@ model AdvisorRequest {
 
 model PodSelection {
   id        String   @id @default(cuid())
-  userId    String
+  userId    String   @unique
   talentIds String[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId])
   @@index([userId])
   @@map("pod_selections")
 }
 
-// ============================================
-// MESSAGING
-// ============================================
-
 model Message {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   campaignId  String?
-  senderId    String // CreatorProfile ID
-  recipientId String? // AgencyAccount ID or CreatorProfile ID
-  content     String   @db.Text
-  isRead      Boolean  @default(false)
-  createdAt   DateTime @default(now())
-
-  // Relations
-  campaign Campaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  sender   CreatorProfile @relation("CreatorMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  senderId    String
+  recipientId String?
+  content     String
+  isRead      Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  campaign    Campaign?      @relation(fields: [campaignId], references: [id])
+  sender      CreatorProfile @relation("CreatorMessages", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([campaignId])
   @@index([senderId])
@@ -564,29 +492,23 @@ model Message {
   @@map("messages")
 }
 
-// ============================================
-// FINANCIAL
-// ============================================
-
 model Invoice {
-  id            String        @id @default(cuid())
+  id            String         @id @default(cuid())
   campaignId    String?
   talentId      String
   agencyId      String?
-  amount        Int // In cents
-  currency      String        @default("USD")
-  status        InvoiceStatus @default(PENDING)
+  amount        Int
+  currency      String         @default("USD")
+  status        InvoiceStatus  @default(PENDING)
   dueDate       DateTime?
   paidAt        DateTime?
-  invoiceNumber String        @unique
-  notes         String?       @db.Text
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  // Relations
-  campaign    Campaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  talent      CreatorProfile @relation(fields: [talentId], references: [id], onDelete: Cascade)
-  transaction Transaction?
+  invoiceNumber String         @unique
+  notes         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  campaign      Campaign?      @relation(fields: [campaignId], references: [id])
+  talent        CreatorProfile @relation(fields: [talentId], references: [id], onDelete: Cascade)
+  transaction   Transaction?
 
   @@index([campaignId])
   @@index([talentId])
@@ -599,17 +521,15 @@ model Invoice {
 model Transaction {
   id          String            @id @default(cuid())
   invoiceId   String?           @unique
-  amount      Int // In cents
+  amount      Int
   currency    String            @default("USD")
   type        TransactionType
   status      TransactionStatus @default(PENDING)
-  description String?           @db.Text
-  metadata    Json? // Additional transaction data
+  description String?
+  metadata    Json?
   processedAt DateTime?
   createdAt   DateTime          @default(now())
-
-  // Relations
-  invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  invoice     Invoice?          @relation(fields: [invoiceId], references: [id])
 
   @@index([invoiceId])
   @@index([status])
@@ -618,34 +538,24 @@ model Transaction {
   @@map("transactions")
 }
 
-
-// ============================================
-// PORTFOLIO
-// ============================================
-
 model PortfolioItem {
-  id               String   @id @default(cuid())
+  id               String         @id @default(cuid())
   creatorProfileId String
   title            String?
-  caption          String?  @db.Text
+  caption          String?
   mediaUrl         String
-  mediaType        String   @default("image")
+  mediaType        String         @default("image")
   thumbnailUrl     String?
-  position         Int      @default(0)
+  position         Int            @default(0)
   externalLink     String?
   platform         String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  creator CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  creator          CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
 
   @@index([creatorProfileId])
   @@map("portfolio_items")
 }
-
-// ============================================
-// CONTRACTS & MILESTONES
-// ============================================
 
 model Contract {
   id               String         @id @default(cuid())
@@ -653,7 +563,7 @@ model Contract {
   creatorProfileId String
   agencyId         String?
   title            String
-  content          String         @db.Text
+  content          String
   status           ContractStatus @default(DRAFT)
   totalAmount      Int?
   currency         String         @default("AED")
@@ -663,9 +573,8 @@ model Contract {
   creatorSignature String?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
-
-  creator    CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
-  milestones Milestone[]
+  creator          CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  milestones       Milestone[]
 
   @@index([campaignId])
   @@index([creatorProfileId])
@@ -673,53 +582,43 @@ model Contract {
 }
 
 model Milestone {
-  id               String          @id @default(cuid())
-  contractId       String
-  title            String
-  description      String?         @db.Text
-  amount           Int
-  currency         String          @default("AED")
-  dueDate          DateTime?
-  status           MilestoneStatus @default(PENDING)
-  fundedAt         DateTime?
-  releasedAt       DateTime?
-  completedAt      DateTime?
-  submissionNote   String?         @db.Text
-  submissionFiles  String[]
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-
-  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  id              String          @id @default(cuid())
+  contractId      String
+  title           String
+  description     String?
+  amount          Int
+  currency        String          @default("AED")
+  dueDate         DateTime?
+  status          MilestoneStatus @default(PENDING)
+  fundedAt        DateTime?
+  releasedAt      DateTime?
+  completedAt     DateTime?
+  submissionNote  String?
+  submissionFiles String[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  contract        Contract        @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
   @@index([contractId])
   @@map("milestones")
 }
 
-// ============================================
-// OPPORTUNITY PREFERENCES
-// ============================================
-
 model CreatorOpportunityPreference {
-  id               String   @id @default(cuid())
-  creatorProfileId String   @unique
+  id               String         @id @default(cuid())
+  creatorProfileId String         @unique
   interestedRoles  String[]
   interestedNiches String[]
   minRate          Int?
-  openToLongTerm   Boolean  @default(true)
-  openToShortTerm  Boolean  @default(true)
+  openToLongTerm   Boolean        @default(true)
+  openToShortTerm  Boolean        @default(true)
   preferredBrands  String[]
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  creator CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  creator          CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
 
   @@index([creatorProfileId])
   @@map("creator_opportunity_preferences")
 }
-
-// ============================================
-// REFERRALS
-// ============================================
 
 model Referral {
   id             String         @id @default(cuid())
@@ -738,9 +637,132 @@ model Referral {
   @@map("referrals")
 }
 
-// ============================================
-// ENUMS
-// ============================================
+/// Execution project for creator-led product launch or growth — not native storefront / checkout.
+model CreatorShopProject {
+  id                   String                   @id @default(cuid())
+  ownerUserId          String
+  agencyId             String?
+  mode                 CreatorShopProjectMode
+  productType          String
+  title                String
+  status               CreatorShopProjectStatus @default(DRAFT)
+  /// Full intake payload (launch vs grow fields); source of truth for brief details.
+  briefPayload         Json
+  budgetBand           String?
+  desiredLaunchDate    DateTime?
+  currentPlatform      String?
+  audienceContext      String?
+  notes                String?
+  /// Timeline entries: [{ "status": "...", "at": "ISO", "label"?: "..." }]
+  statusHistory        Json?
+  commercialModelNotes String?
+  latestUpdateAt       DateTime?
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  agency               AgencyAccount?           @relation(fields: [agencyId], references: [id])
+  owner                User                     @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+
+  @@index([ownerUserId])
+  @@index([agencyId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("creator_shop_projects")
+}
+
+model AiUsage {
+  id        String   @id @default(cuid())
+  userId    String?
+  ipKey     String?
+  feature   String
+  day       String
+  count     Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, feature, day])
+  @@unique([ipKey, feature, day])
+  @@index([userId])
+  @@index([ipKey])
+  @@index([day])
+  @@map("ai_usage")
+}
+
+model EditorialSource {
+  id          String                @id @default(cuid())
+  slug        String                @unique
+  name        String
+  feedUrl     String
+  siteUrl     String
+  category    String                @default("fashion")
+  tags        String[]              @default([])
+  tier        String                @default("primary")
+  status      EditorialSourceStatus @default(ACTIVE)
+  lastFetchAt DateTime?
+  lastError   String?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  items       EditorialItem[]
+  runs        EditorialRun[]
+
+  @@map("editorial_sources")
+}
+
+model EditorialItem {
+  id           String              @id @default(cuid())
+  sourceId     String
+  canonicalUrl String              @unique
+  title        String
+  excerpt      String?
+  imageUrl     String?
+  author       String?
+  publishedAt  DateTime?
+  category     String?
+  tags         String[]            @default([])
+  aiSummary    String?
+  aiRelevance  Float?
+  aiTone       String?
+  duplicateOf  String?
+  status       EditorialItemStatus @default(PENDING)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  source       EditorialSource     @relation(fields: [sourceId], references: [id])
+
+  @@index([sourceId])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([category])
+  @@map("editorial_items")
+}
+
+model EditorialRun {
+  id           String          @id @default(cuid())
+  sourceId     String
+  startedAt    DateTime        @default(now())
+  finishedAt   DateTime?
+  itemsFound   Int             @default(0)
+  itemsNew     Int             @default(0)
+  itemsSkipped Int             @default(0)
+  error        String?
+  createdAt    DateTime        @default(now())
+  source       EditorialSource @relation(fields: [sourceId], references: [id])
+
+  @@index([sourceId])
+  @@index([startedAt])
+  @@map("editorial_runs")
+}
+
+enum HireType {
+  PROJECT
+  MONTHLY
+  HOURLY
+}
+
+enum UsageRightsTier {
+  NONE
+  STANDARD
+  FULL
+  BUYOUT
+}
 
 enum UserRole {
   AGENCY
@@ -749,15 +771,15 @@ enum UserRole {
 }
 
 enum CampaignStatus {
-  PROVISIONAL              // Talent selected, awaiting acceptance
-  CONFIRMED_BRIEF_PENDING  // Talent accepted, brief not yet sent
-  BRIEF_SENT               // Brief sent to talent, awaiting content
-  IN_PROGRESS              // Content submitted, in production
-  PAUSED                   // Temporarily paused — billing/delivery on hold
+  PROVISIONAL
+  CONFIRMED_BRIEF_PENDING
+  BRIEF_SENT
+  IN_PROGRESS
+  PAUSED
   COMPLETED
   CANCELLED
-  DRAFT                    // Legacy: kept for backward compatibility
-  ACTIVE                   // Legacy: kept for backward compatibility
+  DRAFT
+  ACTIVE
 }
 
 enum CampaignTalentStatus {
@@ -884,10 +906,6 @@ enum UserAgreementStatus {
   SIGNED
 }
 
-// ============================================
-// CREATOR SHOP (commerce enablement projects)
-// ============================================
-
 enum CreatorShopProjectMode {
   LAUNCH
   GROW
@@ -905,68 +923,6 @@ enum CreatorShopProjectStatus {
   SCALING
 }
 
-/// Execution project for creator-led product launch or growth — not native storefront / checkout.
-model CreatorShopProject {
-  id          String @id @default(cuid())
-  ownerUserId String
-  agencyId    String?
-  mode        CreatorShopProjectMode
-  productType String
-  title       String
-  status      CreatorShopProjectStatus @default(DRAFT)
-
-  /// Full intake payload (launch vs grow fields); source of truth for brief details.
-  briefPayload Json
-
-  budgetBand        String?
-  desiredLaunchDate DateTime?
-  currentPlatform   String?
-  audienceContext   String? @db.Text
-  notes             String? @db.Text
-
-  /// Timeline entries: [{ "status": "...", "at": "ISO", "label"?: "..." }]
-  statusHistory Json?
-
-  commercialModelNotes String? @db.Text
-
-  latestUpdateAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  owner  User           @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
-  agency AgencyAccount? @relation(fields: [agencyId], references: [id], onDelete: SetNull)
-
-  @@index([ownerUserId])
-  @@index([agencyId])
-  @@index([status])
-  @@index([createdAt])
-  @@map("creator_shop_projects")
-}
-
-
-
-// ── AI Usage / Rate Limiting ────────────────────────────────────────────────
-
-model AiUsage {
-  id        String   @id @default(cuid())
-  userId    String?  // null = unauthenticated (keyed by IP)
-  ipKey     String?  // hashed IP for anon users
-  feature   String   // "ai_search" | "ai_analyze"
-  day       String   // "YYYY-MM-DD" in UTC
-  count     Int      @default(1)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, feature, day])
-  @@unique([ipKey, feature, day])
-  @@index([userId])
-  @@index([ipKey])
-  @@index([day])
-  @@map("ai_usage")
-}
-
-
 enum EditorialSourceStatus {
   ACTIVE
   PAUSED
@@ -974,73 +930,9 @@ enum EditorialSourceStatus {
 }
 
 enum EditorialItemStatus {
-  PENDING    // ingested, not yet enriched
-  ENRICHED   // AI summary + tags applied
-  PUBLISHED  // visible on Culture
-  HIDDEN     // manually hidden by admin
-  DUPLICATE  // flagged as duplicate
-}
-
-model EditorialSource {
-  id          String                @id @default(cuid())
-  slug        String                @unique       // e.g. "vogue", "hypebeast"
-  name        String                              // "Vogue"
-  feedUrl     String                              // RSS feed URL
-  siteUrl     String                              // Homepage URL
-  category    String                @default("fashion") // default category
-  tags        String[]              @default([])  // source-level tags
-  tier        String                @default("primary") // hero | primary | brief
-  status      EditorialSourceStatus @default(ACTIVE)
-  lastFetchAt DateTime?
-  lastError   String?
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-  items       EditorialItem[]
-  runs        EditorialRun[]
-
-  @@map("editorial_sources")
-}
-
-model EditorialItem {
-  id             String              @id @default(cuid())
-  sourceId       String
-  source         EditorialSource     @relation(fields: [sourceId], references: [id])
-  canonicalUrl   String              @unique        // dedupe key
-  title          String
-  excerpt        String?                            // RSS description (truncated)
-  imageUrl       String?                            // og:image or RSS enclosure
-  author         String?
-  publishedAt    DateTime?
-  category       String?                            // e.g. "Fashion", "Beauty"
-  tags           String[]            @default([])   // AI-generated tags
-  aiSummary      String?                            // Grok short summary
-  aiRelevance    Float?                             // 0.0–1.0 culture relevance
-  aiTone         String?                            // e.g. "editorial", "news"
-  duplicateOf    String?                            // canonical URL of original
-  status         EditorialItemStatus @default(PENDING)
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-
-  @@index([sourceId])
-  @@index([status])
-  @@index([publishedAt])
-  @@index([category])
-  @@map("editorial_items")
-}
-
-model EditorialRun {
-  id          String          @id @default(cuid())
-  sourceId    String
-  source      EditorialSource @relation(fields: [sourceId], references: [id])
-  startedAt   DateTime        @default(now())
-  finishedAt  DateTime?
-  itemsFound  Int             @default(0)
-  itemsNew    Int             @default(0)
-  itemsSkipped Int            @default(0)
-  error       String?
-  createdAt   DateTime        @default(now())
-
-  @@index([sourceId])
-  @@index([startedAt])
-  @@map("editorial_runs")
+  PENDING
+  ENRICHED
+  PUBLISHED
+  HIDDEN
+  DUPLICATE
 }

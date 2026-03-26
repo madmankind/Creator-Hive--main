@@ -94,7 +94,7 @@ export async function getCultureStories(
     const items = await db.editorialItem.findMany({
       where: { status: { in: ["ENRICHED", "PUBLISHED"] } },
       orderBy: [{ publishedAt: "desc" }],
-      take: Math.min(limit * 6, 300),
+      take: Math.min(limit * 8, 500),
       include: { source: { select: { name: true, slug: true, tier: true } } },
     });
 

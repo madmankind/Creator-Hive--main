@@ -69,8 +69,8 @@ type Props = { dbStories?: CultureStory[]; activeCategory?: string };
 export function HiveCulture({ dbStories = [], activeCategory = "Global" }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const cards = dbStories.length >= 3 ? dbStories.map(toCard) : [];
-  const hasContent = cards.length >= 3;
+  const cards = dbStories.length > 0 ? dbStories.map(toCard) : [];
+  const hasContent = cards.length > 0;
 
   // Slots: hero(1), trending rail(up to 8), grid(rest)
   const hero = cards[0];
