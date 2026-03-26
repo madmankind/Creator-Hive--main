@@ -52,114 +52,175 @@ const FALLBACKS = [
 
 const CAP = "rounded-sm bg-[#f4f1eb]/[0.97] text-stone-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_1px_3px_rgba(0,0,0,0.04)] border border-stone-300/30";
 
-// ── Showreel clips — swap these for your own videos anytime ─────────────────
-// Drop MP4s into /public/showreel/ and update this list.
-// Current: curated Pexels free videos (fashion / beauty / creator aesthetic)
-const SHOWREEL: { src: string; poster?: string }[] = [
+// ── Showreel — supports youtube | mp4 | image ──────────────────────────────
+// youtube: paste the video ID (e.g. "dQw4w9WgXcQ" from youtu.be/dQw4w9WgXcQ)
+// mp4:     direct URL or /public/showreel/file.mp4
+// image:   direct URL or /showreel/photo.jpg
+// poster:  fallback image shown while video loads (optional but recommended)
+type SlideType = "youtube" | "mp4" | "image";
+const SHOWREEL: { type: SlideType; src: string; poster?: string }[] = [
+  // ── Add a YouTube video by ID ──
+  // { type: "youtube", src: "YOUTUBE_VIDEO_ID_HERE" },
+
+  // ── Pexels MP4 fallbacks (used until you add your own content) ──
   {
+    type: "mp4",
     src: "https://videos.pexels.com/video-files/3196154/3196154-uhd_2560_1440_30fps.mp4",
     poster: "https://images.pexels.com/videos/3196154/free-video-3196154.jpg?auto=compress&cs=tinysrgb&w=1280",
   },
   {
+    type: "mp4",
     src: "https://videos.pexels.com/video-files/3209045/3209045-uhd_2560_1440_25fps.mp4",
     poster: "https://images.pexels.com/videos/3209045/free-video-3209045.jpg?auto=compress&cs=tinysrgb&w=1280",
   },
   {
+    type: "mp4",
     src: "https://videos.pexels.com/video-files/3191593/3191593-uhd_2560_1440_25fps.mp4",
     poster: "https://images.pexels.com/videos/3191593/free-video-3191593.jpg?auto=compress&cs=tinysrgb&w=1280",
   },
   {
+    type: "mp4",
     src: "https://videos.pexels.com/video-files/5704720/5704720-hd_1920_1080_25fps.mp4",
     poster: "https://images.pexels.com/videos/5704720/free-video-5704720.jpg?auto=compress&cs=tinysrgb&w=1280",
   },
-  {
-    src: "https://videos.pexels.com/video-files/3249539/3249539-uhd_2560_1440_25fps.mp4",
-    poster: "https://images.pexels.com/videos/3249539/free-video-3249539.jpg?auto=compress&cs=tinysrgb&w=1280",
-  },
 ];
 
-const CLIP_DURATION = 8000; // ms per clip before crossfade
+const CLIP_DURATION = 12000; // ms before auto-advancing (YouTube needs longer)
+
+// Extract YouTube video ID from various URL formats or bare ID
+function ytId(src: string): string {
+  const m = src.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|^)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : src;
+}
 
 function ShowreelBg() {
   const [current, setCurrent] = useState(0);
-  const [next, setNext] = useState<number | null>(null);
   const [fading, setFading] = useState(false);
-  const [videoFailed, setVideoFailed] = useState(false);
-  const currentRef = useRef<HTMLVideoElement>(null);
-  const nextRef = useRef<HTMLVideoElement>(null);
+  const [paused, setPaused] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const advance = useCallback(() => {
-    const n = (current + 1) % SHOWREEL.length;
-    setNext(n);
+  const advance = useCallback((dir: 1 | -1 = 1) => {
     setFading(true);
-    setTimeout(() => { setCurrent(n); setNext(null); setFading(false); }, 900);
-  }, [current]);
+    setTimeout(() => {
+      setCurrent(c => (c + dir * 1 + SHOWREEL.length) % SHOWREEL.length);
+      setFading(false);
+    }, 600);
+  }, []);
 
+  // Auto-advance (skip for YouTube — let it play naturally or use CLIP_DURATION)
   useEffect(() => {
-    timerRef.current = setTimeout(advance, CLIP_DURATION);
+    if (paused) return;
+    timerRef.current = setTimeout(() => advance(1), CLIP_DURATION);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [current, advance]);
+  }, [current, paused, advance]);
 
+  // Play MP4 after fade-in
   useEffect(() => {
-    const v = currentRef.current;
-    if (!v) return;
-    v.play().catch(() => setVideoFailed(true));
+    if (SHOWREEL[current].type === "mp4") {
+      videoRef.current?.play().catch(() => {});
+    }
   }, [current]);
 
-  useEffect(() => {
-    if (next !== null) nextRef.current?.play().catch(() => {});
-  }, [next]);
-
-  const clip = SHOWREEL[current];
+  const slide = SHOWREEL[current];
+  const isYT = slide.type === "youtube";
+  const isImg = slide.type === "image";
 
   return (
     <>
-      {/* Poster image fallback — always shown, video renders on top when it loads */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={clip.poster}
-        alt=""
-        aria-hidden
-        className="absolute inset-0 h-full w-full object-cover object-center"
-        style={{ opacity: videoFailed ? 1 : 0.6 }}
-      />
-
-      {/* Video layer — muted autoplay, crossOrigin for broad compatibility */}
-      {!videoFailed && (
-        <video
-          ref={currentRef}
-          key={`cur-${current}`}
-          src={clip.src}
-          poster={clip.poster}
-          autoPlay muted loop playsInline
-          crossOrigin="anonymous"
-          className="absolute inset-0 h-full w-full object-cover object-center"
-          style={{ opacity: fading ? 0 : 1, transition: "opacity 900ms ease" }}
-          onError={() => setVideoFailed(true)}
-        />
-      )}
-      {next !== null && !videoFailed && (
-        <video
-          ref={nextRef}
-          key={`nxt-${next}`}
-          src={SHOWREEL[next].src}
-          poster={SHOWREEL[next].poster}
-          autoPlay muted loop playsInline
-          crossOrigin="anonymous"
-          className="absolute inset-0 h-full w-full object-cover object-center"
-          style={{ opacity: fading ? 1 : 0, transition: "opacity 900ms ease" }}
+      {/* ── YouTube iframe ── */}
+      {isYT && (
+        <iframe
+          key={`yt-${current}`}
+          src={`https://www.youtube-nocookie.com/embed/${ytId(slide.src)}?autoplay=1&mute=1&controls=0&loop=1&playlist=${ytId(slide.src)}&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1`}
+          allow="autoplay; fullscreen"
+          className="absolute inset-0 h-full w-full"
+          style={{
+            border: "none",
+            opacity: fading ? 0 : 1,
+            transition: "opacity 600ms ease",
+            // Scale up slightly to hide YouTube letterbox bars
+            transform: "scale(1.12)",
+            pointerEvents: "none",
+          }}
         />
       )}
 
-      {/* Clip dots */}
-      <div className="absolute bottom-5 right-6 flex items-center gap-1.5 z-10">
+      {/* ── Image slide ── */}
+      {isImg && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={`img-${current}`}
+          src={slide.src}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover object-center"
+          style={{ opacity: fading ? 0 : 1, transition: "opacity 600ms ease" }}
+        />
+      )}
+
+      {/* ── MP4 video ── */}
+      {!isYT && !isImg && (
+        <>
+          {/* Poster always visible as fallback */}
+          {slide.poster && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={slide.poster}
+              alt="" aria-hidden
+              className="absolute inset-0 h-full w-full object-cover object-center"
+            />
+          )}
+          <video
+            ref={videoRef}
+            key={`mp4-${current}`}
+            src={slide.src}
+            poster={slide.poster}
+            autoPlay muted loop playsInline
+            className="absolute inset-0 h-full w-full object-cover object-center"
+            style={{ opacity: fading ? 0 : 1, transition: "opacity 600ms ease" }}
+            onError={() => advance(1)} // skip broken clips
+          />
+        </>
+      )}
+
+      {/* ── Controls ── */}
+      <div className="absolute bottom-5 right-6 z-20 flex items-center gap-3">
+        {/* Pause / play */}
+        <button
+          type="button"
+          onClick={() => setPaused(p => !p)}
+          className="flex h-7 w-7 items-center justify-center rounded-full transition"
+          style={{ background: "rgba(0,0,0,0.40)", border: "1px solid rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.70)" }}
+          aria-label={paused ? "Play" : "Pause"}
+        >
+          {paused
+            ? <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor"><path d="M0 0l10 6-10 6V0z"/></svg>
+            : <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor"><rect x="0" y="0" width="3.5" height="12"/><rect x="6.5" y="0" width="3.5" height="12"/></svg>
+          }
+        </button>
+
+        {/* Prev */}
+        <button type="button" onClick={() => advance(-1)}
+          className="flex h-7 w-7 items-center justify-center rounded-full transition"
+          style={{ background: "rgba(0,0,0,0.40)", border: "1px solid rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.70)" }}>
+          <svg width="8" height="12" viewBox="0 0 8 12" fill="currentColor"><path d="M8 0L0 6l8 6V0z"/></svg>
+        </button>
+
+        {/* Dots */}
         {SHOWREEL.map((_, i) => (
           <button key={i} type="button"
-            onClick={() => { setCurrent(i); setNext(null); setFading(false); setVideoFailed(false); }}
+            onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); setFading(true); setTimeout(() => { setCurrent(i); setFading(false); }, 600); }}
             className="rounded-full transition-all duration-300"
-            style={{ width: i === current ? "18px" : "5px", height: "5px", background: i === current ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.28)" }} />
+            style={{ width: i === current ? "18px" : "5px", height: "5px", background: i === current ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.30)" }} />
         ))}
+
+        {/* Next */}
+        <button type="button" onClick={() => advance(1)}
+          className="flex h-7 w-7 items-center justify-center rounded-full transition"
+          style={{ background: "rgba(0,0,0,0.40)", border: "1px solid rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.70)" }}>
+          <svg width="8" height="12" viewBox="0 0 8 12" fill="currentColor"><path d="M0 0l8 6-8 6V0z"/></svg>
+        </button>
       </div>
     </>
   );
