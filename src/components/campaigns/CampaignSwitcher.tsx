@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { ChevronDown, Copy, Plus, Check } from "lucide-react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { ChevronDown, Copy, Plus, Check, Minus } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { useCampaign } from "@/contexts/CampaignContext";
 import { useLocalCampaignStore } from "@/store/useLocalCampaignStore";
 import { cn } from "@/lib/utils";
@@ -11,9 +12,14 @@ type DropdownView = "list" | "duplicate";
 
 export function CampaignSwitcher() {
   const router = useRouter();
-  const { activeCampaign, campaigns, setActiveCampaign } = useCampaign();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { data: session } = useSession();
+  const { activeCampaign, campaigns, setActiveCampaign, refreshCampaigns } = useCampaign();
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState<DropdownView>("list");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,10 +35,20 @@ export function CampaignSwitcher() {
 
   const close = () => { setIsOpen(false); setView("list"); };
 
+  const syncCampaignInUrl = (campaignId: string | null) => {
+    if (!pathname.startsWith("/dashboard/campaigns")) return;
+    const params = new URLSearchParams(searchParams.toString());
+    if (campaignId) params.set("campaignId", campaignId);
+    else params.delete("campaignId");
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+  };
+
   // Switch campaign
   const handleSelect = (id: string) => {
     const c = campaigns.find((x) => x.id === id);
     if (c) setActiveCampaign(c);
+    syncCampaignInUrl(id);
     close();
   };
 
@@ -53,8 +69,37 @@ export function CampaignSwitcher() {
     close();
   };
 
+  const handleDeleteCampaign = async (campaignId: string) => {
+    setDeleteError(null);
+    setDeletingId(campaignId);
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}`, { method: "DELETE" });
+      const data = await res.json().catch(() => null) as { error?: string; reasons?: string[] } | null;
+      if (!res.ok) {
+        const reasonText = data?.reasons?.length ? ` (${data.reasons.join("; ")})` : "";
+        setDeleteError(`${data?.error ?? "Unable to delete campaign"}${reasonText}`);
+        return;
+      }
+
+      useLocalCampaignStore.getState().removeCampaign(campaignId);
+      await refreshCampaigns();
+
+      const remaining = campaigns.filter((c) => c.id !== campaignId);
+      if (activeCampaign?.id === campaignId) {
+        setActiveCampaign(remaining[0] ?? null);
+        syncCampaignInUrl(remaining[0]?.id ?? null);
+      }
+    } catch {
+      setDeleteError("Unable to delete campaign right now.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const otherCampaigns = campaigns.filter((c) => c.id !== activeCampaign?.id);
   const label = activeCampaign?.name ?? "Select campaign";
+  const role = (session?.user as { role?: string } | undefined)?.role;
+  const canDeleteCampaign = role === "AGENCY" || role === "ADMIN";
 
   return (
     <div className="relative flex-shrink-0" ref={dropdownRef}>
@@ -103,41 +148,64 @@ export function CampaignSwitcher() {
                   campaigns.map((c) => {
                     const isActive = c.id === activeCampaign?.id;
                     return (
-                      <button
+                      <div
                         key={c.id}
-                        type="button"
-                        onClick={() => handleSelect(c.id)}
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-colors"
                         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
                         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                       >
-                        {/* Active dot / inactive placeholder */}
-                        <span
-                          className="flex-shrink-0 w-1.5 h-1.5 rounded-full"
-                          style={{ background: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.12)" }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p
-                            className="text-[13px] truncate"
-                            style={{
-                              color: isActive ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.55)",
-                              fontWeight: isActive ? 500 : 400,
-                            }}
-                          >
-                            {c.name}
-                          </p>
-                          {c.clientName && (
-                            <p className="text-[11px] truncate mt-0.5" style={{ color: "rgba(255,255,255,0.28)" }}>
-                              {c.clientName}
+                        <button
+                          type="button"
+                          onClick={() => handleSelect(c.id)}
+                          className="flex min-w-0 flex-1 items-center gap-2.5"
+                        >
+                          <span
+                            className="flex-shrink-0 w-1.5 h-1.5 rounded-full"
+                            style={{ background: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.12)" }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p
+                              className="text-[13px] truncate"
+                              style={{
+                                color: isActive ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.55)",
+                                fontWeight: isActive ? 500 : 400,
+                              }}
+                            >
+                              {c.name}
                             </p>
-                          )}
-                        </div>
-                        {isActive && <Check size={12} style={{ color: "rgba(255,255,255,0.45)", flexShrink: 0 }} />}
-                      </button>
+                            {c.clientName && (
+                              <p className="text-[11px] truncate mt-0.5" style={{ color: "rgba(255,255,255,0.28)" }}>
+                                {c.clientName}
+                              </p>
+                            )}
+                          </div>
+                          {isActive && <Check size={12} style={{ color: "rgba(255,255,255,0.45)", flexShrink: 0 }} />}
+                        </button>
+                        {canDeleteCampaign && (
+                          <button
+                            type="button"
+                            aria-label={`Delete ${c.name}`}
+                            title="Delete campaign"
+                            disabled={deletingId === c.id}
+                            onClick={() => void handleDeleteCampaign(c.id)}
+                            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-40"
+                            style={{ color: "rgba(255,255,255,0.35)" }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                          >
+                            <Minus size={12} />
+                          </button>
+                        )}
+                      </div>
                     );
                   })
                 )}
               </div>
+              {deleteError && (
+                <div className="px-3 pb-2 text-[11px]" style={{ color: "rgba(248,113,113,0.85)" }}>
+                  {deleteError}
+                </div>
+              )}
 
               {/* Divider + actions */}
               <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} className="p-1.5 space-y-0.5">

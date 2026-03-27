@@ -341,7 +341,7 @@ export function ManageLayoutV2({
                     No creators added to this campaign yet
                   </p>
                   <a
-                    href="/dashboard/campaigns?mode=discover"
+                    href="/dashboard/hive"
                     className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-medium transition-colors"
                     style={{
                       background: "rgba(124,92,255,0.12)",

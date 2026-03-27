@@ -102,3 +102,85 @@ export async function PATCH(
 
   return NextResponse.json({ campaign: updated });
 }
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ campaignId: string }> }
+) {
+  const authResult = await requireUser({ roles: ["AGENCY", "ADMIN"] });
+  if ("error" in authResult) return authResult.error;
+  const { user } = authResult;
+  const { campaignId } = await params;
+
+  const denied = await assertCampaignAccess(user, campaignId);
+  if (denied) return denied;
+
+  const campaign = await db.campaign.findUnique({
+    where: { id: campaignId },
+    select: { id: true, title: true, status: true },
+  });
+
+  if (!campaign) {
+    return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+  }
+
+  // Guard active campaigns: only allow non-active states (including COMPLETED/CANCELLED/DRAFT).
+  const ACTIVE_STATUSES = new Set([
+    "ACTIVE",
+    "IN_PROGRESS",
+    "PAUSED",
+    "PROVISIONAL",
+    "CONFIRMED_BRIEF_PENDING",
+    "BRIEF_SENT",
+  ]);
+
+  const isActiveCampaign = ACTIVE_STATUSES.has(campaign.status);
+
+  // Financial/workflow guardrails.
+  const [
+    paymentRecordsCount,
+    duePaymentCount,
+    openInvoiceCount,
+    signedContractCount,
+  ] = await Promise.all([
+    db.campaignPayment.count({ where: { campaignId } }),
+    db.campaignPayment.count({
+      where: {
+        campaignId,
+        status: { in: ["COMMITTED", "INVOICED"] },
+      },
+    }),
+    db.invoice.count({
+      where: {
+        campaignId,
+        status: { in: ["PENDING", "SENT", "OVERDUE"] },
+      },
+    }),
+    db.contract.count({
+      where: {
+        campaignId,
+        status: { in: ["AGENCY_SIGNED", "FULLY_SIGNED"] },
+      },
+    }),
+  ]);
+
+  const reasons: string[] = [];
+  if (isActiveCampaign) reasons.push(`campaign is still active (${campaign.status})`);
+  if (paymentRecordsCount > 0) reasons.push("payment records exist");
+  if (duePaymentCount > 0) reasons.push("talent payments are still due");
+  if (openInvoiceCount > 0) reasons.push("open invoices are pending");
+  if (signedContractCount > 0) reasons.push("signed contracts exist");
+
+  if (reasons.length > 0) {
+    return NextResponse.json(
+      {
+        error: "Campaign cannot be deleted while active payment or workflow records exist.",
+        reasons,
+      },
+      { status: 409 }
+    );
+  }
+
+  await db.campaign.delete({ where: { id: campaignId } });
+  return NextResponse.json({ ok: true, deletedCampaignId: campaignId, deletedCampaignTitle: campaign.title });
+}

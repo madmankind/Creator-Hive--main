@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { Prisma } from "@prisma/client";
 
 export type CultureStory = {
   id: string;
@@ -33,19 +34,21 @@ function toDisplayCategory(rawCat: string | null, tags: string[]): string {
 
   // UAE / GCC
   if (cat === "gcc" || /gcc|dubai|saudi|uae|arab|middle.east|qatar|bahrain|oman|kuwait/.test(tagStr)) return "UAE";
-  // Creator Economy (includes social commerce, platform updates, creator/influencer signals, viral social trends with creator angle)
+  // Creator Economy (includes social commerce, platform updates, creator/influencer business signals)
   if (cat === "creator economy" || cat === "social commerce" || cat === "platform update" ||
-      /creator|influencer|youtube|tiktok.*creator|dtc|direct.to.consumer|social.*commerce|platform|viral.*brand|social.*trend/.test(tagStr)) return "Creator Economy";
+      /creator|influencer|youtube|tiktok|twitch|roblox|reddit|meta|threads|instagram|social.*commerce|affiliate|platform|monetization|adtech|marketing api|app ads|retail media|measurement|attribution/.test(tagStr)) return "Creator Economy";
   // Tech
   if (/wearable|smart.*watch|consumer.*tech|headphone|gadget|ai\b|device|app\b/.test(tagStr)) return "Tech";
   // Beauty (includes skincare, wellness, fragrance)
   if (cat === "beauty" || /beauty|skincare|skin.*care|makeup|fragrance|cosmetic|wellness|self.care|supplement/.test(tagStr)) return "Beauty";
-  // Lifestyle (includes luxury, design, objects, culture moments, social/viral culture, entertainment with cultural signal)
-  if (cat === "lifestyle" || cat === "culture" || cat === "brands" || cat === "entertainment" ||
-      /lifestyle|home|travel|food|design|interior|object|ceramic|furniture|luxury|hospitality|viral|meme|social.*moment|youth.*culture|pop.*culture/.test(tagStr)) return "Lifestyle";
-  // Fashion (default for fashion, streetwear, style, drops)
+  // Fashion
   if (cat === "fashion" || cat === "streetwear" || cat === "style" || cat === "drops" ||
       /fashion|runway|collection|sneaker|menswear|streetwear|apparel/.test(tagStr)) return "Fashion";
+  // Lifestyle
+  if (cat === "lifestyle" || cat === "culture" || cat === "entertainment" ||
+      /lifestyle|home|travel|food|design|interior|object|ceramic|furniture|luxury|hospitality|meme|social.*moment|youth.*culture|pop.*culture/.test(tagStr)) return "Lifestyle";
+  // Brands/business stories without clear product vertical lean creator economy instead of lifestyle
+  if (cat === "brands") return "Creator Economy";
   return "Lifestyle"; // wildcard fallback
 }
 
@@ -56,19 +59,25 @@ function toDisplayCategory(rawCat: string | null, tags: string[]): string {
  */
 const CATEGORY_WEIGHT: Record<string, number> = {
   "Beauty": 1.25,
-  "Fashion": 1.0,
-  "Creator Economy": 1.15,
-  "Lifestyle": 1.05,
+  "Fashion": 1.08,
+  "Creator Economy": 1.22,
+  "Lifestyle": 0.78,
   "Tech": 0.95,
   "UAE": 0.9,
 };
 
 /** Max items per display category in Global view to prevent any single category from dominating */
 const CATEGORY_CAP_GLOBAL = 6;
+const CATEGORY_CAP_BY_DISPLAY: Partial<Record<string, number>> = {
+  "Lifestyle": 4,
+  "Creator Economy": 7,
+  "Fashion": 7,
+};
 /** Max items from one publisher in first visible screen */
 const SOURCE_CAP_FIRST_SCREEN = 2;
 /** Max consecutive stories from the same display category */
 const MAX_CONSECUTIVE_SAME = 2;
+const PRIORITY_SOURCE_SLUGS = ["passionfruit", "social-media-today", "creatoriq", "upfluence"] as const;
 
 type ScoredItem = {
   item: {
@@ -124,6 +133,21 @@ export async function getCultureStories(
     const catCounts = new Map<string, number>();
     const srcCountsFirst = new Map<string, number>();
 
+    // In Global, guarantee representation for priority creator-economy sources when available.
+    if (isGlobal) {
+      for (const slug of PRIORITY_SOURCE_SLUGS) {
+        const candidate = pool.find((s) => !usedIds.has(s.item.id) && s.item.source.slug === slug);
+        if (!candidate) continue;
+        if (selected.length >= limit) break;
+        selected.push(candidate);
+        usedIds.add(candidate.item.id);
+        catCounts.set(candidate.displayCategory, (catCounts.get(candidate.displayCategory) ?? 0) + 1);
+        if (selected.length <= 6) {
+          srcCountsFirst.set(candidate.item.source.slug, (srcCountsFirst.get(candidate.item.source.slug) ?? 0) + 1);
+        }
+      }
+    }
+
     for (const s of pool) {
       if (selected.length >= limit) break;
       if (usedIds.has(s.item.id)) continue;
@@ -131,7 +155,8 @@ export async function getCultureStories(
       // Global: enforce category cap
       if (isGlobal) {
         const cc = catCounts.get(s.displayCategory) ?? 0;
-        if (cc >= CATEGORY_CAP_GLOBAL) continue;
+        const perCategoryCap = CATEGORY_CAP_BY_DISPLAY[s.displayCategory] ?? CATEGORY_CAP_GLOBAL;
+        if (cc >= perCategoryCap) continue;
       }
 
       // Source cap in first screen
@@ -178,7 +203,12 @@ export async function getCultureStories(
       aiRelevance: item.aiRelevance,
     }));
   } catch (err) {
-    console.error("[culture] Failed to fetch stories:", err);
+    if (err instanceof Prisma.PrismaClientInitializationError) {
+      console.warn("[culture] Database unavailable; rendering empty culture feed.");
+      return [];
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`[culture] Failed to fetch stories; rendering empty feed. ${message}`);
     return [];
   }
 }

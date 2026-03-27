@@ -23,7 +23,7 @@ const navItems = [
   { href: '/dashboard/campaigns?mode=track', label: 'Track', icon: Gauge },
   { href: '/dashboard/campaigns?mode=manage', label: 'Manage', icon: FolderKanban },
   { href: '/dashboard/campaigns?mode=pay', label: 'Pay', icon: Wallet },
-  { href: '/dashboard/discover', label: 'Discover', icon: Compass },
+  { href: '/dashboard/hive', label: 'Discover', icon: Compass },
 ]
 
 export default function Sidebar() {

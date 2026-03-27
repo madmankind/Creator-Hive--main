@@ -142,12 +142,12 @@ export function LeftRail({ selectedCampaignIds, onCampaignChange, onCampaignTogg
         {navItems.map((item) => {
           const isActive =
             item.mode === "discover"
-              ? pathname === "/dashboard/discover" || pathname.startsWith("/dashboard/discover")
+              ? pathname === "/dashboard/hive" || pathname.startsWith("/dashboard/hive")
               : currentMode === item.mode;
           const Icon = item.icon;
           const href =
             item.mode === "discover"
-              ? "/dashboard/discover"
+              ? "/dashboard/hive"
               : `/dashboard/campaigns?mode=${item.mode}`;
 
           return (

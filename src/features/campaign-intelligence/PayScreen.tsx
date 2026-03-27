@@ -120,6 +120,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
       });
       const data = await res.json();
       if (data.ok) {
+        if (activeCampaign?.id) await fetchLedger(activeCampaign.id);
         setPayModalResult({
           invoiceNumber: data.invoiceNumber,
           method: "bank_transfer",
@@ -153,6 +154,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
       });
       const data = await res.json();
       if (data.ok && data.checkoutUrl) {
+        if (activeCampaign?.id) await fetchLedger(activeCampaign.id);
         window.open(data.checkoutUrl, "_blank");
         setPayModalResult({ invoiceNumber: data.invoiceNumber, method: "stripe", total: 0, stripeUrl: data.checkoutUrl });
         setPayModalStep("done");
@@ -224,6 +226,10 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
     if (portalRole === "CREATOR") setPayFace("talent");
   }, [portalRole]);
 
+  useEffect(() => {
+    setActiveTab(payFace === "client" ? "invoices" : "payouts");
+  }, [payFace]);
+
   const currentCampaignId = selectedCampaignIds[0] || activeCampaign?.id || null;
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -243,20 +249,21 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
   }, []);
 
   // Fetch contracts to get committed amounts
-  const fetchContracts = useCallback(async () => {
+  const fetchContracts = useCallback(async (campaignId?: string | null) => {
     try {
       const res = await fetch("/api/contracts");
       if (!res.ok) return;
       const data = await res.json();
-      const contracts: Array<{ totalAmount?: number | null; currency: string }> = data.contracts ?? [];
-      const sum = contracts.reduce((s, c) => s + (c.totalAmount ?? 0), 0);
+      const contracts: Array<{ campaignId?: string | null; totalAmount?: number | null; currency: string }> = data.contracts ?? [];
+      const scoped = campaignId ? contracts.filter((c) => c.campaignId === campaignId) : contracts;
+      const sum = scoped.reduce((s, c) => s + (c.totalAmount ?? 0), 0);
       setContractTotal(Math.round(sum / 100)); // stored in cents
     } catch { /* silent */ }
   }, []);
 
   useEffect(() => {
     if (currentCampaignId) fetchLedger(currentCampaignId);
-    fetchContracts();
+    fetchContracts(currentCampaignId);
   }, [currentCampaignId, fetchLedger, fetchContracts]);
 
   // Build synthetic payment data from campaign context when API returns empty
@@ -373,22 +380,26 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
 
   const headerRight = (
     <div className="flex items-center gap-2">
-      <button
-        onClick={openPayModal}
-        className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-semibold transition-colors"
-        style={{ background: "rgba(255,255,255,0.95)", color: "#07070B" }}
-      >
-        <CreditCard size={13} />
-        Pay
-      </button>
-      <button
-        onClick={handleGenerateInvoice}
-        className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[11px] transition-colors hover:bg-white/5"
-        style={{ borderColor: "rgba(255,255,255,0.08)", color: feyTokens.colors.text.muted }}
-      >
-        <FileText size={13} />
-        Invoice
-      </button>
+      {payFace === "client" && (
+        <>
+          <button
+            onClick={openPayModal}
+            className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-semibold transition-colors"
+            style={{ background: "rgba(255,255,255,0.95)", color: "#07070B" }}
+          >
+            <CreditCard size={13} />
+            Pay
+          </button>
+          <button
+            onClick={handleGenerateInvoice}
+            className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[11px] transition-colors hover:bg-white/5"
+            style={{ borderColor: "rgba(255,255,255,0.08)", color: feyTokens.colors.text.muted }}
+          >
+            <FileText size={13} />
+            Invoice
+          </button>
+        </>
+      )}
       <button
         onClick={handleExportCSV}
         className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[11px] transition-colors hover:bg-white/5"
@@ -625,9 +636,17 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
 
       {/* Tabs */}
       <div className="flex items-center gap-2 mb-5">
-        <TabBtn active={activeTab === "invoices"} onClick={() => setActiveTab("invoices")}>Invoices</TabBtn>
-        <TabBtn active={activeTab === "payouts"} onClick={() => setActiveTab("payouts")}>Payouts</TabBtn>
-        <TabBtn active={activeTab === "transactions"} onClick={() => setActiveTab("transactions")}>Transactions</TabBtn>
+        {payFace === "client" ? (
+          <>
+            <TabBtn active={activeTab === "invoices"} onClick={() => setActiveTab("invoices")}>Invoices</TabBtn>
+            <TabBtn active={activeTab === "transactions"} onClick={() => setActiveTab("transactions")}>Transactions</TabBtn>
+          </>
+        ) : (
+          <>
+            <TabBtn active={activeTab === "payouts"} onClick={() => setActiveTab("payouts")}>Payouts</TabBtn>
+            <TabBtn active={activeTab === "transactions"} onClick={() => setActiveTab("transactions")}>Transactions</TabBtn>
+          </>
+        )}
       </div>
 
       {/* Table */}

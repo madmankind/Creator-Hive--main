@@ -4,6 +4,15 @@ import { calcInvoiceTotals, generateInvoiceNumber } from "@/lib/invoice";
 import { sendPaymentInstructions } from "@/lib/email";
 import { db } from "@/server/db";
 
+async function resolveIssuerTalentId(user: { id: string; name?: string | null }) {
+  const profile = await db.creatorProfile.findFirst({ where: { userId: user.id } });
+  if (profile?.id) return profile.id;
+  const created = await db.creatorProfile.create({
+    data: { userId: user.id, name: user.name || "Creator Hive", instagram: "" },
+  });
+  return created.id;
+}
+
 export async function POST(req: Request) {
   const authResult = await requireUser({ roles: ["AGENCY", "ADMIN"] });
   if ("error" in authResult) return authResult.error;
@@ -23,7 +32,7 @@ export async function POST(req: Request) {
 
   const count = await db.invoice.count();
   const invoiceNumber = generateInvoiceNumber(count + 1);
-  const { total } = calcInvoiceTotals(Number(amount));
+  const { untaxedAmount, vatAmount, total } = calcInvoiceTotals(Number(amount));
   const totalFils = Math.round(total * 100); // Stripe uses smallest currency unit
 
   const appUrl = process.env.APP_URL || process.env.NEXTAUTH_URL || "https://creatorhive.ae";
@@ -52,13 +61,27 @@ export async function POST(req: Request) {
     customer_email: user.email || undefined,
   });
 
+  const talentId = await resolveIssuerTalentId(user);
+  await db.invoice.create({
+    data: {
+      invoiceNumber,
+      campaignId: campaignId || null,
+      talentId,
+      amount: Math.round(untaxedAmount * 100),
+      currency: "AED",
+      status: "SENT",
+      dueDate: new Date(),
+      notes: description,
+    },
+  });
+
   // Send email with Stripe link
   const email = user.email || body.email;
   if (email) {
     void sendPaymentInstructions(email, {
       invoiceNumber,
-      amount: Number(amount),
-      vatAmount: calcInvoiceTotals(Number(amount)).vatAmount,
+      amount: untaxedAmount,
+      vatAmount,
       total,
       clientName: clientName || user.name || "Client",
       method: "stripe",

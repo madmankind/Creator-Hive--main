@@ -84,6 +84,26 @@ export const EDITORIAL_SOURCES: SourceDef[] = [
     feedUrl: "https://www.tubefilter.com/feed/", siteUrl: "https://www.tubefilter.com",
     category: "creator-economy", tags: ["creator-economy", "platform-update", "social-commerce"], tier: "primary",
   },
+  {
+    slug: "passionfruit", name: "Passionfruit",
+    feedUrl: "https://passionfru.it/feed/", siteUrl: "https://passionfru.it",
+    category: "creator-economy", tags: ["creator-economy", "platform-update", "creators", "social-media"], tier: "primary",
+  },
+  {
+    slug: "social-media-today", name: "Social Media Today",
+    feedUrl: "https://www.socialmediatoday.com/feeds/news/", siteUrl: "https://www.socialmediatoday.com",
+    category: "platform-update", tags: ["platform-update", "social-media", "creator-economy", "marketing"], tier: "primary",
+  },
+  {
+    slug: "creatoriq", name: "CreatorIQ",
+    feedUrl: "https://www.creatoriq.com/blog/rss.xml", siteUrl: "https://www.creatoriq.com",
+    category: "creator-economy", tags: ["creator-economy", "influencer-marketing", "measurement", "brands"], tier: "brief",
+  },
+  {
+    slug: "upfluence", name: "Upfluence",
+    feedUrl: "https://www.upfluence.com/feed", siteUrl: "https://www.upfluence.com",
+    category: "creator-economy", tags: ["creator-economy", "influencer-marketing", "affiliate", "social-commerce"], tier: "brief",
+  },
 
   // ── SOCIAL COMMERCE / RETAIL ──
   {

@@ -136,7 +136,14 @@ function BottomDockInner() {
 
         <button
           type="button"
-          onClick={() => router.push("/dashboard/hive")}
+          onClick={() => {
+            if (pathname.startsWith("/dashboard/hive")) {
+              router.replace("/dashboard/hive");
+              router.refresh();
+              return;
+            }
+            router.push("/dashboard/hive");
+          }}
           className="flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center rounded-full transition-all duration-200"
           style={{
             background: isHiveActive ? "rgba(251,176,36,0.16)" : isHiveSurface ? "rgba(8,8,12,0.48)" : "rgba(12,12,18,0.88)",

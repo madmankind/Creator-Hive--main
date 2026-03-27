@@ -133,7 +133,12 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
         await fetch(`/api/contracts`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ campaignId: card.campaignId, creatorId: card.talentId }),
+          body: JSON.stringify({
+            campaignId: card.campaignId,
+            creatorProfileId: card.talentId,
+            title: `${activeCampaign?.name ?? "Campaign"} - Creator Contract`,
+            content: "Creator Hive standard engagement contract.",
+          }),
         });
       } catch { /* no-op – optimistic UI */ }
       setHighlightedCardId(card.id);

@@ -21,7 +21,7 @@ function DesktopSidebarInner() {
       { id: "track", label: "Track", icon: BarChart3, route: "/dashboard/campaigns?mode=track" },
       { id: "manage", label: "Manage", icon: Users, route: "/dashboard/campaigns?mode=manage" },
       { id: "pay", label: "Pay", icon: CreditCard, route: "/dashboard/campaigns?mode=pay" },
-      { id: "discover", label: "Hive", icon: Hexagon, route: "/dashboard/campaigns?mode=discover" },
+      { id: "discover", label: "Hive", icon: Hexagon, route: "/dashboard/hive" },
     ] as const;
   }, [role]);
 
@@ -30,7 +30,7 @@ function DesktopSidebarInner() {
       if (role === "CREATOR") return pathname === "/dashboard/creator";
       return pathname === "/";
     }
-    if (id === "discover") return pathname === "/dashboard/campaigns" && currentMode === "discover";
+    if (id === "discover") return pathname.startsWith("/dashboard/hive");
     return pathname === "/dashboard/campaigns" && currentMode === id;
   };
 
@@ -86,7 +86,14 @@ function DesktopSidebarInner() {
             <button
               key={item.id}
               type="button"
-              onClick={() => router.push(item.route)}
+              onClick={() => {
+                if (item.id === "discover" && pathname.startsWith("/dashboard/hive")) {
+                  router.replace("/dashboard/hive");
+                  router.refresh();
+                  return;
+                }
+                router.push(item.route);
+              }}
               title={item.label}
               className="flex flex-col items-center justify-center rounded-xl transition-all duration-150 group relative"
               style={{
