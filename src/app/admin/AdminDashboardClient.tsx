@@ -187,8 +187,11 @@ function BookingsTab() {
     try {
       const url = statusFilter === "all" ? "/api/admin/bookings" : `/api/admin/bookings?status=${statusFilter}`;
       const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to load bookings");
       const data = await res.json();
       setBookings(data.bookings ?? []);
+    } catch {
+      setBookings([]);
     } finally {
       setLoading(false);
     }
@@ -199,12 +202,16 @@ function BookingsTab() {
   async function updateStatus(id: string, status: string) {
     setActing(id);
     try {
-      await fetch(`/api/admin/bookings/${id}`, {
+      const res = await fetch(`/api/admin/bookings/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
+      if (!res.ok) throw new Error("Failed to update booking status");
       setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status } : b));
+    } catch {
+      // eslint-disable-next-line no-alert
+      window.alert("Could not update booking status.");
     } finally {
       setActing(null);
     }
@@ -219,9 +226,12 @@ function BookingsTab() {
         body: JSON.stringify({ action: "convert" }),
       });
       if (res.ok) {
-        setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status: "APPROVED" } : b));
+        setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status: "CONFIRMED" } : b));
         // eslint-disable-next-line no-alert
         window.alert("Campaign created. Check the Campaigns tab.");
+      } else {
+        // eslint-disable-next-line no-alert
+        window.alert("Could not convert booking. Please try again.");
       }
     } finally {
       setActing(null);
@@ -362,8 +372,11 @@ function CampaignsTab() {
     try {
       const url = statusFilter === "all" ? "/api/admin/campaigns" : `/api/admin/campaigns?status=${statusFilter}`;
       const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to load campaigns");
       const data = await res.json();
       setCampaigns(data.campaigns ?? []);
+    } catch {
+      setCampaigns([]);
     } finally {
       setLoading(false);
     }
@@ -374,12 +387,16 @@ function CampaignsTab() {
   async function updateCampaignStatus(id: string, status: string) {
     setActing(id);
     try {
-      await fetch(`/api/admin/campaigns/${id}`, {
+      const res = await fetch(`/api/admin/campaigns/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
+      if (!res.ok) throw new Error("Failed to update campaign");
       setCampaigns((prev) => prev.map((c) => c.id === id ? { ...c, status } : c));
+    } catch {
+      // eslint-disable-next-line no-alert
+      window.alert("Could not update campaign status.");
     } finally {
       setActing(null);
     }
@@ -422,7 +439,7 @@ function CampaignsTab() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 ml-4 flex-shrink-0">
-                  {c.budget && <span className="text-xs text-white/40">${(c.budget / 100).toLocaleString()}</span>}
+                  {c.budget && <span className="text-xs text-white/40">AED {c.budget.toLocaleString()}</span>}
                   {expanded === c.id ? <ChevronUp size={14} className="text-white/30" /> : <ChevronDown size={14} className="text-white/30" />}
                 </div>
               </button>
@@ -457,7 +474,7 @@ function CampaignsTab() {
                               <span className="text-sm text-white/75">{t.talent.displayName ?? t.talent.name}</span>
                             </div>
                             <div className="flex items-center gap-3">
-                              {t.rate && <span className="text-xs text-white/40">${(t.rate / 100).toLocaleString()}</span>}
+                              {t.rate && <span className="text-xs text-white/40">AED {t.rate.toLocaleString()}</span>}
                               <StatusBadge status={t.status} map={CAMPAIGN_STATUS_COLORS} />
                             </div>
                           </div>
@@ -606,7 +623,7 @@ function UsersTab() {
   const load = () => {
     setLoading(true);
     fetch("/api/admin/users")
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : { users: [] }))
       .then((d) => setUsers(d.users ?? []))
       .finally(() => setLoading(false));
   };
@@ -667,6 +684,28 @@ function UsersTab() {
                       <span className="text-emerald-300/70 capitalize">{u.creatorProfile.talentStatus}</span>
                     ) : "—"}
                   </td>
+                  <td className="px-4 py-3 text-xs text-white/40">
+                    {u.userAgreements[0] ? (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={u.userAgreements[0].status} map={{ SENT: "bg-blue-500/20 text-blue-300", SIGNED: "bg-emerald-500/20 text-emerald-300", GENERATED: "bg-purple-500/20 text-purple-300", DRAFT: "bg-white/10 text-white/40" }} />
+                          <span className="text-[10px] text-white/25">{u.userAgreements[0].agreementRef}</span>
+                        </div>
+                        {u.userAgreements[0].storageUrl && (
+                          <a
+                            href={u.userAgreements[0].storageUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[10px] text-blue-300/70 hover:text-blue-200"
+                          >
+                            View doc <ExternalLink size={9} />
+                          </a>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-white/25">No agreement</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-xs text-white/30">{new Date(u.createdAt).toLocaleDateString("en-GB")}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
@@ -677,6 +716,13 @@ function UsersTab() {
                         <a href={`/creators/${u.creatorProfile.id}`} target="_blank" rel="noopener noreferrer"
                           className="px-2 py-1 rounded-md text-xs bg-white/[0.05] text-white/40 hover:bg-white/10 transition-colors">Profile</a>
                       )}
+                      <button
+                        onClick={() => regenerate(u.id)}
+                        disabled={regenUserId === u.id}
+                        className="px-2 py-1 rounded-md text-xs bg-purple-500/15 text-purple-300 hover:bg-purple-500/25 transition-colors disabled:opacity-50"
+                      >
+                        {regenUserId === u.id ? "Generating..." : "Regenerate agreement"}
+                      </button>
                     </div>
                   </td>
                 </tr>
