@@ -18,6 +18,18 @@ export const CREATOR_HIVE_ARCHETYPE_LABELS = [
 export type CreatorHiveArchetypeLabel = (typeof CREATOR_HIVE_ARCHETYPE_LABELS)[number];
 
 /** Short reward copy for onboarding UI — keyed by exact canonical label. */
+/** Large emoji / symbol for post-signup celebration (below YOU'RE IN). */
+export const ARCHETYPE_CELEBRATION_ICON: Record<CreatorHiveArchetypeLabel, string> = {
+  "The Pathfinder": "🧭",
+  "The Translator": "🗣️",
+  "The Architect": "🏛️",
+  "The Alchemist": "⚗️",
+  "The Maverick": "⚡",
+  "The Conductor": "🎼",
+  "The Auteur": "🎬",
+  "The Amplifier": "📡",
+};
+
 export const ARCHETYPE_PUBLIC_BLURB: Record<CreatorHiveArchetypeLabel, string> = {
   "The Pathfinder":
     "You lead with curiosity and map uncharted briefs — brands lean on you when the path isn’t obvious yet.",

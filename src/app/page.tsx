@@ -886,7 +886,7 @@ function HomePageContent() {
                     }}
                   />
 
-                  <div className="pt-1 flex justify-center">
+                  <div className="pt-1 w-full flex flex-col items-center">
                     <button
                       type="button"
                       onClick={() => {
@@ -897,19 +897,16 @@ function HomePageContent() {
                         }
                       }}
                       className={cn(
-                        "group flex items-center gap-2 px-4 py-2.5 rounded-full ring-1 transition-all duration-200 text-[12px]",
+                        "group flex items-center justify-center gap-2 px-4 py-2.5 rounded-full ring-1 transition-all duration-200 text-[12px] text-center max-w-full",
                         showPackages
                           ? "bg-white/[0.08] ring-white/[0.18] text-white/75"
                           : "bg-white/[0.04] ring-white/[0.08] text-white/35 hover:bg-white/[0.07] hover:text-white/60 hover:ring-white/[0.14]"
                       )}
                     >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>View pre-vetted, brand-ready teams to deploy</span>
-                      <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", showPackages && "rotate-180")} />
+                      <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                      <span className="text-center leading-snug">View pre-vetted, brand-ready teams to deploy</span>
+                      <ChevronDown className={cn("w-3.5 h-3.5 shrink-0 transition-transform duration-200", showPackages && "rotate-180")} />
                     </button>
-                    <p className="text-center text-[11px] text-white/28 mt-2 max-w-md mx-auto leading-relaxed">
-                      Package prices below are in AED; the package panel includes a rough USD guide for context.
-                    </p>
                   </div>
                 </motion.div>
               ) : (

@@ -12,6 +12,7 @@ import {
   CLIENT_CAMPAIGN_STEPS,
   getClientBranchSteps,
   mapClientIntakeToDiscovery,
+  type ClientBranchStep,
 } from "@/lib/clientIntakeBranch";
 
 import {
@@ -21,9 +22,12 @@ import {
 } from "@/lib/heroTalentIntake";
 import { HeroTalentIntakeBar } from "@/components/talent/HeroTalentIntakeBar";
 import {
+  ARCHETYPE_CELEBRATION_ICON,
   ARCHETYPE_PUBLIC_BLURB,
+  normalizePrismArchetypeLabel,
   type CreatorHiveArchetypeLabel,
 } from "@/lib/talent-onboarding/prismPlaybook";
+import { RoleFuzzyMultiPicker } from "@/components/onboarding/RoleFuzzyMultiPicker";
 
 interface HeroBarProps {
   mode: "client" | "talent";
@@ -146,6 +150,7 @@ function IntakeBar({
   const [bizType, setBizType] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [inputVal, setInputVal] = useState("");
+  const [rolePicks, setRolePicks] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const briefFileRef = useRef<HTMLInputElement>(null);
 
@@ -154,7 +159,7 @@ function IntakeBar({
   const { step, promptText, chips, totalSteps, stepIndex } = useMemo(() => {
     if (phase.k === "biz") {
       return {
-        step: null as null | { id: string; optional?: boolean },
+        step: null as ClientBranchStep | null,
         promptText: "What type of business are you?",
         chips: BIZ_TYPES,
         totalSteps: 1 + 0 + CLIENT_CAMPAIGN_STEPS.length,
@@ -164,7 +169,7 @@ function IntakeBar({
     if (phase.k === "branch") {
       const b = branchSteps[phase.i];
       return {
-        step: b,
+        step: b ?? null,
         promptText: b?.prompt ?? "",
         chips: b?.chips ?? [],
         totalSteps: 1 + branchSteps.length + CLIENT_CAMPAIGN_STEPS.length,
@@ -173,7 +178,7 @@ function IntakeBar({
     }
     const c = CLIENT_CAMPAIGN_STEPS[phase.i];
     return {
-      step: c,
+      step: c ?? null,
       promptText: c?.prompt ?? "",
       chips: c?.chips ?? [],
       totalSteps: 1 + branchSteps.length + CLIENT_CAMPAIGN_STEPS.length,
@@ -186,6 +191,23 @@ function IntakeBar({
   useEffect(() => {
     if (promptDone) setTimeout(() => inputRef.current?.focus(), 80);
   }, [promptDone, phase]);
+
+  useEffect(() => {
+    if (phase.k !== "camp") return;
+    const c = CLIENT_CAMPAIGN_STEPS[phase.i];
+    if (c?.id !== "roles" || !c.rolePickerMulti) return;
+    const raw = answers.roles?.trim();
+    if (!raw) {
+      setRolePicks([]);
+      return;
+    }
+    try {
+      const j = JSON.parse(raw) as unknown;
+      setRolePicks(Array.isArray(j) ? j.map((x) => String(x).trim()).filter(Boolean) : []);
+    } catch {
+      setRolePicks(raw ? [raw] : []);
+    }
+  }, [phase, answers.roles]);
 
   const progress =
     totalSteps > 0 ? Math.min(1, (stepIndex + (promptDone ? 1 : 0.35)) / totalSteps) : 0.05;
@@ -250,9 +272,21 @@ function IntakeBar({
     if (t) advance(t);
   };
 
-  const showInputRow = promptDone && phase.k !== "biz";
+  const isRolePickerStep = Boolean(step?.rolePickerMulti);
+  const showInputRow = promptDone && phase.k !== "biz" && !isRolePickerStep;
 
   const canBack = phase.k !== "biz";
+
+  const commitRolePicks = useCallback(() => {
+    if (phase.k !== "camp") return;
+    const c = CLIENT_CAMPAIGN_STEPS[phase.i];
+    if (c?.id !== "roles" || !c.rolePickerMulti || rolePicks.length < 1) return;
+    const next = { ...answers, roles: JSON.stringify(rolePicks) };
+    setAnswers(next);
+    setInputVal("");
+    if (phase.i < CLIENT_CAMPAIGN_STEPS.length - 1) setPhase({ k: "camp", i: phase.i + 1 });
+    else onComplete(next, bizType);
+  }, [phase, answers, rolePicks, bizType, onComplete]);
 
   return (
     <div
@@ -311,6 +345,13 @@ function IntakeBar({
                 )}
               </p>
             </div>
+            {promptDone && phase.k !== "biz" ? (
+              <p className="text-[10px] text-white/30 mt-1.5 pl-[22px]">
+                {isRolePickerStep
+                  ? "Examples below — search the full role list or add custom titles."
+                  : "Examples below — type your own answer anytime."}
+              </p>
+            ) : null}
           </motion.div>
         </AnimatePresence>
 
@@ -340,8 +381,31 @@ function IntakeBar({
           )}
         </AnimatePresence>
 
+        {promptDone && isRolePickerStep && step?.rolePickerMulti ? (
+          <div className="space-y-3 pl-1">
+            <RoleFuzzyMultiPicker
+              value={rolePicks}
+              onChange={setRolePicks}
+              max={step.rolePickerMulti.max}
+              quickChips={chips}
+              placeholder="Search roles or type a custom need…"
+            />
+            <button
+              type="button"
+              onClick={commitRolePicks}
+              disabled={rolePicks.length < 1}
+              className={cn(
+                "rounded-full px-4 py-2 text-[12px] font-semibold transition",
+                rolePicks.length < 1 ? "bg-white/10 text-white/25 cursor-not-allowed" : "bg-white text-black hover:bg-white/90",
+              )}
+            >
+              Continue{rolePicks.length > 0 ? ` (${rolePicks.length} roles)` : ""}
+            </button>
+          </div>
+        ) : null}
+
         <AnimatePresence>
-          {promptDone && chips.length > 0 && (
+          {promptDone && chips.length > 0 && !isRolePickerStep && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="flex flex-wrap gap-1.5">
               {chips.map((chip) => (
                 <button
@@ -638,12 +702,6 @@ function normalizeHttpUrl(raw: string): string | undefined {
   }
 }
 
-function archetypeWithArticle(label: string): string {
-  const short = label.replace(/^The\s+/i, "").trim() || label;
-  const article = /^[aeiou]/i.test(short) ? "an" : "a";
-  return `${article} ${short}`;
-}
-
 function buildCoachTranscript(
   welcomeText: string,
   steps: typeof TALENT_COACH_SEQUENTIAL_STEPS,
@@ -687,8 +745,8 @@ function TalentCoachChat({
   onBack: () => void;
 }) {
   const steps = TALENT_COACH_SEQUENTIAL_STEPS;
-  const totalSteps = 1 + steps.length;
-  /** -1 welcome, 0..steps.length-1 questions, steps.length = ready to save */
+  const totalSteps = Math.max(1, 1 + steps.length);
+  /** -1 welcome, 0..steps.length-1 questions; if no steps, phase 1 = ready to save */
   const [phase, setPhase] = useState(-1);
   const [welcomeText, setWelcomeText] = useState("");
   const [welcomeReady, setWelcomeReady] = useState(false);
@@ -706,13 +764,13 @@ function TalentCoachChat({
   } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const flowComplete = phase >= steps.length;
+  const flowComplete = steps.length === 0 ? phase >= 1 : phase >= steps.length;
   const currentStep = phase >= 0 && phase < steps.length ? steps[phase] : null;
 
   useEffect(() => {
     const fn = draft.firstName?.trim() || userName.split(/\s+/)[0] || "there";
     setWelcomeText(
-      `Hi ${fn}, welcome to Creator Hive! Few more questions to assess best fit and your working persona.`,
+      `Hi ${fn}, welcome to Creator Hive! Tap Continue to save your profile — we'll lock in your PRISM fit from the answers you already shared.`,
     );
     setWelcomeReady(true);
   }, [draft.firstName, userName]);
@@ -730,7 +788,9 @@ function TalentCoachChat({
         ? welcomeText
         : "Welcome — loading…"
       : flowComplete
-        ? "All set — save your profile when you're ready."
+        ? steps.length === 0
+          ? ""
+          : "All set — save your profile when you're ready."
         : (currentStep?.prompt ?? "");
 
   const typeSpeed = flowComplete ? 0 : 20;
@@ -743,7 +803,15 @@ function TalentCoachChat({
   }, [promptDone, phase, steps.length]);
 
   const progressFrac =
-    phase === -1 ? 1 / totalSteps : flowComplete ? 1 : (1 + phase + 1) / totalSteps;
+    steps.length === 0
+      ? phase >= 1
+        ? 1
+        : 0.5
+      : phase === -1
+        ? 1 / totalSteps
+        : flowComplete
+          ? 1
+          : (1 + phase + 1) / totalSteps;
 
   const linkCandidate = inputVal.trim();
   const hasPortfolioLink = Boolean(normalizeHttpUrl(linkCandidate));
@@ -760,7 +828,7 @@ function TalentCoachChat({
           ];
 
   const isPortfolioStep = currentStep?.inputKind === "portfolio";
-  const showTextLine = phase >= 0 && phase < steps.length;
+  const showTextLine = steps.length > 0 && phase >= 0 && phase < steps.length;
 
   const goNext = useCallback(() => {
     setPhase((p) => p + 1);
@@ -774,7 +842,7 @@ function TalentCoachChat({
 
       if (phase === -1) {
         if (raw === "Continue" && welcomeReady) {
-          setPhase(0);
+          setPhase(steps.length === 0 ? 1 : 0);
           setInputVal("");
         }
         return;
@@ -960,7 +1028,13 @@ function TalentCoachChat({
   }, [draft, userName, welcomeText, steps, stepAnswers]);
 
   if (celebration) {
-    const line = `Congrats! Your Hive archetype is ${archetypeWithArticle(celebration.primary)}. You prefer to work in ${celebration.prefLine}.`;
+    const archKey = normalizePrismArchetypeLabel(celebration.primary);
+    const iconChar =
+      archKey && archKey in ARCHETYPE_CELEBRATION_ICON
+        ? ARCHETYPE_CELEBRATION_ICON[archKey]
+        : "✦";
+    const shortName = celebration.primary.replace(/^The\s+/i, "").trim() || celebration.primary;
+    const line = `Congrats! Your Hive archetype as per our PRISM intelligence is "${shortName}". You prefer to work in ${celebration.prefLine}.`;
     return (
       <div className="w-full flex flex-col">
         <div
@@ -973,11 +1047,26 @@ function TalentCoachChat({
         >
           <div className="flex items-start gap-2">
             <Sparkles size={16} className="text-purple-400/90 mt-0.5 shrink-0" />
-            <div className="space-y-2">
+            <div className="space-y-2 flex-1 min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-purple-200/50">
                 You&apos;re in
               </p>
-              <p className="text-[15px] font-semibold text-white/92 leading-relaxed">{line}</p>
+              <div
+                className="text-[44px] leading-none py-1 select-none"
+                style={{
+                  filter:
+                    "drop-shadow(0 0 20px rgba(167, 139, 250, 0.9)) drop-shadow(0 0 10px rgba(124, 92, 255, 0.55))",
+                }}
+                aria-hidden
+              >
+                {iconChar}
+              </div>
+              <p className="text-[15px] font-semibold text-white/92 leading-relaxed">
+                Congrats! Your Hive archetype as per our PRISM intelligence is &quot;{shortName}&quot;.
+              </p>
+              <p className="text-[13px] text-white/55 leading-relaxed">
+                You prefer to work in {celebration.prefLine}.
+              </p>
               {celebration.secondary ? (
                 <p className="text-[12px] text-white/45">Secondary pattern: {celebration.secondary}</p>
               ) : null}

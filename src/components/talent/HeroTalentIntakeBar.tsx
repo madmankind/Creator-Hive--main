@@ -14,6 +14,7 @@ import {
   TALENT_T2_FIELDS,
   type TalentIntakeQuestion,
 } from "@/lib/heroTalentIntake";
+import { RoleFuzzyMultiPicker } from "@/components/onboarding/RoleFuzzyMultiPicker";
 import { ArrowLeft, ArrowUp, Sparkles, MapPin, Briefcase, Clock, MessageCircle } from "lucide-react";
 
 export type TalentIntakeCompleteMeta =
@@ -64,7 +65,7 @@ function useTypewriter(text: string, speed = 20) {
 
 function StepIcon({ qid }: { qid: string }) {
   if (qid === "location" || qid.includes("location")) return <MapPin size={12} className="text-purple-400/50 shrink-0 mt-1" />;
-  if (qid.includes("Role") || qid === "primaryCraft") return <Briefcase size={12} className="text-purple-400/50 shrink-0 mt-1" />;
+  if (qid.includes("Role") || qid === "topRoles") return <Briefcase size={12} className="text-purple-400/50 shrink-0 mt-1" />;
   if (qid.includes("pace") || qid === "yearsExperienceBand") return <Clock size={12} className="text-purple-400/50 shrink-0 mt-1" />;
   if (qid.includes("feedback") || qid.includes("Pick")) return <MessageCircle size={12} className="text-purple-400/50 shrink-0 mt-1" />;
   return null;
@@ -80,6 +81,7 @@ export function HeroTalentIntakeBar({
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [inputVal, setInputVal] = useState("");
   const [rankedIndustries, setRankedIndustries] = useState<string[]>([]);
+  const [rankedTopRoles, setRankedTopRoles] = useState<string[]>([]);
   const [rosterBusy, setRosterBusy] = useState(false);
   const [rosterErr, setRosterErr] = useState<string | null>(null);
   const rosterRef = useRef<HTMLInputElement>(null);
@@ -101,14 +103,15 @@ export function HeroTalentIntakeBar({
   }, [flow]);
 
   const promptText = currentQ?.prompt ?? (flow.m === "rep_roster" ? "Upload your talent roster (CSV or XLSX). We'll save drafts you can complete later." : "");
-  const { out: typedPrompt, done: promptDone } = useTypewriter(promptText.replace(/\n\n/g, " — "), 18);
+  const { out: typedPrompt, done: promptDone } = useTypewriter(promptText, 18);
 
   useEffect(() => {
-    if (promptDone && !currentQ?.industryRank) setTimeout(() => inputRef.current?.focus(), 80);
-  }, [promptDone, currentQ?.id, currentQ?.industryRank]);
+    if (promptDone && !currentQ?.industryRank && !currentQ?.roleRank) setTimeout(() => inputRef.current?.focus(), 80);
+  }, [promptDone, currentQ?.id, currentQ?.industryRank, currentQ?.roleRank]);
 
   useEffect(() => {
     if (currentQ?.id === "rankedIndustries") setRankedIndustries([]);
+    if (currentQ?.id === "topRoles") setRankedTopRoles([]);
   }, [currentQ?.id]);
 
   const estTotal = 3 + 1 + TALENT_INDIVIDUAL_TAIL.length;
@@ -261,11 +264,7 @@ export function HeroTalentIntakeBar({
       }
 
       if (flow.m === "ind" && currentQ) {
-        if (currentQ.id === "match_header") {
-          setInputVal("");
-          setFlow({ m: "ind", i: flow.i + 1 });
-          return;
-        }
+        if (currentQ.roleRank) return;
         if (currentQ.industryRank) return;
         if (currentQ.id === "instagram" && t.length < 2 && !isSkip) return;
         const next = { ...answers, [currentQ.id]: t };
@@ -284,6 +283,14 @@ export function HeroTalentIntakeBar({
     setAnswers(next);
     setFlow({ m: "ind", i: flow.i + 1 });
   }, [flow, currentQ, answers, rankedIndustries]);
+
+  const confirmTopRoles = useCallback(() => {
+    if (flow.m !== "ind" || !currentQ?.roleRank) return;
+    if (rankedTopRoles.length < 1) return;
+    const next = { ...answers, topRoles: JSON.stringify(rankedTopRoles) };
+    setAnswers(next);
+    setFlow({ m: "ind", i: flow.i + 1 });
+  }, [flow, currentQ, answers, rankedTopRoles]);
 
   const toggleIndustry = useCallback(
     (chip: string) => {
@@ -330,12 +337,14 @@ export function HeroTalentIntakeBar({
     [answers, creatorType, onComplete],
   );
 
-  const chips: string[] = currentQ && !currentQ.industryRank ? [...currentQ.chips] : [];
+  const chips: string[] =
+    currentQ && !currentQ.industryRank && !currentQ.roleRank ? [...currentQ.chips] : [];
   const showInput =
     promptDone &&
     flow.m !== "rep_roster" &&
     currentQ &&
     !currentQ.industryRank &&
+    !currentQ.roleRank &&
     (chips.length === 0 || currentQ.optional);
 
   const canBack = !(flow.m === "name" && flow.i === 0);
@@ -389,7 +398,7 @@ export function HeroTalentIntakeBar({
               <Sparkles size={12} className="text-purple-400/70 mt-1 shrink-0" />
               {currentQ ? <StepIcon qid={currentQ.id} /> : null}
               <p
-                className="text-[15px] font-semibold leading-snug whitespace-pre-wrap"
+                className="text-[15px] font-semibold leading-snug whitespace-pre-wrap text-left"
                 style={{
                   color: "rgba(255,255,255,0.92)",
                   textShadow: "0 0 20px rgba(167,139,250,0.55)",
@@ -402,6 +411,13 @@ export function HeroTalentIntakeBar({
                 )}
               </p>
             </div>
+            {promptDone && currentQ && flow.m === "ind" ? (
+              <p className="text-[10px] text-white/30 mt-2 pl-[22px]">
+                {currentQ.chips.length > 0
+                  ? "Examples below — type your own answer or mix with chips."
+                  : "Type your answer — be specific."}
+              </p>
+            ) : null}
           </motion.div>
         </AnimatePresence>
 
@@ -421,6 +437,27 @@ export function HeroTalentIntakeBar({
               {rosterBusy ? "Uploading…" : "Choose roster file"}
             </button>
             {rosterErr ? <p className="text-[11px] text-rose-300/90">{rosterErr}</p> : null}
+          </div>
+        ) : null}
+
+        {promptDone && currentQ?.roleRank ? (
+          <div className="space-y-2">
+            <RoleFuzzyMultiPicker
+              value={rankedTopRoles}
+              onChange={setRankedTopRoles}
+              max={currentQ.roleRank.max}
+              ordered
+              quickChips={currentQ.chips as string[]}
+              placeholder="Search roles or add your own…"
+            />
+            <button
+              type="button"
+              onClick={confirmTopRoles}
+              disabled={rankedTopRoles.length < 1}
+              className="rounded-full px-4 py-1.5 text-[11px] font-semibold bg-white text-black hover:bg-white/90 disabled:opacity-35 disabled:cursor-not-allowed"
+            >
+              Continue{rankedTopRoles.length > 0 ? ` (${rankedTopRoles.length}/${currentQ.roleRank.max})` : ""}
+            </button>
           </div>
         ) : null}
 
@@ -483,7 +520,7 @@ export function HeroTalentIntakeBar({
           </div>
         ) : null}
 
-        {promptDone && chips.length > 0 && !currentQ?.industryRank ? (
+        {promptDone && chips.length > 0 && !currentQ?.industryRank && !currentQ?.roleRank ? (
           <div className="flex flex-wrap gap-1.5">
             {chips.map((chip) => (
               <button

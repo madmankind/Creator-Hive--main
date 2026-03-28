@@ -6,6 +6,8 @@ export type ClientBranchStep = {
   chips: string[];
   /** “Skip” chip stores empty string */
   optional?: boolean;
+  /** Fuzzy multi-select role picker (full catalog + custom); stored as JSON string[] in answers */
+  rolePickerMulti?: { max: number };
 };
 
 export const CLIENT_CAMPAIGN_STEPS: ClientBranchStep[] = [
@@ -22,12 +24,21 @@ export const CLIENT_CAMPAIGN_STEPS: ClientBranchStep[] = [
   {
     id: "budget",
     prompt: "What's your monthly budget range?",
-    chips: ["Under AED 15K", "AED 15–25K", "AED 25–45K", "AED 45K+"],
+    chips: ["Under ~$5K/mo", "~$5–8K/mo", "~$8–12K/mo", "~$12K+/mo"],
   },
   {
     id: "roles",
     prompt: "What type of talent do you need?",
-    chips: ["Videographer", "Content Creator", "Social Media Manager", "Photographer", "Full team"],
+    chips: [
+      "Videographer",
+      "Content Creator",
+      "Social Media Manager",
+      "Photographer",
+      "Editor",
+      "Strategist",
+      "UGC Creator",
+    ],
+    rolePickerMulti: { max: 12 },
   },
 ];
 
@@ -154,15 +165,25 @@ export function mapClientIntakeToDiscovery(
     if (answers.media_handle?.trim()) noteParts.push(`Main handle: ${answers.media_handle.trim()}`);
   }
 
+  let requestedRoles: string[] = [];
   const rolesRaw = answers.roles?.trim() ?? "";
-  const requestedRoles = rolesRaw ? [rolesRaw] : [];
+  if (rolesRaw) {
+    try {
+      const parsed = JSON.parse(rolesRaw) as unknown;
+      if (Array.isArray(parsed)) requestedRoles = parsed.map((x) => String(x).trim()).filter(Boolean);
+      else requestedRoles = [rolesRaw];
+    } catch {
+      requestedRoles = rolesRaw.split(/[,|]/).map((s) => s.trim()).filter(Boolean);
+      if (requestedRoles.length === 0) requestedRoles = [rolesRaw];
+    }
+  }
 
   const profileFlat: Record<string, string> = {
     businessType: bizType,
     objective: answers.objective ?? "",
     timeline: answers.timeline ?? "",
     budget: answers.budget ?? "",
-    roles: rolesRaw,
+    roles: requestedRoles.join(", "),
     company: companyName ?? "",
     industry: industry ?? "",
     ...answers,

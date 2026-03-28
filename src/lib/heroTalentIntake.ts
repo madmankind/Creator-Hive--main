@@ -73,15 +73,19 @@ export type TalentIntakeQuestion = {
   rolePicker?: true;
   /** Rank-ordered industry picks (max 5) — special UI in TalentIntakeBar */
   industryRank?: { max: number };
+  /** Rank-ordered role picks — fuzzy catalog + custom in HeroTalentIntakeBar */
+  roleRank?: { max: number };
   optional?: boolean;
 };
 
 /** After creator-type + rep branching — individual / agency-self creators. */
 export const TALENT_INDIVIDUAL_TAIL: readonly TalentIntakeQuestion[] = [
   {
-    id: "primaryCraft",
-    prompt: "What do you do most?",
+    id: "topRoles",
+    prompt:
+      "Pick your Top 3 roles in order of experience and preference (1st = strongest — search the catalog or add your own).",
     chips: [...CRAFT_CHIPS],
+    roleRank: { max: 3 },
   },
   {
     id: "location",
@@ -108,11 +112,6 @@ export const TALENT_INDIVIDUAL_TAIL: readonly TalentIntakeQuestion[] = [
     prompt: "Add your portfolio or showreel (link).",
     chips: ["Skip — add later"],
     optional: true,
-  },
-  {
-    id: "differentiator",
-    prompt: "In one line, what makes you different?",
-    chips: [] as string[],
   },
   {
     id: "yearsExperienceBand",
@@ -181,13 +180,21 @@ export const TALENT_INDIVIDUAL_TAIL: readonly TalentIntakeQuestion[] = [
     chips: ["freelance", "project-based", "part-time", "full-time"],
   },
   {
-    id: "match_header",
-    prompt: "Improve your match quality\n\nA few more answers help us match you to better-fit briefs.",
-    chips: ["Continue"],
+    id: "brandMissionsEnergize",
+    prompt:
+      "Improve your match quality — a few more answers help us place you on better-fit briefs.\n\nWhat type of brand missions or categories energize you?",
+    chips: [
+      "emerging brands",
+      "established brands",
+      "luxury brands",
+      "founder-led brands",
+      "media / publisher brands",
+      "agencies",
+    ],
   },
   {
-    id: "brandFitPick",
-    prompt: "What kind of brands suit you best?",
+    id: "brandMissionsDrain",
+    prompt: "What kind of brand missions or categories tend to drain you?",
     chips: [
       "emerging brands",
       "established brands",
@@ -291,6 +298,17 @@ export const TALENT_T2_FIELDS: readonly TalentIntakeQuestion[] = [
 /** @deprecated — use TALENT_INDIVIDUAL_TAIL + rep flows in HeroBar */
 export const TALENT_INTAKE_QUESTIONS: readonly TalentIntakeQuestion[] = TALENT_INDIVIDUAL_TAIL;
 
+function parseRankedRoles(raw: string | undefined): string[] {
+  if (!raw?.trim()) return [];
+  try {
+    const v = JSON.parse(raw) as unknown;
+    if (!Array.isArray(v)) return [];
+    return v.map((x) => String(x).trim()).filter(Boolean).slice(0, 3);
+  } catch {
+    return [];
+  }
+}
+
 function parseRankedIndustries(raw: string | undefined): string[] {
   if (!raw?.trim()) return [];
   try {
@@ -313,7 +331,8 @@ export function buildTalentDraftDigest(draft: Record<string, string>): string {
 
 /** Map hero draft → creator profile PUT payload helpers */
 export function draftToProfileBody(draft: Record<string, string>, userName: string) {
-  const craft = draft.primaryCraft?.trim() || "Creator";
+  const rolesRanked = parseRankedRoles(draft.topRoles);
+  const craft = rolesRanked[0]?.trim() || "Creator";
   const ig = draft.instagram?.replace(/^@+/, "").trim() ?? "";
   const loc = draft.location?.trim() || "UAE";
   const first = draft.firstName?.trim() ?? "";
@@ -324,21 +343,25 @@ export function draftToProfileBody(draft: Record<string, string>, userName: stri
     full ||
     (userName.trim().length >= 2 ? userName.trim() : craft);
   const portfolio = draft.portfolioShowreel?.trim() ?? "";
-  const diff = draft.differentiator?.trim() ?? "";
   const ranked = parseRankedIndustries(draft.rankedIndustries);
-  const brandFit = draft.brandFitPick?.trim();
+  const energize = draft.brandMissionsEnergize?.trim();
+  const drain = draft.brandMissionsDrain?.trim();
   const clientVal = draft.clientValuePick?.trim();
   const teamSetup = draft.teamSetupPick?.trim();
 
-  const skills = [craft, "Content Creation"]
+  const skills = [...rolesRanked, "Content Creation"]
     .map((s) => s.trim())
     .filter(Boolean)
     .filter((v, i, a) => a.indexOf(v) === i)
     .slice(0, 8);
 
-  const bioParts = [craft, diff, portfolio ? `Portfolio: ${portfolio}.` : "", draft.wantMore ? `Want: ${draft.wantMore}.` : ""].filter(
-    Boolean,
-  );
+  const bioParts = [
+    craft,
+    portfolio ? `Portfolio: ${portfolio}.` : "",
+    draft.wantMore ? `Want: ${draft.wantMore}.` : "",
+    energize ? `Energized by: ${energize}.` : "",
+    drain ? `Less energy on: ${drain}.` : "",
+  ].filter(Boolean);
 
   return {
     name: display.slice(0, 120),
@@ -358,7 +381,7 @@ export function draftToProfileBody(draft: Record<string, string>, userName: stri
     workEnvironmentFit: draft.workEnvironmentFit?.trim() || undefined,
     workModeOpenness: draft.workModeOpenness?.trim() || undefined,
     availabilityType: draft.availabilityType?.trim() || undefined,
-    brandFitPreferences: brandFit ? [brandFit] : [],
+    brandFitPreferences: [energize, drain].map((s) => s?.trim()).filter(Boolean) as string[],
     clientValueStrengths: clientVal ? [clientVal] : [],
     teamSetupPreference: teamSetup || undefined,
     suitedTeamScale: draft.workEnvironmentFit?.trim() || undefined,

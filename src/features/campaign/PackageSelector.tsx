@@ -54,8 +54,8 @@ export function PackageSelector({ onSelect, onSkip, selectedPackageId }: Package
             Campaign Packages
           </p>
           <p className="text-[13px] font-light text-white/40 leading-relaxed max-w-xl">
-            Pre-configured teams and deliverables — card prices in AED (UAE). Ballpark USD equivalents roughly
-            $3.4K–12K/mo at common FX; final quotes in AED.
+            Pre-configured teams and deliverables — all prices shown in USD per month (approximate, ~3.67 AED/USD).
+            Build Stack is priced per sprint; others are monthly retainers unless noted.
           </p>
         </div>
         {/* Nav arrows */}

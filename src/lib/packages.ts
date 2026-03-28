@@ -73,7 +73,7 @@ export const PACKAGES: PackageConfig[] = [
     ],
     priceAED: 12000,
     priceRangeAED: [12000, 12000],
-    priceNote: "AED 12,000 / month",
+    priceNote: "~$3.3K / month · USD (approx.)",
     idealFor: "DTC brands, F&B, beauty, consumer brands, founder-led brands",
     defaultObjective: "awareness",
     bookingType: "retainer",
@@ -102,7 +102,7 @@ export const PACKAGES: PackageConfig[] = [
     ],
     priceAED: 16000,
     priceRangeAED: [16000, 16000],
-    priceNote: "AED 16,000 / month",
+    priceNote: "~$4.4K / month · USD (approx.)",
     idealFor: "Brands building feed presence alongside ongoing creator content",
     defaultObjective: "awareness",
     bookingType: "retainer",
@@ -134,7 +134,7 @@ export const PACKAGES: PackageConfig[] = [
     ],
     priceAED: 25000,
     priceRangeAED: [25000, 25000],
-    priceNote: "AED 25K / month · retainer",
+    priceNote: "~$6.8K / month · retainer · USD (approx.)",
     idealFor: "SMEs, hospitality, retail, clinics, lifestyle brands",
     defaultObjective: "engagement",
     bookingType: "retainer",
@@ -170,7 +170,7 @@ export const PACKAGES: PackageConfig[] = [
     ],
     priceAED: 10000,
     priceRangeAED: [10000, 100000],
-    priceNote: "per sprint · modular scope",
+    priceNote: "From ~$2.7K / sprint · scales with scope · USD (approx.)",
     idealFor: "Brands building websites, apps, or digital product features",
     defaultObjective: "conversions",
     bookingType: "retainer",
@@ -202,7 +202,7 @@ export const PACKAGES: PackageConfig[] = [
     ],
     priceAED: 45000,
     priceRangeAED: [45000, 45000],
-    priceNote: "AED 45K / month · retainer",
+    priceNote: "~$12.3K / month · retainer · USD (approx.)",
     idealFor: "Brands needing full content output, strategy, and social management",
     defaultObjective: "engagement",
     bookingType: "retainer",
@@ -251,15 +251,32 @@ export function formatAED(amount: number): string {
   return `AED ${amount.toLocaleString()}`;
 }
 
-/** Returns the fixed public-facing price label for a package */
+/** Approximate AED→USD for public display (billing may still reference AED internally). */
+const AED_PER_USD = 3.6725;
+
+export function aedToUsdApprox(aed: number): number {
+  return Math.round(aed / AED_PER_USD);
+}
+
+/** Compact USD label e.g. ~$6.8K */
+export function formatUsdApproxK(usd: number): string {
+  const k = usd / 1000;
+  const t = k >= 10 ? k.toFixed(0) : k % 1 === 0 ? k.toFixed(0) : k.toFixed(1).replace(/\.0$/, "");
+  return `~$${t}K`;
+}
+
+/** Returns the fixed public-facing price label for a package (USD standard) */
 export function getPackagePriceLabel(pkg: PackageConfig): string {
-  if (pkg.bookingModel === "build" && pkg.id === "build-stack") return "From AED 10K";
-  return formatAED(pkg.priceAED);
+  if (pkg.bookingModel === "build" && pkg.id === "build-stack") {
+    const lo = formatUsdApproxK(aedToUsdApprox(pkg.priceRangeAED[0]));
+    return `From ${lo} / sprint`;
+  }
+  return `${formatUsdApproxK(aedToUsdApprox(pkg.priceAED))} / mo`;
 }
 
 /** Returns price label with cadence note */
 export function getPackagePriceDisplay(pkg: PackageConfig): string {
-  return `${formatAED(pkg.priceAED)} / mo`;
+  return `${formatUsdApproxK(aedToUsdApprox(pkg.priceAED))} / mo`;
 }
 
 /** Compute per-talent budget suggestion from total budget using package weights */
