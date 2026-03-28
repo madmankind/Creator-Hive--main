@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, Suspense, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HeroBar } from "@/components/HeroBar";
 import { TalentCarousel } from "@/components/marketing/TalentCarousel";
@@ -9,7 +9,7 @@ import { HiveAuthModal } from "@/components/auth/HiveAuthModal";
 import { PodSetupOverlay } from "@/features/pod-setup/PodSetupOverlay";
 import { CampaignSetupBoard } from "@/features/campaign/CampaignSetupBoard";
 import { PackageSelector } from "@/features/campaign/PackageSelector";
-import { curatedTalent, getTalentDisplayName } from "@/lib/curatedTalent";
+import { curatedTalent, getTalentDisplayName, type CuratedTalent } from "@/lib/curatedTalent";
 import { PACKAGES, type PackageConfig } from "@/lib/packages";
 import { useSession, signIn } from "next-auth/react";
 import { HomeProfileMenu } from "@/components/nav/HomeProfileMenu";
@@ -123,6 +123,7 @@ function HomePageContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [aiHighlightIds, setAiHighlightIds] = useState<string[]>([]);
+  const [rosterExtras, setRosterExtras] = useState<CuratedTalent[]>([]);
   const [clientAuthOpen, setClientAuthOpen] = useState(false);
   const [pendingDiscover, setPendingDiscover] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState(false);
@@ -523,15 +524,61 @@ function HomePageContent() {
     setHeroAuthStep("otp");
   };
 
-  const selectedTalents = selectedPodIds
-    .map((id) => {
-      const t = curatedLookup.get(id);
-      if (t) {
-        return { id: t.id, name: t.displayName ?? getTalentDisplayName(t.name) ?? t.name, primaryRole: t.primaryRole };
+  useEffect(() => {
+    const need = aiHighlightIds.filter((id) => id.startsWith("db:"));
+    if (need.length === 0) {
+      setRosterExtras([]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/marketing/matched-creators", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: need }),
+        });
+        const data = (await res.json()) as { talents?: CuratedTalent[] };
+        if (!cancelled) setRosterExtras(data.talents ?? []);
+      } catch {
+        if (!cancelled) setRosterExtras([]);
       }
-      // Fallback for talent IDs not in curatedTalent (e.g. from direct booking links)
-      return { id, name: id.replace("talent-", "").replace(/-/g, " "), primaryRole: "Creator" };
-    });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [aiHighlightIds]);
+
+  const displayTalents = useMemo(() => {
+    const seen = new Set<string>();
+    const out: CuratedTalent[] = [];
+    for (const t of curatedTalent) {
+      seen.add(t.id);
+      out.push(t);
+    }
+    for (const t of rosterExtras) {
+      if (!seen.has(t.id)) {
+        seen.add(t.id);
+        out.push(t);
+      }
+    }
+    return out;
+  }, [rosterExtras]);
+
+  const talentById = useMemo(() => {
+    const m = new Map<string, CuratedTalent>();
+    for (const t of curatedTalent) m.set(t.id, t);
+    for (const t of rosterExtras) m.set(t.id, t);
+    return m;
+  }, [rosterExtras]);
+
+  const selectedTalents = selectedPodIds.map((id) => {
+    const t = talentById.get(id);
+    if (t) {
+      return { id: t.id, name: t.displayName ?? getTalentDisplayName(t.name) ?? t.name, primaryRole: t.primaryRole };
+    }
+    return { id, name: id.replace("talent-", "").replace(/^db:/, "").replace(/-/g, " "), primaryRole: "Creator" };
+  });
 
   const addToPod = (talentId: string) =>
     setSelectedPodIds((prev) => (prev.includes(talentId) ? prev : [...prev, talentId]));
@@ -997,7 +1044,7 @@ function HomePageContent() {
               )}
 
               <TalentCarousel
-                talents={curatedTalent}
+                talents={displayTalents}
                 query={searchQuery}
                 selectedRoles={selectedRoles}
                 aiHighlightIds={aiHighlightIds}

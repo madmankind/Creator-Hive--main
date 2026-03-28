@@ -196,6 +196,39 @@ function parseJsonStringArray(raw: string | undefined): string[] {
   }
 }
 
+/** Shape used to build the AI search query after intake or brief upload. */
+export type ClientBriefSearchInput = {
+  primaryObjective: string;
+  requestedRoles: string[];
+  startTiming: string;
+  budgetRange: string;
+  companyName: string | null;
+  industry: string | null;
+  notes: string | null;
+  clientFitProfile?: Record<string, unknown> | null;
+};
+
+/** Natural-language query for /api/ai-search from saved brief fields. */
+export function buildClientAiSearchQuery(brief: ClientBriefSearchInput): string {
+  const parts: string[] = [];
+  if (brief.primaryObjective?.trim()) parts.push(`Objective: ${brief.primaryObjective.trim()}`);
+  if (brief.requestedRoles?.length) parts.push(`Roles needed: ${brief.requestedRoles.join(", ")}`);
+  if (brief.startTiming?.trim()) parts.push(`Timing: ${brief.startTiming.trim()}`);
+  if (brief.budgetRange?.trim()) parts.push(`Budget: ${brief.budgetRange.trim()}`);
+  if (brief.companyName?.trim()) parts.push(`Company: ${brief.companyName.trim()}`);
+  if (brief.industry?.trim()) parts.push(`Industry: ${brief.industry.trim()}`);
+  const fit = brief.clientFitProfile;
+  if (fit && typeof fit === "object") {
+    const slim = Object.fromEntries(
+      Object.entries(fit).filter(([, v]) => v != null && String(v).trim()),
+    );
+    const s = JSON.stringify(slim);
+    if (s.length > 2) parts.push(`Workflow fit: ${s.slice(0, 800)}`);
+  }
+  if (brief.notes?.trim()) parts.push(`Notes: ${brief.notes.trim().slice(0, 1200)}`);
+  return parts.join("\n") || "Premium creative campaign in UAE — recommend a balanced team.";
+}
+
 /** Structured workflow-fit answers for matching (mirrors talent intake dimensions). */
 export function buildClientFitProfile(answers: Record<string, string>): Record<string, unknown> {
   const setup = parseJsonStringArray(answers.clientSetup);

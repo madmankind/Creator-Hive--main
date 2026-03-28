@@ -12,6 +12,7 @@ import {
   CLIENT_CAMPAIGN_STEPS,
   getClientBranchSteps,
   mapClientIntakeToDiscovery,
+  buildClientAiSearchQuery,
   type ClientBranchStep,
 } from "@/lib/clientIntakeBranch";
 
@@ -69,14 +70,14 @@ function buildSystemPrompt(profile: Record<string, string>): string {
 
 CLIENT PROFILE: ${summary}
 
-TALENT ROSTER (${curatedTalent.length} vetted creators):
+SHOWCASE ROSTER (${curatedTalent.length} vetted profiles; IDs start with talent-):
 ${TALENT_CONTEXT}
 
-YOUR ROLE: Senior media strategist. You know every creator on this roster. Help brands find the right talent, build campaign strategy, and navigate UAE/GCC content marketing.
+YOUR ROLE: Senior media strategist. You know the showcase roster above; the chat API also attaches every creator who finished Creator Hive onboarding (IDs prefixed db:). Help brands find the right talent, build campaign strategy, and navigate UAE/GCC content marketing.
 
 STYLE: Conversational and sharp. Reference creators by name. Keep responses to 2–3 sentences unless asked for detail.
 
-TRIGGER TALENT SEARCH: When you have enough context to recommend creators, end your message with this exact JSON (no markdown, nothing after):
+TRIGGER TALENT SEARCH: When you have enough context to recommend creators — including when the user asks for more options, different roles, or alternatives — end your message with this exact JSON (no markdown, nothing after). The search layer matches against showcase + platform-onboarded talent.
 {"action":"search","query":"<descriptive search query>","summary":"<one sentence team rationale>"}
 
 NEVER DISCUSS: Internal pricing, margins, fees, competitor platforms, or pending contracts. If asked: "I'm here to find you the right team — let's stay focused on your brief."`;
@@ -113,19 +114,6 @@ function useTypewriter(text: string, speed = 22) {
   return { out, done };
 }
 
-function openAdvisorBookingLink(): void {
-  const url = (process.env.NEXT_PUBLIC_ADVISOR_BOOKING_URL ?? "").trim();
-  if (url) {
-    window.open(url, "_blank", "noopener,noreferrer");
-    return;
-  }
-  window.location.href =
-    "mailto:ajil@creatorhive.ae?subject=" +
-    encodeURIComponent("Schedule a call — Creator Hive") +
-    "&body=" +
-    encodeURIComponent("Hi Ajil — I'd like to schedule a short call to discuss a campaign.\n\n");
-}
-
 type IntakePhase = { k: "biz" } | { k: "branch"; i: number } | { k: "camp"; i: number };
 
 // ── Inline intake bar (questions inside the bar) ─────────────────────────────
@@ -133,7 +121,7 @@ function IntakeBar({
   onComplete,
   showSkipQuestions,
   onSkipToGrok,
-  onSkipToAdvisor,
+  onSkipToTalentSearch,
   onBriefFile,
   uploadBusy,
   uploadError,
@@ -141,7 +129,7 @@ function IntakeBar({
   onComplete: (answers: Record<string, string>, bizType: string) => void;
   showSkipQuestions?: boolean;
   onSkipToGrok?: () => void;
-  onSkipToAdvisor?: () => void;
+  onSkipToTalentSearch?: () => void;
   onBriefFile?: (file: File) => void;
   uploadBusy?: boolean;
   uploadError?: string | null;
@@ -524,9 +512,9 @@ function IntakeBar({
           ) : null}
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          {onSkipToAdvisor ? (
-            <button type="button" onClick={onSkipToAdvisor} className="text-[11px] text-white/38 hover:text-white/62 transition">
-              Skip to advisor →
+          {onSkipToTalentSearch ? (
+            <button type="button" onClick={onSkipToTalentSearch} className="text-[11px] text-white/38 hover:text-white/62 transition">
+              Skip to talent search →
             </button>
           ) : null}
           {showSkipQuestions && onSkipToGrok ? (
@@ -591,6 +579,17 @@ function AdvisorChat({
           content: data.message ?? "Daily AI search limit reached. Resets at midnight." }]);
         return;
       }
+      if (!res.ok && res.status !== 429) {
+        setMessages((p) => [
+          ...p,
+          {
+            id: Date.now().toString(),
+            role: "assistant",
+            content: "Search didn't complete — try again in a moment.",
+          },
+        ]);
+        return;
+      }
       if (res.ok && data.talentIds?.length) {
         if (data.rateLimit?.remaining !== undefined) setRemaining(data.rateLimit.remaining);
         onAIResults?.(data.talentIds, data.teamSummary ?? summary);
@@ -599,6 +598,16 @@ function AdvisorChat({
           content: `Matched ${data.talentIds.length} creators to your brief ↓\n\n${data.teamSummary ?? summary}`,
           talentIds: data.talentIds,
         }]);
+      } else if (res.ok) {
+        setMessages((p) => [
+          ...p,
+          {
+            id: Date.now().toString(),
+            role: "assistant",
+            content:
+              "No matches returned for that query — try broader roles or ask for alternatives. Search covers showcase talent and creators who finished onboarding.",
+          },
+        ]);
       }
     } catch { /* silent */ }
   }, [onDiscover, onAIResults]);
@@ -1407,8 +1416,8 @@ export function HeroBar({
   const store = useDiscoveryStore();
   const hydrate = useDiscoveryStore((s) => s.hydrate);
 
-  // track: "intake" | "returning-new" | "returning-resume" | "activated"
-  type Track = "intake" | "returning-new" | "returning-resume" | "activated";
+  // track: "intake" | "returning-new" | "returning-resume" | "intake_searching" | "activated"
+  type Track = "intake" | "returning-new" | "returning-resume" | "intake_searching" | "activated";
   const [track, setTrack] = useState<Track | null>(null);
   const [profile, setProfile] = useState<Record<string, string>>({});
   const [welcomeOverride, setWelcomeOverride] = useState<string | null>(null);
@@ -1453,6 +1462,63 @@ export function HeroBar({
     store.requestedRoles.length,
     track,
   ]);
+
+  const runAiSearchThenOpenAdvisor = useCallback(
+    async (searchQuery: string, welcomeIntro: string | null) => {
+      try {
+        onDiscover?.();
+        const res = await fetch("/api/ai-search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: searchQuery }),
+        });
+        const data = (await res.json()) as {
+          talentIds?: string[];
+          teamSummary?: string;
+          message?: string;
+        };
+        if (res.ok && Array.isArray(data.talentIds) && data.talentIds.length > 0) {
+          onAIResults?.(data.talentIds, data.teamSummary ?? "");
+          const sum = data.teamSummary?.trim();
+          const intro = welcomeIntro?.trim();
+          const parts = [intro, sum].filter((x): x is string => Boolean(x && x.length > 0));
+          setWelcomeOverride(
+            parts.length > 0
+              ? parts.join(" ")
+              : "Your matches are highlighted in the gallery — ask for more in chat.",
+          );
+        } else if (res.status === 429) {
+          setWelcomeOverride(String(data.message ?? "Daily AI search limit reached — use chat to refine."));
+        } else {
+          setWelcomeOverride(
+            welcomeIntro?.trim() ||
+              "Brief saved — describe roles or style in chat and I'll search the full roster.",
+          );
+        }
+      } catch {
+        setWelcomeOverride(
+          welcomeIntro?.trim() ||
+            "Tell me what you're looking for and I'll run a fresh search across showcase + onboarded talent.",
+        );
+      } finally {
+        setAutoQueryOverride("");
+        setAdvisorChatKey((k) => k + 1);
+        setTrack("activated");
+      }
+    },
+    [onDiscover, onAIResults],
+  );
+
+  const skipToTalentSearch = useCallback(() => {
+    setWelcomeOverride(
+      "Search with AI below — or use role tags in the gallery. Ask anytime for more matches without redoing onboarding.",
+    );
+    setAutoQueryOverride("");
+    setProfile({});
+    onDiscover?.();
+    setAdvisorChatKey((k) => k + 1);
+    setTrack("activated");
+  }, [onDiscover]);
 
   const handleBriefFile = useCallback(
     async (file: File) => {
@@ -1543,28 +1609,34 @@ export function HeroBar({
           company: sp.companyName,
           industry: sp.industry,
         });
-        setWelcomeOverride(
-          data.assistantMessage ??
-            "I’ve pulled the key points from your brief — tell me if anything should change before we match talent.",
-        );
-        setAutoQueryOverride(
-          [sp.requestedRoles.join(" "), sp.primaryObjective].filter(Boolean).join(" ").trim(),
-        );
-        setAdvisorChatKey((k) => k + 1);
-        setTrack("activated");
+        const intro =
+          data.assistantMessage?.trim() ||
+          "I've pulled the key points from your brief — here's who fits first.";
+        const searchQuery = buildClientAiSearchQuery({
+          primaryObjective: sp.primaryObjective,
+          requestedRoles: sp.requestedRoles,
+          startTiming: sp.startTiming,
+          budgetRange: sp.budgetRange,
+          companyName: sp.companyName ?? null,
+          industry: sp.industry ?? null,
+          notes: sp.notes ?? null,
+          clientFitProfile: null,
+        });
+        setTrack("intake_searching");
+        await runAiSearchThenOpenAdvisor(searchQuery, intro);
       } catch {
         setBriefUploadErr("Something went wrong — try again");
       } finally {
         setBriefUploadBusy(false);
       }
     },
-    [session?.user, onDiscover, hydrate],
+    [session?.user, onDiscover, hydrate, runAiSearchThenOpenAdvisor],
   );
 
   const handleIntakeComplete = useCallback(
-    (answers: Record<string, string>, bizType: string) => {
+    async (answers: Record<string, string>, bizType: string) => {
       setWelcomeOverride(null);
-      setAutoQueryOverride(null);
+      setTrack("intake_searching");
       const mapped = mapClientIntakeToDiscovery(answers, bizType);
       setProfile(mapped.profileFlat);
       hydrate({
@@ -1580,7 +1652,7 @@ export function HeroBar({
         currentStep: 3,
         completed: true,
       });
-      fetch("/api/discovery/brief", {
+      await fetch("/api/discovery/brief", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1596,9 +1668,19 @@ export function HeroBar({
           completed: true,
         }),
       }).catch(() => {});
-      setTrack("activated");
+      const searchQuery = buildClientAiSearchQuery({
+        primaryObjective: mapped.primaryObjective,
+        requestedRoles: mapped.requestedRoles,
+        startTiming: mapped.startTiming,
+        budgetRange: mapped.budgetRange,
+        companyName: mapped.companyName,
+        industry: mapped.industry,
+        notes: mapped.notes,
+        clientFitProfile: mapped.clientFitProfile,
+      });
+      await runAiSearchThenOpenAdvisor(searchQuery, "Matched from your brief —");
     },
-    [hydrate],
+    [hydrate, runAiSearchThenOpenAdvisor],
   );
 
   const handleReset = useCallback(() => {
@@ -1867,7 +1949,7 @@ export function HeroBar({
           <IntakeBar
             onComplete={handleIntakeComplete}
             showSkipQuestions={false}
-            onSkipToAdvisor={openAdvisorBookingLink}
+            onSkipToTalentSearch={skipToTalentSearch}
             onBriefFile={handleBriefFile}
             uploadBusy={briefUploadBusy}
             uploadError={briefUploadErr}
@@ -1888,7 +1970,7 @@ export function HeroBar({
               setProfile(buildReturningProfile());
               setTrack("activated");
             }}
-            onSkipToAdvisor={openAdvisorBookingLink}
+            onSkipToTalentSearch={skipToTalentSearch}
             onBriefFile={handleBriefFile}
             uploadBusy={briefUploadBusy}
             uploadError={briefUploadErr}
@@ -1932,6 +2014,35 @@ export function HeroBar({
                 Start fresh
               </button>
             </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Intake complete — AI match in progress */}
+      {track === "intake_searching" && (
+        <motion.div
+          key="intake-searching"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          className="w-full"
+        >
+          <div
+            className="w-full rounded-2xl px-5 py-6 flex flex-col items-center justify-center gap-3 min-h-[120px]"
+            style={{
+              background: "rgba(10,10,18,0.92)",
+              border: "1px solid rgba(124,92,255,0.35)",
+              boxShadow: "0 0 48px rgba(124,92,255,0.18), 0 0 0 1px rgba(124,92,255,0.1)",
+            }}
+          >
+            <Loader2 size={22} className="animate-spin text-purple-300/90" style={{ filter: "drop-shadow(0 0 12px rgba(167,139,250,0.5))" }} />
+            <p className="text-[13px] font-medium text-white/85 text-center" style={{ textShadow: "0 0 18px rgba(167,139,250,0.35)" }}>
+              Finding your team…
+            </p>
+            <p className="text-[11px] text-white/38 text-center max-w-sm">
+              Matching against showcase talent and creators who completed onboarding
+            </p>
           </div>
         </motion.div>
       )}

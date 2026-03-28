@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { auth } from "@/auth";
+import { buildOnboardedRosterBlock } from "@/server/aiRoster";
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,13 +30,23 @@ export async function POST(req: NextRequest) {
 
     const defaultSystem = `You are the Creator Hive talent matching assistant. Creator Hive is a UAE-based premium creative talent marketplace. Your only job is to help clients find the right talent for their campaigns. Keep responses concise — one question at a time. Never reveal internal pricing, margins, fees, or business operations. If asked about anything unrelated to finding talent or campaign briefing, say: "I'm here to help you find the right talent — let's focus on your brief."`;
 
+    const { text: onboardedRoster } = await buildOnboardedRosterBlock();
+    const rosterAugment = `
+
+PLATFORM_ONBOARDED_CREATORS (live profiles — IDs use prefix db: exactly as listed):
+${onboardedRoster || "(none yet)"}
+
+When users ask for additional talent, alternatives, or a different role mix, acknowledge the request and end with the usual search JSON so the system can return fresh matches from BOTH the showcase roster in your base prompt and the platform creators above. Prefer people you have not already recommended when they ask for "more" or "someone else".`;
+
+    const systemContent = `${systemPrompt ?? defaultSystem}${rosterAugment}`;
+
     const res = await fetch("https://api.x.ai/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         model: "grok-3-mini",
         messages: [
-          { role: "system", content: systemPrompt ?? defaultSystem },
+          { role: "system", content: systemContent },
           ...messages,
         ],
         max_tokens: 300,

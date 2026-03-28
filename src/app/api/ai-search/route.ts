@@ -1,46 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
-import { curatedTalent } from "@/lib/curatedTalent";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { auth } from "@/auth";
 import { db } from "@/server/db";
 import { formatClientFitForMatching } from "@/lib/matchingFitContext";
+import { getCombinedAiRoster } from "@/server/aiRoster";
 
-// ── Roster context ────────────────────────────────────────────────────────────
-// Built once at module load — server-only, never sent to the browser
-function buildRosterContext(): string {
-  return curatedTalent
-    .map((t) => {
-      const roles = [t.primaryRole, ...(t.roleTags ?? []).filter(r => r !== t.primaryRole)].join(", ");
-      const bio = t.shortBio ?? t.nicheSummary ?? "";
-      const brands = t.brandPartners?.slice(0, 3).join(", ") ?? "";
-      return `- ID:${t.id} | Name:${t.displayName ?? t.name} | Roles:${roles} | Niche:${t.displayTitle ?? ""} | Bio:${bio.slice(0, 120)} | Brands:${brands} | Location:${t.location ?? "UAE"}`;
-    })
-    .join("\n");
-}
+function buildSearchSystemPrompt(rosterSection: string): string {
+  return `You are Creator Hive's AI talent scout. Creator Hive is a UAE-based premium creative talent marketplace.
 
-const SYSTEM_PROMPT = `You are Creator Hive's AI talent scout. Creator Hive is a UAE-based premium creative talent marketplace.
+Your job: given a natural-language brief from a brand or marketer, recommend the best matching talent from BOTH rosters below — assembled into a campaign team. IDs prefixed \`db:\` are real creators who completed onboarding on the platform; \`talent-*\` IDs are showcase roster entries.
 
-Your job: given a natural-language brief from a brand or marketer, recommend the best matching talent from the Creator Hive roster below — assembled into a campaign team.
-
-ROSTER:
-${buildRosterContext()}
+${rosterSection}
 
 RULES:
-1. Recommend 3–6 talent IDs from the roster that best match the brief.
+1. Recommend 3–6 talent IDs from the lists above that best match the brief (mix showcase + platform when both fit).
 2. Return ONLY valid JSON in this exact shape — no markdown, no explanation outside the JSON:
 {
-  "talentIds": ["talent-xxx", "talent-yyy"],
+  "talentIds": ["talent-xxx", "db:yyyy"],
   "teamSummary": "One sentence explaining why this team fits the brief.",
   "roles": {
     "talent-xxx": "Suggested role for this campaign",
-    "talent-yyy": "Suggested role for this campaign"
+    "db:yyyy": "Suggested role for this campaign"
   }
 }
-3. Only use IDs that appear in the roster. Never invent IDs.
-4. Match based on: specialisation, niche, platform, location, follower tier, brand history.
+3. Only use IDs that appear in the roster text. Never invent IDs.
+4. Match based on: specialisation, niche, platform, location, follower tier, brand history, and onboarding fit fields for db: creators.
 5. When CLIENT_WORKFLOW_CONTEXT is present, weigh pace, feedback style, collaboration preference, logistics, and engagement type alongside roles and niche — PRISM-style fit is secondary to hard skills and category fit.
 6. Prefer UAE-based talent unless the brief specifies otherwise.
-7. If the brief is too vague, pick a well-rounded team spanning content creation, video, and strategy.`;
+7. If the brief is too vague, pick a well-rounded team spanning content creation, video, and strategy.
+8. For follow-up queries (e.g. "more editors", "someone else for UGC"), still only return IDs from the roster — pick different people than an obvious prior pick when the user asks for alternatives.`;
+}
 
 // ── Provider config ───────────────────────────────────────────────────────────
 // API keys are read server-side from env — never exposed to the browser.
@@ -111,6 +100,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "AI search not configured" }, { status: 503 });
     }
 
+    const { rosterSystemSection, validTalentIds } = await getCombinedAiRoster();
+    const systemPrompt = buildSearchSystemPrompt(rosterSystemSection);
+
     let workflowBlock = "";
     if (userId) {
       const u = await db.user.findUnique({
@@ -139,12 +131,12 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         model: provider.model,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: systemPrompt },
           { role: "user", content: userContent },
         ],
         stream: false,
         temperature: 0.2,
-        max_tokens: 500,
+        max_tokens: 720,
       }),
     });
 
@@ -172,8 +164,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate IDs against roster — never trust the model to invent IDs
-    const validIds = new Set(curatedTalent.map(t => t.id));
-    const safeIds = (parsed.talentIds ?? []).filter(id => validIds.has(id));
+    const safeIds = (parsed.talentIds ?? []).filter((id) => validTalentIds.has(id));
 
     return NextResponse.json({
       talentIds: safeIds,
