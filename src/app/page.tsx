@@ -908,7 +908,7 @@ function HomePageContent() {
                       <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", showPackages && "rotate-180")} />
                     </button>
                     <p className="text-center text-[11px] text-white/28 mt-2 max-w-md mx-auto leading-relaxed">
-                      Packages benchmarked from ~$3.4K–12K USD/mo equivalent — billed in AED on the cards below.
+                      Package prices below are in AED; the package panel includes a rough USD guide for context.
                     </p>
                   </div>
                 </motion.div>

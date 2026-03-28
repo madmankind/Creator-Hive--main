@@ -61,6 +61,7 @@ export async function POST(req: Request) {
     displayAnswer?: string;
     draft?: Record<string, unknown>;
     transcript?: { role: string; content: string }[];
+    intakeDigest?: string;
     messages?: { role: "user" | "assistant"; content: string }[];
   };
   try {
@@ -143,6 +144,11 @@ TASK: Continue naturally in 1–2 short sentences. Coach them on fit to those br
       .join("\n")
       .slice(0, 12000);
 
+    const digest =
+      typeof body.intakeDigest === "string" && body.intakeDigest.trim()
+        ? body.intakeDigest.trim().slice(0, 12000)
+        : "";
+
     const sys = `${baseSystem}
 
 ${ARCHETYPE_ASSESSMENT_PLAYBOOK_FOR_LLM}
@@ -165,7 +171,7 @@ Use the FULL draft JSON and FULL transcript. This is the authoritative assessmen
       [
         {
           role: "user",
-          content: `DRAFT JSON:\n${JSON.stringify(draft).slice(0, 8000)}\n\nTRANSCRIPT:\n${transcript}`,
+          content: `DRAFT JSON:\n${JSON.stringify(draft).slice(0, 8000)}\n\nSTRUCTURED_INTAKE_DIGEST:\n${digest || "(none)"}\n\nTRANSCRIPT:\n${transcript}`,
         },
       ],
       500,

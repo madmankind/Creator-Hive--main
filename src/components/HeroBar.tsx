@@ -1,23 +1,25 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import Fuse from "fuse.js";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, Loader2, Plus, X, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowUp, Loader2, Plus, X, Sparkles } from "lucide-react";
 import { curatedTalent } from "@/lib/curatedTalent";
 import { useDiscoveryStore } from "@/store/useDiscoveryStore";
+import {
+  CLIENT_CAMPAIGN_STEPS,
+  getClientBranchSteps,
+  mapClientIntakeToDiscovery,
+} from "@/lib/clientIntakeBranch";
 
 import {
   TALENT_COACH_SEQUENTIAL_STEPS,
-  TALENT_CREATOR_TYPES,
-  TALENT_INTAKE_NAME_QUESTIONS,
-  TALENT_INTAKE_QUESTIONS,
+  buildTalentDraftDigest,
   draftToProfileBody,
 } from "@/lib/heroTalentIntake";
-import { TALENT_ROLE_CATALOG } from "@/lib/talentRoleCatalog";
+import { HeroTalentIntakeBar } from "@/components/talent/HeroTalentIntakeBar";
 import {
   ARCHETYPE_PUBLIC_BLURB,
   type CreatorHiveArchetypeLabel,
@@ -37,29 +39,6 @@ interface HeroBarProps {
 }
 
 const BIZ_TYPES = ["Brand / In-house", "Agency", "Startup / Founder", "Media / Publisher"];
-
-const QUESTIONS = [
-  {
-    id: "objective",
-    prompt: "What are you trying to achieve?",
-    chips: ["Campaign launch", "Social growth", "UGC content", "Brand awareness", "Influencer activation"],
-  },
-  {
-    id: "timeline",
-    prompt: "When do you need to start?",
-    chips: ["ASAP", "Within 2 weeks", "This month", "Next month"],
-  },
-  {
-    id: "budget",
-    prompt: "What's your monthly budget range?",
-    chips: ["Under AED 15K", "AED 15–25K", "AED 25–45K", "AED 45K+"],
-  },
-  {
-    id: "roles",
-    prompt: "What type of talent do you need?",
-    chips: ["Videographer", "Content Creator", "Social Media Manager", "Photographer", "Full team"],
-  },
-];
 
 // ── Talent context for Grok ──────────────────────────────────────────────────
 function buildTalentContext(): string {
@@ -143,12 +122,14 @@ function openAdvisorBookingLink(): void {
     encodeURIComponent("Hi Ajil — I'd like to schedule a short call to discuss a campaign.\n\n");
 }
 
+type IntakePhase = { k: "biz" } | { k: "branch"; i: number } | { k: "camp"; i: number };
+
 // ── Inline intake bar (questions inside the bar) ─────────────────────────────
 function IntakeBar({
   onComplete,
   showSkipQuestions,
   onSkipToGrok,
-  onScheduleAdvisor,
+  onSkipToAdvisor,
   onBriefFile,
   uploadBusy,
   uploadError,
@@ -156,76 +137,159 @@ function IntakeBar({
   onComplete: (answers: Record<string, string>, bizType: string) => void;
   showSkipQuestions?: boolean;
   onSkipToGrok?: () => void;
-  onScheduleAdvisor?: () => void;
+  onSkipToAdvisor?: () => void;
   onBriefFile?: (file: File) => void;
   uploadBusy?: boolean;
   uploadError?: string | null;
 }) {
-  // phase: "biz" | 0 | 1 | 2 | 3
-  const [phase, setPhase] = useState<"biz" | number>("biz");
+  const [phase, setPhase] = useState<IntakePhase>({ k: "biz" });
   const [bizType, setBizType] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [inputVal, setInputVal] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const briefFileRef = useRef<HTMLInputElement>(null);
 
-  const currentQ = typeof phase === "number" ? QUESTIONS[phase] : null;
-  const promptText = phase === "biz"
-    ? "What type of business are you?"
-    : currentQ?.prompt ?? "";
-  const chips = phase === "biz" ? BIZ_TYPES : (currentQ?.chips ?? []);
+  const branchSteps = useMemo(() => (bizType ? getClientBranchSteps(bizType) : []), [bizType]);
+
+  const { step, promptText, chips, totalSteps, stepIndex } = useMemo(() => {
+    if (phase.k === "biz") {
+      return {
+        step: null as null | { id: string; optional?: boolean },
+        promptText: "What type of business are you?",
+        chips: BIZ_TYPES,
+        totalSteps: 1 + 0 + CLIENT_CAMPAIGN_STEPS.length,
+        stepIndex: 0,
+      };
+    }
+    if (phase.k === "branch") {
+      const b = branchSteps[phase.i];
+      return {
+        step: b,
+        promptText: b?.prompt ?? "",
+        chips: b?.chips ?? [],
+        totalSteps: 1 + branchSteps.length + CLIENT_CAMPAIGN_STEPS.length,
+        stepIndex: 1 + phase.i,
+      };
+    }
+    const c = CLIENT_CAMPAIGN_STEPS[phase.i];
+    return {
+      step: c,
+      promptText: c?.prompt ?? "",
+      chips: c?.chips ?? [],
+      totalSteps: 1 + branchSteps.length + CLIENT_CAMPAIGN_STEPS.length,
+      stepIndex: 1 + branchSteps.length + phase.i,
+    };
+  }, [phase, branchSteps]);
+
   const { out: typedPrompt, done: promptDone } = useTypewriter(promptText, 20);
 
-  // focus input when prompt finishes
   useEffect(() => {
     if (promptDone) setTimeout(() => inputRef.current?.focus(), 80);
   }, [promptDone, phase]);
 
-  const advance = useCallback((val: string) => {
-    if (!val.trim()) return;
-    if (phase === "biz") {
-      setBizType(val);
-      setInputVal("");
-      setPhase(0);
+  const progress =
+    totalSteps > 0 ? Math.min(1, (stepIndex + (promptDone ? 1 : 0.35)) / totalSteps) : 0.05;
+
+  const goBack = useCallback(() => {
+    setInputVal("");
+    if (phase.k === "camp") {
+      if (phase.i > 0) setPhase({ k: "camp", i: phase.i - 1 });
+      else if (branchSteps.length > 0) setPhase({ k: "branch", i: branchSteps.length - 1 });
+      else setPhase({ k: "biz" });
       return;
     }
-    const q = QUESTIONS[phase as number];
-    const next = { ...answers, [q.id]: val };
-    setAnswers(next);
-    setInputVal("");
-    if ((phase as number) < QUESTIONS.length - 1) {
-      setPhase((p) => (p as number) + 1);
-    } else {
-      onComplete(next, bizType);
+    if (phase.k === "branch") {
+      if (phase.i > 0) setPhase({ k: "branch", i: phase.i - 1 });
+      else setPhase({ k: "biz" });
+      return;
     }
-  }, [phase, answers, bizType, onComplete]);
+  }, [phase, branchSteps.length]);
+
+  const advance = useCallback(
+    (raw: string) => {
+      const isSkip = raw === "Skip";
+      const val = isSkip ? "" : raw.trim();
+      if (!isSkip && !val) return;
+
+      if (phase.k === "biz") {
+        setBizType(raw);
+        setInputVal("");
+        const br = getClientBranchSteps(raw);
+        if (br.length > 0) setPhase({ k: "branch", i: 0 });
+        else setPhase({ k: "camp", i: 0 });
+        return;
+      }
+
+      if (phase.k === "branch") {
+        const b = branchSteps[phase.i];
+        if (!b) return;
+        const next = { ...answers, [b.id]: val };
+        setAnswers(next);
+        setInputVal("");
+        if (phase.i < branchSteps.length - 1) setPhase({ k: "branch", i: phase.i + 1 });
+        else setPhase({ k: "camp", i: 0 });
+        return;
+      }
+
+      const c = CLIENT_CAMPAIGN_STEPS[phase.i];
+      if (!c) return;
+      const next = { ...answers, [c.id]: val };
+      setAnswers(next);
+      setInputVal("");
+      if (phase.i < CLIENT_CAMPAIGN_STEPS.length - 1) setPhase({ k: "camp", i: phase.i + 1 });
+      else onComplete(next, bizType);
+    },
+    [phase, answers, bizType, branchSteps, onComplete],
+  );
 
   const handleKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && inputVal.trim()) { e.preventDefault(); advance(inputVal.trim()); }
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const t = inputVal.trim();
+    if (phase.k !== "biz" && step?.optional && !t) return;
+    if (t) advance(t);
   };
 
-  const progress = phase === "biz" ? 0 : ((phase as number) + 1) / QUESTIONS.length;
+  const showInputRow = promptDone && phase.k !== "biz";
+
+  const canBack = phase.k !== "biz";
 
   return (
-    <div className="w-full rounded-2xl transition-all duration-300 overflow-hidden"
+    <div
+      className="w-full rounded-2xl transition-all duration-300 overflow-hidden"
       style={{
         background: "rgba(10,10,18,0.92)",
         border: "1px solid rgba(124,92,255,0.30)",
         boxShadow: "0 0 40px rgba(124,92,255,0.12), 0 0 0 1px rgba(124,92,255,0.08)",
-      }}>
-
-      {/* Progress bar — top edge */}
+      }}
+    >
       <div className="h-[2px] w-full" style={{ background: "rgba(255,255,255,0.05)" }}>
-        <motion.div className="h-full rounded-full"
+        <motion.div
+          className="h-full rounded-full"
           style={{ background: "linear-gradient(90deg, rgba(124,92,255,0.8), rgba(93,208,255,0.7))" }}
-          animate={{ width: `${Math.max(progress * 100, phase === "biz" ? 4 : 8)}%` }}
-          transition={{ duration: 0.4, ease: "easeOut" }} />
+          animate={{ width: `${Math.max(progress * 100, 4)}%` }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        />
       </div>
 
       <div className="px-5 pt-4 pb-3 space-y-3">
-        {/* Glowing question — typewriter, inside the bar */}
+        <div className="flex items-center justify-between gap-2 min-h-[28px]">
+          {canBack ? (
+            <button
+              type="button"
+              onClick={goBack}
+              className="flex items-center gap-1 text-[11px] text-white/28 hover:text-white/50 transition shrink-0"
+            >
+              <ArrowLeft size={12} /> Back
+            </button>
+          ) : (
+            <span />
+          )}
+        </div>
+
         <AnimatePresence mode="wait">
-          <motion.div key={String(phase)}
+          <motion.div
+            key={`${phase.k}-${phase.k === "biz" ? "b" : phase.i}`}
             initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -16 }}
@@ -233,12 +297,14 @@ function IntakeBar({
           >
             <div className="flex items-start gap-2">
               <Sparkles size={12} className="text-purple-400/70 mt-1 shrink-0" />
-              <p className="text-[15px] font-semibold leading-snug"
+              <p
+                className="text-[15px] font-semibold leading-snug"
                 style={{
                   color: "rgba(255,255,255,0.92)",
                   textShadow: "0 0 20px rgba(167,139,250,0.60)",
                   letterSpacing: "-0.01em",
-                }}>
+                }}
+              >
                 {typedPrompt}
                 {!promptDone && (
                   <span className="inline-block w-[2px] h-[14px] bg-purple-400/80 animate-pulse ml-0.5 align-middle rounded-full" />
@@ -248,53 +314,57 @@ function IntakeBar({
           </motion.div>
         </AnimatePresence>
 
-        {/* Input field — appears after prompt finishes */}
         <AnimatePresence>
-          {promptDone && (
+          {showInputRow && (
             <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
               <div className="flex items-center gap-2">
                 <input
                   ref={inputRef}
                   value={inputVal}
-                  onChange={e => setInputVal(e.target.value)}
+                  onChange={(e) => setInputVal(e.target.value)}
                   onKeyDown={handleKey}
                   placeholder="Type your answer or pick below…"
                   className="flex-1 bg-transparent outline-none text-[14px] text-white/80 placeholder:text-white/20"
                 />
-                {inputVal.trim() && (
-                  <button type="button" onClick={() => advance(inputVal.trim())}
-                    className="flex items-center justify-center w-7 h-7 rounded-xl bg-white text-black shrink-0 transition hover:bg-white/90">
+                {inputVal.trim() ? (
+                  <button
+                    type="button"
+                    onClick={() => advance(inputVal.trim())}
+                    className="flex items-center justify-center w-7 h-7 rounded-xl bg-white text-black shrink-0 transition hover:bg-white/90"
+                  >
                     <ArrowUp size={13} />
                   </button>
-                )}
+                ) : null}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Quick-pick chips — inside bar, small */}
         <AnimatePresence>
           {promptDone && chips.length > 0 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
-              className="flex flex-wrap gap-1.5">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="flex flex-wrap gap-1.5">
               {chips.map((chip) => (
-                <button key={chip} type="button" onClick={() => advance(chip)}
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => advance(chip === "Skip" ? "Skip" : chip)}
                   className="rounded-full px-3 py-1 text-[11px] transition-all duration-100"
                   style={{
                     background: "rgba(255,255,255,0.05)",
                     border: "1px solid rgba(255,255,255,0.09)",
                     color: "rgba(255,255,255,0.45)",
                   }}
-                  onMouseEnter={e => {
+                  onMouseEnter={(e) => {
                     (e.currentTarget as HTMLElement).style.background = "rgba(124,92,255,0.15)";
                     (e.currentTarget as HTMLElement).style.borderColor = "rgba(124,92,255,0.35)";
                     (e.currentTarget as HTMLElement).style.color = "rgba(196,174,255,0.90)";
                   }}
-                  onMouseLeave={e => {
+                  onMouseLeave={(e) => {
                     (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)";
                     (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.09)";
                     (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.45)";
-                  }}>
+                  }}
+                >
                   {chip}
                 </button>
               ))}
@@ -303,7 +373,6 @@ function IntakeBar({
         </AnimatePresence>
       </div>
 
-      {/* Bottom: brief upload + schedule + optional skip to chat */}
       <div
         className="border-t px-5 py-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2"
         style={{ borderColor: "rgba(255,255,255,0.06)" }}
@@ -313,7 +382,7 @@ function IntakeBar({
             ref={briefFileRef}
             type="file"
             className="hidden"
-            accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+            accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
             onChange={(e) => {
               const f = e.target.files?.[0];
               e.target.value = "";
@@ -327,33 +396,23 @@ function IntakeBar({
               onClick={() => briefFileRef.current?.click()}
               className="text-[11px] text-purple-400/60 hover:text-purple-300/80 transition disabled:opacity-40 text-left"
             >
-              {uploadBusy ? "Reading your brief…" : "Upload brief →"}
+              {uploadBusy ? "Reading your brief…" : "Already have a brief? Upload →"}
             </button>
           ) : null}
           {uploadError ? (
             <span className="text-[10px] text-rose-300/85 max-w-[200px] leading-snug">{uploadError}</span>
-          ) : (
-            onBriefFile && (
-              <span className="text-[10px] text-white/22 hidden sm:inline">PDF, DOCX, or TXT</span>
-            )
-          )}
+          ) : onBriefFile ? (
+            <span className="text-[10px] text-white/22 hidden sm:inline">PDF, DOCX, or TXT</span>
+          ) : null}
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          {onScheduleAdvisor ? (
-            <button
-              type="button"
-              onClick={onScheduleAdvisor}
-              className="text-[11px] text-white/38 hover:text-white/62 transition"
-            >
-              Schedule with advisor →
+          {onSkipToAdvisor ? (
+            <button type="button" onClick={onSkipToAdvisor} className="text-[11px] text-white/38 hover:text-white/62 transition">
+              Skip to advisor →
             </button>
           ) : null}
           {showSkipQuestions && onSkipToGrok ? (
-            <button
-              type="button"
-              onClick={onSkipToGrok}
-              className="text-[11px] text-purple-400/60 hover:text-purple-300/80 transition"
-            >
+            <button type="button" onClick={onSkipToGrok} className="text-[11px] text-purple-400/60 hover:text-purple-300/80 transition">
               Skip questions →
             </button>
           ) : null}
@@ -530,7 +589,7 @@ function AdvisorChat({
               <input
                 type="file"
                 className="hidden"
-                accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   e.target.value = "";
@@ -565,399 +624,7 @@ function AdvisorChat({
   );
 }
 
-// ── Talent intake (same shell as IntakeBar, talent prompts) ─────────────────
-type TalentIntakePhase = number | "ct";
-
-function talentProgressIndex(phase: TalentIntakePhase): number {
-  if (phase === "ct") return 3;
-  if (typeof phase === "number") {
-    if (phase < 3) return phase;
-    return 4 + (phase - 3);
-  }
-  return 0;
-}
-
-const TALENT_INTAKE_TOTAL_STEPS = 3 + 1 + TALENT_INTAKE_QUESTIONS.length;
-
-function TalentIntakeBar({ onComplete }: { onComplete: (draft: Record<string, string>) => void }) {
-  const [phase, setPhase] = useState<TalentIntakePhase>(0);
-  const [creatorType, setCreatorType] = useState("");
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [inputVal, setInputVal] = useState("");
-  const [multiSelected, setMultiSelected] = useState<string[]>([]);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const roleFuse = useMemo(
-    () =>
-      new Fuse(TALENT_ROLE_CATALOG, {
-        threshold: 0.34,
-        includeScore: true,
-        ignoreLocation: true,
-        minMatchCharLength: 1,
-      }),
-    [],
-  );
-
-  const roleSuggestions = useMemo(() => {
-    const q = inputVal.trim();
-    if (q.length < 1) return [];
-    return roleFuse.search(q).slice(0, 8).map((r) => r.item);
-  }, [inputVal, roleFuse]);
-
-  const nameQ =
-    typeof phase === "number" && phase < 3 ? TALENT_INTAKE_NAME_QUESTIONS[phase] : null;
-  const tailQ =
-    typeof phase === "number" && phase >= 3 ? TALENT_INTAKE_QUESTIONS[phase - 3] : null;
-
-  const promptText =
-    phase === "ct"
-      ? "How do you usually work?"
-      : nameQ?.prompt ?? tailQ?.prompt ?? "";
-  const chips: string[] =
-    phase === "ct"
-      ? [...TALENT_CREATOR_TYPES]
-      : tailQ && !tailQ.rolePicker
-        ? [...tailQ.chips]
-        : [];
-
-  const isRolePicker = Boolean(tailQ?.rolePicker);
-  const isMultiStep = Boolean(tailQ?.multiSelect);
-  const multiMax = tailQ?.multiSelect?.max ?? 2;
-
-  const { out: typedPrompt, done: promptDone } = useTypewriter(promptText, 20);
-
-  useEffect(() => {
-    if (promptDone && !isMultiStep) setTimeout(() => inputRef.current?.focus(), 80);
-  }, [promptDone, phase, isMultiStep]);
-
-  useEffect(() => {
-    if (typeof phase === "number" && phase >= 3) {
-      const q = TALENT_INTAKE_QUESTIONS[phase - 3];
-      if (q?.multiSelect) setMultiSelected([]);
-    }
-  }, [phase]);
-
-  const progressFrac =
-    (talentProgressIndex(phase) + 1) / TALENT_INTAKE_TOTAL_STEPS;
-
-  const addRoleFromInput = useCallback(() => {
-    const t = inputVal.trim();
-    if (!t) return;
-    const exact = TALENT_ROLE_CATALOG.find((r) => r.toLowerCase() === t.toLowerCase());
-    const fuzzy = roleFuse.search(t);
-    const best =
-      exact ??
-      (fuzzy[0]?.score !== undefined && fuzzy[0].score < 0.28 ? fuzzy[0].item : t.trim());
-    setMultiSelected((prev) => {
-      if (prev.includes(best)) return prev;
-      if (prev.length >= multiMax) return prev;
-      return [...prev, best];
-    });
-    setInputVal("");
-  }, [inputVal, multiMax, roleFuse]);
-
-  const advance = useCallback(
-    (val: string) => {
-      const t = val.trim();
-      if (!t) return;
-
-      if (typeof phase === "number" && phase < 3 && nameQ) {
-        if (nameQ.id === "displayName" && t.length < 2) return;
-        if ((nameQ.id === "firstName" || nameQ.id === "lastName") && t.length < 1) return;
-        const next = { ...answers, [nameQ.id]: t };
-        setAnswers(next);
-        setInputVal("");
-        if (phase === 2) setPhase("ct");
-        else setPhase((phase as number) + 1);
-        return;
-      }
-
-      if (phase === "ct") {
-        setCreatorType(t);
-        setInputVal("");
-        setPhase(3);
-        return;
-      }
-
-      if (typeof phase === "number" && tailQ) {
-        if (tailQ.multiSelect || tailQ.rolePicker) return;
-        if (tailQ.id === "instagram" && t.length < 2) return;
-        const next = { ...answers, [tailQ.id]: t };
-        setAnswers(next);
-        setInputVal("");
-        const idx = phase - 3;
-        if (idx < TALENT_INTAKE_QUESTIONS.length - 1) {
-          setPhase(phase + 1);
-        } else {
-          onComplete({ ...next, creatorType });
-        }
-      }
-    },
-    [phase, answers, creatorType, nameQ, tailQ, onComplete],
-  );
-
-  const advanceMultiContinue = useCallback(() => {
-    if (typeof phase !== "number" || phase < 3) return;
-    const q = TALENT_INTAKE_QUESTIONS[phase - 3];
-    if (!q?.multiSelect) return;
-    const next = { ...answers, [q.id]: JSON.stringify(multiSelected) };
-    setAnswers(next);
-    setInputVal("");
-    const idx = phase - 3;
-    if (idx < TALENT_INTAKE_QUESTIONS.length - 1) {
-      setPhase(phase + 1);
-    } else {
-      onComplete({ ...next, creatorType });
-    }
-  }, [phase, answers, creatorType, multiSelected, onComplete]);
-
-  const toggleMultiChip = useCallback(
-    (chip: string) => {
-      setMultiSelected((prev) => {
-        if (prev.includes(chip)) return prev.filter((c) => c !== chip);
-        if (prev.length >= multiMax) return prev;
-        return [...prev, chip];
-      });
-    },
-    [multiMax],
-  );
-
-  const handleKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== "Enter") return;
-    e.preventDefault();
-    if (isRolePicker) {
-      addRoleFromInput();
-      return;
-    }
-    if (isMultiStep) return;
-    if (inputVal.trim()) advance(inputVal.trim());
-  };
-
-  const placeholder = (() => {
-    if (isRolePicker) return "Search roles or type your own…";
-    if (tailQ?.id === "instagram") return "e.g. @yourhandle";
-    return "Type your answer or pick below…";
-  })();
-
-  return (
-    <div
-      className="w-full rounded-2xl transition-all duration-300 overflow-hidden"
-      style={{
-        background: "rgba(10,10,18,0.92)",
-        border: "1px solid rgba(124,92,255,0.30)",
-        boxShadow: "0 0 40px rgba(124,92,255,0.12), 0 0 0 1px rgba(124,92,255,0.08)",
-      }}
-    >
-      <div className="h-[2px] w-full" style={{ background: "rgba(255,255,255,0.05)" }}>
-        <motion.div
-          className="h-full rounded-full"
-          style={{
-            background: "linear-gradient(90deg, rgba(124,92,255,0.8), rgba(93,208,255,0.7))",
-          }}
-          animate={{ width: `${Math.max(progressFrac * 100, 6)}%` }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-        />
-      </div>
-
-      <div className="px-5 pt-4 pb-3 space-y-3">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={String(phase)}
-            initial={{ opacity: 0, x: 16 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -16 }}
-            transition={{ duration: 0.22 }}
-          >
-            <div className="flex items-start gap-2">
-              <Sparkles size={12} className="text-purple-400/70 mt-1 shrink-0" />
-              <p
-                className="text-[15px] font-semibold leading-snug"
-                style={{
-                  color: "rgba(255,255,255,0.92)",
-                  textShadow: "0 0 20px rgba(167,139,250,0.60)",
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                {typedPrompt}
-                {!promptDone && (
-                  <span className="inline-block w-[2px] h-[14px] bg-purple-400/80 animate-pulse ml-0.5 align-middle rounded-full" />
-                )}
-              </p>
-            </div>
-          </motion.div>
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {promptDone && (!isMultiStep || isRolePicker) && (
-            <motion.div
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.18 }}
-            >
-              <div className="flex items-center gap-2">
-                <input
-                  ref={inputRef}
-                  value={inputVal}
-                  onChange={(e) => setInputVal(e.target.value)}
-                  onKeyDown={handleKey}
-                  placeholder={placeholder}
-                  className="flex-1 bg-transparent outline-none text-[14px] text-white/80 placeholder:text-white/20"
-                />
-                {isRolePicker && inputVal.trim() ? (
-                  <button
-                    type="button"
-                    onClick={addRoleFromInput}
-                    className="flex items-center justify-center w-7 h-7 rounded-xl bg-white text-black shrink-0 transition hover:bg-white/90"
-                    title="Add role"
-                  >
-                    <ArrowUp size={13} />
-                  </button>
-                ) : !isRolePicker && inputVal.trim() ? (
-                  <button
-                    type="button"
-                    onClick={() => advance(inputVal.trim())}
-                    className="flex items-center justify-center w-7 h-7 rounded-xl bg-white text-black shrink-0 transition hover:bg-white/90"
-                  >
-                    <ArrowUp size={13} />
-                  </button>
-                ) : null}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {promptDone && isRolePicker && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="space-y-2"
-            >
-              {multiSelected.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {multiSelected.map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => toggleMultiChip(r)}
-                      className="rounded-full px-2.5 py-0.5 text-[10px]"
-                      style={{
-                        background: "rgba(124,92,255,0.22)",
-                        border: "1px solid rgba(167,139,250,0.45)",
-                        color: "rgba(220,210,255,0.92)",
-                      }}
-                    >
-                      {r} ×
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-              {roleSuggestions.length > 0 ? (
-                <div
-                  className="rounded-xl border border-white/[0.08] max-h-32 overflow-y-auto divide-y divide-white/[0.06]"
-                  style={{ background: "rgba(0,0,0,0.25)" }}
-                >
-                  {roleSuggestions.map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => toggleMultiChip(r)}
-                      className="w-full text-left px-3 py-1.5 text-[12px] text-white/70 hover:bg-white/[0.06] transition"
-                    >
-                      {r}
-                    </button>
-                  ))}
-                </div>
-              ) : inputVal.trim().length >= 2 ? (
-                <p className="text-[10px] text-white/30">No close match — tap ↑ to add what you typed.</p>
-              ) : null}
-              <p className="text-[11px] text-white/38">
-                Up to {multiMax} roles. Pick from suggestions or add a custom title.
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {promptDone && isMultiStep && !isRolePicker && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-[11px] text-white/38"
-            >
-              Tap up to {multiMax} roles (or continue with none).
-            </motion.p>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {promptDone && chips.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.1 }}
-              className="flex flex-wrap gap-1.5"
-            >
-              {chips.map((chip) => {
-                const selected = isMultiStep && multiSelected.includes(chip);
-                return (
-                  <button
-                    key={chip}
-                    type="button"
-                    onClick={() => (isMultiStep ? toggleMultiChip(chip) : advance(chip))}
-                    className="rounded-full px-3 py-1 text-[11px] transition-all duration-100"
-                    style={{
-                      background: selected ? "rgba(124,92,255,0.22)" : "rgba(255,255,255,0.05)",
-                      border: selected
-                        ? "1px solid rgba(167,139,250,0.45)"
-                        : "1px solid rgba(255,255,255,0.09)",
-                      color: selected ? "rgba(220,210,255,0.92)" : "rgba(255,255,255,0.45)",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (selected) return;
-                      (e.currentTarget as HTMLElement).style.background = "rgba(124,92,255,0.15)";
-                      (e.currentTarget as HTMLElement).style.borderColor = "rgba(124,92,255,0.35)";
-                      (e.currentTarget as HTMLElement).style.color = "rgba(196,174,255,0.90)";
-                    }}
-                    onMouseLeave={(e) => {
-                      if (selected) return;
-                      (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)";
-                      (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.09)";
-                      (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.45)";
-                    }}
-                  >
-                    {chip}
-                  </button>
-                );
-              })}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {promptDone && isMultiStep && (
-            <motion.div
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.12 }}
-            >
-              <button
-                type="button"
-                onClick={advanceMultiContinue}
-                className="mt-1 rounded-full px-4 py-1.5 text-[11px] font-semibold bg-white text-black hover:bg-white/90 transition"
-              >
-                Continue
-                {multiSelected.length > 0 ? ` (${multiSelected.length}/${multiMax})` : ""}
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
-  );
-}
-
-/** Grok finalize only — PRISM / portfolio / extra are sequential like TalentIntakeBar */
+/** Grok finalize — coach steps optional; intake digest carries PRISM + match fields */
 function normalizeHttpUrl(raw: string): string | undefined {
   const t = raw.trim();
   if (!t) return undefined;
@@ -1177,6 +844,7 @@ function TalentCoachChat({
           action: "finalize",
           draft,
           transcript,
+          intakeDigest: buildTalentDraftDigest(draft),
         }),
       });
       const finText = await finRes.text();
@@ -1722,31 +1390,43 @@ export function HeroBar({
     [session?.user, onDiscover, hydrate],
   );
 
-  const handleIntakeComplete = useCallback((answers: Record<string, string>, bizType: string) => {
-    setWelcomeOverride(null);
-    setAutoQueryOverride(null);
-    const fullProfile: Record<string, string> = {
-      businessType: bizType,
-      objective: answers.objective ?? "",
-      timeline: answers.timeline ?? "",
-      budget: answers.budget ?? "",
-      roles: answers.roles ?? "",
-    };
-    setProfile(fullProfile);
-    // Save to discovery store
-    fetch("/api/discovery/brief", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        primaryObjective: answers.objective ?? "",
-        requestedRoles: answers.roles ? [answers.roles] : [],
-        startTiming: answers.timeline ?? "",
-        budgetRange: answers.budget ?? "",
-        currentStep: 3, completed: true,
-      }),
-    }).catch(() => {});
-    setTrack("activated");
-  }, []);
+  const handleIntakeComplete = useCallback(
+    (answers: Record<string, string>, bizType: string) => {
+      setWelcomeOverride(null);
+      setAutoQueryOverride(null);
+      const mapped = mapClientIntakeToDiscovery(answers, bizType);
+      setProfile(mapped.profileFlat);
+      hydrate({
+        primaryObjective: mapped.primaryObjective,
+        rankedObjectives: mapped.primaryObjective ? [mapped.primaryObjective] : [],
+        requestedRoles: mapped.requestedRoles,
+        startTiming: mapped.startTiming,
+        budgetRange: mapped.budgetRange,
+        companyName: mapped.companyName ?? "",
+        industry: mapped.industry ?? "",
+        notes: mapped.notes ?? "",
+        currentStep: 3,
+        completed: true,
+      });
+      fetch("/api/discovery/brief", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          primaryObjective: mapped.primaryObjective,
+          requestedRoles: mapped.requestedRoles,
+          startTiming: mapped.startTiming,
+          budgetRange: mapped.budgetRange,
+          companyName: mapped.companyName,
+          industry: mapped.industry,
+          notes: mapped.notes,
+          currentStep: 3,
+          completed: true,
+        }),
+      }).catch(() => {});
+      setTrack("activated");
+    },
+    [hydrate],
+  );
 
   const handleReset = useCallback(() => {
     setWelcomeOverride(null);
@@ -1976,11 +1656,23 @@ export function HeroBar({
         transition={{ duration: 0.3 }}
         className="w-full"
       >
-        <TalentIntakeBar
-          onComplete={(draft) => {
+        <HeroTalentIntakeBar
+          onComplete={(draft, meta) => {
             setTalentArchetype(null);
-            setTalentDraft(draft);
-            setTalentGate("coach");
+            if (meta.kind === "individual") {
+              setTalentDraft(draft);
+              setTalentGate("coach");
+              return;
+            }
+            onTalentProfileSaved?.();
+            setTalentArchetype({
+              prismArchetype: "The Conductor",
+              celebrationLine:
+                meta.kind === "rep_roster"
+                  ? "Roster imported as drafts — invite talents to complete profiles when you're ready."
+                  : "Talent drafts saved under your agency — you can add more anytime from the dashboard.",
+            });
+            setTalentGate("pending_review");
           }}
         />
       </motion.div>
@@ -2002,7 +1694,7 @@ export function HeroBar({
           <IntakeBar
             onComplete={handleIntakeComplete}
             showSkipQuestions={false}
-            onScheduleAdvisor={openAdvisorBookingLink}
+            onSkipToAdvisor={openAdvisorBookingLink}
             onBriefFile={handleBriefFile}
             uploadBusy={briefUploadBusy}
             uploadError={briefUploadErr}
@@ -2023,7 +1715,7 @@ export function HeroBar({
               setProfile(buildReturningProfile());
               setTrack("activated");
             }}
-            onScheduleAdvisor={openAdvisorBookingLink}
+            onSkipToAdvisor={openAdvisorBookingLink}
             onBriefFile={handleBriefFile}
             uploadBusy={briefUploadBusy}
             uploadError={briefUploadErr}

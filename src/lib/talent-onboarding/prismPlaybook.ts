@@ -62,6 +62,19 @@ Rules:
 - generatedMatchTags: kebab-case, max 12, useful for brief matching.
 `.trim();
 
+/** P/R/I/S/M — operational methodology for Grok (not shown to creators verbatim). */
+export const PRISM_INTERNAL_DIMENSIONS = `
+PRISM — Creator Hive proprietary fit methodology (structured, not psychometric)
+
+P — Positioning: How the creator is perceived and positioned in market; creative identity; brand-readiness.
+R — Rolecraft: Deliverables, roles, craft depth, output types they own end-to-end.
+I — Instinct: Ownership vs collaboration; appetite to shape direction vs execute; ambiguity tolerance.
+S — Systems: Pace, feedback loops, reliability, how they run iterations and handoffs (concrete work habits).
+M — Market Fit: Industries, brand types, team setups, geography/mode preferences.
+
+Infer tags and archetypes as hypotheses from answers. Never describe PRISM as a clinical or personality test.
+`.trim();
+
 export const PRISM_PLAYBOOK_FOR_LLM = `
 PRISM (Creator Hive — internal fit model for matching creatives to briefs)
 
@@ -105,6 +118,8 @@ export function buildTalentOnboardingCoachSystemPrompt(): string {
     "- Keep assistant replies to 1–2 short sentences unless summarizing at the end.",
     "",
     "INTERNAL CONTEXT (do not paste verbatim to users):",
+    PRISM_INTERNAL_DIMENSIONS,
+    "",
     PRISM_PLAYBOOK_FOR_LLM,
   ].join("\n");
 }

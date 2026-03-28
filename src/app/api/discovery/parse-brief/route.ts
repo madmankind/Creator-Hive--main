@@ -36,9 +36,6 @@ async function extractPlainText(buffer: Buffer, mime: string, name: string): Pro
       await parser.destroy();
     }
   }
-  if (mime === "application/msword" || lower.endsWith(".doc")) {
-    throw new Error("DOC_BINARY");
-  }
   throw new Error("UNSUPPORTED_TYPE");
 }
 
@@ -128,15 +125,9 @@ export async function POST(req: NextRequest) {
     plain = truncate(await extractPlainText(buffer, mime, file.name));
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
-    if (msg === "DOC_BINARY") {
-      return NextResponse.json(
-        { error: "Legacy .doc files are not supported — please save as PDF or DOCX." },
-        { status: 415 },
-      );
-    }
     if (msg === "UNSUPPORTED_TYPE") {
       return NextResponse.json(
-        { error: "Use PDF, DOCX, or TXT (images: PNG/JPG not yet supported here)." },
+        { error: "Upload PDF, DOCX, or TXT only." },
         { status: 415 },
       );
     }

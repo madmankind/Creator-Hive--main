@@ -1,79 +1,44 @@
 /**
- * Talent hero onboarding — same step pattern as client IntakeBar in HeroBar.tsx,
- * different prompts. Answers are rolled into a draft for Grok finalize + profile PUT.
+ * Talent hero onboarding — inline bar + Grok finalize.
+ * Individual path: core + PRISM-style fit + match-quality block.
+ * Agency/rep path: rep root → manual Talent 1/2 or roster upload.
  */
 
-/**
- * Post-welcome coach prompts — avoid duplicating pre-welcome intake (see TALENT_INTAKE_QUESTIONS).
- * Structure/brief-vs-co-create is covered by intake `howIWorkBest`; we skip that dimension here.
- */
-export const TALENT_PRISM_COACH_PROMPTS = [
-  "Pace: Do you thrive on fast turnarounds or longer, deep builds?",
-  "Risk: Proven formats vs experimental, high-variance ideas?",
-  "Collaboration: Solo maker, tight pod, or large-team energy?",
-  "Purpose: Which brand missions or categories energize you?",
-  "Purpose: Which brand missions or categories tend to drain you?",
+export const TALENT_INDUSTRY_OPTIONS = [
+  "Fashion",
+  "Beauty",
+  "Food & beverage",
+  "Hospitality",
+  "Luxury",
+  "Lifestyle",
+  "Tech",
+  "Automotive",
+  "Creator economy",
+  "Fitness",
+  "Healthcare",
+  "Real estate",
+  "Travel",
+  "Parenting",
+  "Finance",
+  "Retail",
+  "Entertainment",
+  "Education",
 ] as const;
 
-/** Example tags for the two Purpose PRISM steps (creators can also type below). */
-export const TALENT_PURPOSE_TAG_CHIPS = [
-  "Sustainability / purposeful brands",
-  "Luxury & premium",
-  "Sports & wellness",
-  "Tech & innovation",
-  "Culture & entertainment",
-  "FMCG & household names",
-  "Regional / Arabic-first stories",
-  "Startups & challengers",
-] as const;
+/** Post-welcome coach: intake now holds PRISM + match; coach is confirm-only. */
+export const TALENT_PRISM_COACH_PROMPTS = [] as const;
 
-/** One screen at a time after welcome — same UX as hero intake bar. */
+export const TALENT_PURPOSE_TAG_CHIPS = [] as const;
+
 export type TalentCoachSequentialStep = {
   id: string;
   prompt: string;
   chips: readonly string[];
-  /** Portfolio: link field + file upload on one screen */
   inputKind?: "portfolio";
 };
 
-export const TALENT_COACH_SEQUENTIAL_STEPS: readonly TalentCoachSequentialStep[] = [
-  {
-    id: "prism_0",
-    prompt: TALENT_PRISM_COACH_PROMPTS[0],
-    chips: ["Fast turnarounds", "Longer, deep builds", "A mix of both"],
-  },
-  {
-    id: "prism_1",
-    prompt: TALENT_PRISM_COACH_PROMPTS[1],
-    chips: ["Proven formats", "Experimental ideas", "Both"],
-  },
-  {
-    id: "prism_2",
-    prompt: TALENT_PRISM_COACH_PROMPTS[2],
-    chips: ["Solo maker", "Tight pod", "Large-team energy"],
-  },
-  {
-    id: "prism_3",
-    prompt: TALENT_PRISM_COACH_PROMPTS[3],
-    chips: [...TALENT_PURPOSE_TAG_CHIPS],
-  },
-  {
-    id: "prism_4",
-    prompt: TALENT_PRISM_COACH_PROMPTS[4],
-    chips: [...TALENT_PURPOSE_TAG_CHIPS, "Nothing really drains me — it's usually the process"],
-  },
-  {
-    id: "portfolio",
-    prompt: "Show your best work — paste a link and/or upload a file (optional).",
-    chips: ["Skip — add later"],
-    inputKind: "portfolio",
-  },
-  {
-    id: "extra",
-    prompt: "Dream clients, tools, or constraints — anything else we should know?",
-    chips: ["Skip — I'm good"],
-  },
-] as const;
+/** Empty — finalize runs right after welcome; full signal lives in intake draft. */
+export const TALENT_COACH_SEQUENTIAL_STEPS: readonly TalentCoachSequentialStep[] = [];
 
 export const TALENT_CREATOR_TYPES = [
   "Independent creator",
@@ -104,24 +69,19 @@ export type TalentIntakeQuestion = {
   id: string;
   prompt: string;
   chips: readonly string[];
-  /** Multi-select; Continue stores JSON.stringify(selected) */
   multiSelect?: { max: number };
-  /** Fuzzy catalog + custom typed roles */
   rolePicker?: true;
+  /** Rank-ordered industry picks (max 5) — special UI in TalentIntakeBar */
+  industryRank?: { max: number };
+  optional?: boolean;
 };
 
-export const TALENT_INTAKE_QUESTIONS: readonly TalentIntakeQuestion[] = [
+/** After creator-type + rep branching — individual / agency-self creators. */
+export const TALENT_INDIVIDUAL_TAIL: readonly TalentIntakeQuestion[] = [
   {
     id: "primaryCraft",
-    prompt: "What's your main craft — the headline role brands hire you for?",
+    prompt: "What do you do most?",
     chips: [...CRAFT_CHIPS],
-  },
-  {
-    id: "additionalRoles",
-    prompt: "What other professional hats do you wear? (pick up to 2 — search or type)",
-    chips: [] as string[],
-    multiSelect: { max: 2 },
-    rolePicker: true,
   },
   {
     id: "location",
@@ -139,46 +99,216 @@ export const TALENT_INTAKE_QUESTIONS: readonly TalentIntakeQuestion[] = [
     ],
   },
   {
-    id: "remoteWork",
-    prompt: "Are you available to work remotely?",
-    chips: ["Yes — fully remote OK", "Hybrid preferred", "Mostly on-site / local", "Case by case"],
+    id: "instagram",
+    prompt: "What's your main social handle?",
+    chips: [] as string[],
+  },
+  {
+    id: "portfolioShowreel",
+    prompt: "Add your portfolio or showreel (link).",
+    chips: ["Skip — add later"],
+    optional: true,
+  },
+  {
+    id: "differentiator",
+    prompt: "In one line, what makes you different?",
+    chips: [] as string[],
+  },
+  {
+    id: "yearsExperienceBand",
+    prompt: "How many years have you been doing this?",
+    chips: ["0–2 years", "3–5 years", "6–9 years", "10+ years"],
+  },
+  {
+    id: "rankedIndustries",
+    prompt: "Pick your top 5 industries in order of experience (tap in order — 1st = most).",
+    chips: [...TALENT_INDUSTRY_OPTIONS],
+    industryRank: { max: 5 },
   },
   {
     id: "howIWorkBest",
     prompt: "I work best when…",
     chips: [
-      "The brief is clear and I own the outcome",
-      "I'm embedded with the team",
-      "There's room to shape the work as we go",
-      "Direction is set — I nail execution",
+      "the brief is clear and I can take ownership",
+      "I'm working closely with a team",
+      "there's room to shape the work as it evolves",
+      "the direction is already set and I can focus on execution",
     ],
   },
   {
     id: "wantMore",
-    prompt: "The kind of work you want more of is…",
+    prompt: "The kind of work I want more of is…",
+    chips: ["social content", "campaigns", "brand storytelling", "premium editorial work"],
+  },
+  {
+    id: "preferredPace",
+    prompt: "The pace that suits me best is…",
     chips: [
-      "Social & UGC",
-      "Campaigns & launches",
-      "Brand storytelling",
-      "Premium / editorial",
+      "fast turnaround",
+      "ongoing monthly work",
+      "campaign-based work",
+      "fewer projects with more craft",
     ],
   },
   {
-    id: "instagram",
-    prompt: "What's your main social handle?",
-    chips: [] as string[],
+    id: "feedbackStyle",
+    prompt: "When feedback comes in, I usually…",
+    chips: [
+      "make the changes quickly and keep moving",
+      "step back and realign before changing too much",
+      "suggest a better way to solve it",
+      "prefer clear feedback rounds from the start",
+    ],
   },
-] as const;
+  {
+    id: "workEnvironmentFit",
+    prompt: "I'm best suited to…",
+    chips: [
+      "working independently",
+      "working with a small team",
+      "being part of a bigger production",
+      "working closely with a brand team",
+    ],
+  },
+  {
+    id: "workModeOpenness",
+    prompt: "I'm open to…",
+    chips: ["remote work", "on-site work", "hybrid", "travel if needed"],
+  },
+  {
+    id: "availabilityType",
+    prompt: "My availability is…",
+    chips: ["freelance", "project-based", "part-time", "full-time"],
+  },
+  {
+    id: "match_header",
+    prompt: "Improve your match quality\n\nA few more answers help us match you to better-fit briefs.",
+    chips: ["Continue"],
+  },
+  {
+    id: "brandFitPick",
+    prompt: "What kind of brands suit you best?",
+    chips: [
+      "emerging brands",
+      "established brands",
+      "luxury brands",
+      "founder-led brands",
+      "media / publisher brands",
+      "agencies",
+    ],
+  },
+  {
+    id: "clientValuePick",
+    prompt: "What do clients value you most for?",
+    chips: ["speed", "taste", "reliability", "ideas", "polish", "organisation"],
+  },
+  {
+    id: "teamSetupPick",
+    prompt: "What kind of team setup brings out your best work?",
+    chips: [
+      "direct with the founder",
+      "with a small internal team",
+      "agency-side collaboration",
+      "larger production crew",
+      "mostly independent",
+    ],
+  },
+];
 
-function parseAdditionalRoles(raw: string | undefined): string[] {
+export const TALENT_REP_WHO_QUESTION: TalentIntakeQuestion = {
+  id: "repSigningMode",
+  prompt: "Are you signing up for yourself or representing talent?",
+  chips: ["Myself — I'm the creator", "I'm representing talent"],
+};
+
+export const TALENT_REP_ROOT: readonly TalentIntakeQuestion[] = [
+  { id: "repEntityName", prompt: "What's your business or entity name?", chips: [] },
+  { id: "repContactName", prompt: "What's your name (as the rep)?", chips: [] },
+  { id: "repEmail", prompt: "What's your work email?", chips: [] },
+  {
+    id: "repSocial",
+    prompt: "Your social handle (optional)",
+    chips: ["Skip"],
+    optional: true,
+  },
+  {
+    id: "repTalentKinds",
+    prompt: "What kind of talent do you represent?",
+    chips: ["UGC & creators", "Production crew", "Mixed roster", "Other — I'll type"],
+  },
+];
+
+export const TALENT_REP_PATH_QUESTION: TalentIntakeQuestion = {
+  id: "repOnboardPath",
+  prompt: "How would you like to add talent?",
+  chips: ["Add Talent 1 now", "Upload roster — finish later"],
+};
+
+export const TALENT_T1_FIELDS: readonly TalentIntakeQuestion[] = [
+  { id: "t1_fullName", prompt: "Talent 1 — full name", chips: [] },
+  { id: "t1_primaryRole", prompt: "Talent 1 — primary role", chips: [...CRAFT_CHIPS] },
+  { id: "t1_location", prompt: "Talent 1 — based in", chips: TALENT_INDIVIDUAL_TAIL[1].chips as unknown as string[] },
+  { id: "t1_social", prompt: "Talent 1 — social handle", chips: [] },
+  {
+    id: "t1_portfolio",
+    prompt: "Talent 1 — portfolio link (optional)",
+    chips: ["Skip"],
+    optional: true,
+  },
+  {
+    id: "t1_industries",
+    prompt: "Talent 1 — top industries (optional, comma-separated)",
+    chips: ["Skip"],
+    optional: true,
+  },
+  {
+    id: "t1_notes",
+    prompt: "Talent 1 — notes (optional)",
+    chips: ["Skip"],
+    optional: true,
+  },
+];
+
+export const TALENT_ADD_T2_QUESTION: TalentIntakeQuestion = {
+  id: "addSecondTalent",
+  prompt: "Add a second talent now?",
+  chips: ["Add Talent 2", "Done — save"],
+};
+
+export const TALENT_T2_FIELDS: readonly TalentIntakeQuestion[] = [
+  { id: "t2_fullName", prompt: "Talent 2 — full name", chips: [] },
+  { id: "t2_primaryRole", prompt: "Talent 2 — primary role", chips: [...CRAFT_CHIPS] },
+  { id: "t2_location", prompt: "Talent 2 — based in", chips: TALENT_INDIVIDUAL_TAIL[1].chips as unknown as string[] },
+  { id: "t2_social", prompt: "Talent 2 — social handle", chips: [] },
+  {
+    id: "t2_portfolio",
+    prompt: "Talent 2 — portfolio link (optional)",
+    chips: ["Skip"],
+    optional: true,
+  },
+];
+
+/** @deprecated — use TALENT_INDIVIDUAL_TAIL + rep flows in HeroBar */
+export const TALENT_INTAKE_QUESTIONS: readonly TalentIntakeQuestion[] = TALENT_INDIVIDUAL_TAIL;
+
+function parseRankedIndustries(raw: string | undefined): string[] {
   if (!raw?.trim()) return [];
   try {
     const v = JSON.parse(raw) as unknown;
     if (!Array.isArray(v)) return [];
-    return v.map((x) => String(x).trim()).filter(Boolean);
+    return v.map((x) => String(x).trim()).filter(Boolean).slice(0, 5);
   } catch {
     return [];
   }
+}
+
+/** Flatten draft for Grok finalize digest */
+export function buildTalentDraftDigest(draft: Record<string, string>): string {
+  return Object.entries(draft)
+    .filter(([, v]) => v && String(v).trim())
+    .map(([k, v]) => `${k}: ${String(v).trim()}`)
+    .join("\n")
+    .slice(0, 12000);
 }
 
 /** Map hero draft → creator profile PUT payload helpers */
@@ -193,33 +323,44 @@ export function draftToProfileBody(draft: Record<string, string>, userName: stri
     draft.displayName?.trim() ||
     full ||
     (userName.trim().length >= 2 ? userName.trim() : craft);
-  const extraRaw = parseAdditionalRoles(draft.additionalRoles);
-  const extra = extraRaw
-    .filter((r) => r.toLowerCase() !== craft.toLowerCase())
-    .slice(0, 2);
-  const remote = draft.remoteWork?.trim() ?? "";
-  const skills = [craft, ...extra, "Content Creation"]
+  const portfolio = draft.portfolioShowreel?.trim() ?? "";
+  const diff = draft.differentiator?.trim() ?? "";
+  const ranked = parseRankedIndustries(draft.rankedIndustries);
+  const brandFit = draft.brandFitPick?.trim();
+  const clientVal = draft.clientValuePick?.trim();
+  const teamSetup = draft.teamSetupPick?.trim();
+
+  const skills = [craft, "Content Creation"]
     .map((s) => s.trim())
     .filter(Boolean)
     .filter((v, i, a) => a.indexOf(v) === i)
     .slice(0, 8);
-  const bioParts = [
-    craft,
-    extra.length ? `Also: ${extra.join(", ")}.` : "",
-    draft.wantMore ? `Interested in: ${draft.wantMore}.` : "",
-    remote ? `Remote: ${remote}.` : "",
-  ].filter(Boolean);
+
+  const bioParts = [craft, diff, portfolio ? `Portfolio: ${portfolio}.` : "", draft.wantMore ? `Want: ${draft.wantMore}.` : ""].filter(
+    Boolean,
+  );
+
   return {
     name: display.slice(0, 120),
     instagram: ig.length >= 2 ? ig : "creator",
     bio: bioParts.join(" ").slice(0, 280),
     location: loc,
     skills,
-    niches: [],
+    niches: ranked,
+    portfolioUrl: portfolio && !portfolio.toLowerCase().startsWith("skip") ? portfolio : undefined,
     primaryRole: craft,
-    howIWorkBest: draft.howIWorkBest || undefined,
-    preferredProjectTypes: draft.wantMore ? [draft.wantMore] : [],
-    rankedIndustries: [],
-    workModeOpenness: remote || undefined,
+    rankedIndustries: ranked,
+    yearsExperienceBand: draft.yearsExperienceBand?.trim() || undefined,
+    preferredProjectTypes: draft.wantMore?.trim() ? [draft.wantMore.trim()] : [],
+    preferredPace: draft.preferredPace?.trim() || undefined,
+    feedbackStyle: draft.feedbackStyle?.trim() || undefined,
+    howIWorkBest: draft.howIWorkBest?.trim() || undefined,
+    workEnvironmentFit: draft.workEnvironmentFit?.trim() || undefined,
+    workModeOpenness: draft.workModeOpenness?.trim() || undefined,
+    availabilityType: draft.availabilityType?.trim() || undefined,
+    brandFitPreferences: brandFit ? [brandFit] : [],
+    clientValueStrengths: clientVal ? [clientVal] : [],
+    teamSetupPreference: teamSetup || undefined,
+    suitedTeamScale: draft.workEnvironmentFit?.trim() || undefined,
   };
 }
