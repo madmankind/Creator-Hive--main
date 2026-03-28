@@ -13,6 +13,17 @@ function splitIndustries(raw: string | undefined): string[] {
     .slice(0, 8);
 }
 
+function parseJsonStringArray(raw: unknown): string[] {
+  if (!raw || typeof raw !== "string") return [];
+  try {
+    const v = JSON.parse(raw) as unknown;
+    if (!Array.isArray(v)) return [];
+    return v.map((x) => String(x).trim()).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 async function upsertRepBootstrap(user: User, draft: Record<string, unknown>) {
   const agency = await getOrCreateAgency(user);
   const name = String(draft.repEntityName ?? "").trim() || agency.name;
@@ -54,26 +65,45 @@ export async function POST(req: Request) {
   const draft = body.draft ?? {};
   const agency = await upsertRepBootstrap(user, draft);
 
-  const talents: Array<Record<string, string | undefined>> = [];
+  const talents: Array<{
+    name: string;
+    role?: string;
+    skills: string[];
+    location?: string;
+    social?: string;
+    portfolio?: string;
+    rankedIndustries: string[];
+  }> = [];
 
   if (draft.t1_fullName) {
+    const rolesArr = parseJsonStringArray(draft.t1_topRoles);
+    const legacyRole = draft.t1_primaryRole ? String(draft.t1_primaryRole) : "";
+    const ranked = parseJsonStringArray(draft.t1_rankedIndustries);
+    const rankedFallback = ranked.length ? ranked : splitIndustries(draft.t1_industries as string | undefined);
+    const primary1 = rolesArr[0] ?? (legacyRole || undefined);
     talents.push({
       name: String(draft.t1_fullName),
-      role: draft.t1_primaryRole ? String(draft.t1_primaryRole) : undefined,
+      role: primary1 || undefined,
+      skills: rolesArr.length ? rolesArr : legacyRole ? [legacyRole] : [],
       location: draft.t1_location ? String(draft.t1_location) : undefined,
       social: draft.t1_social ? String(draft.t1_social) : undefined,
       portfolio: draft.t1_portfolio ? String(draft.t1_portfolio) : undefined,
-      industries: draft.t1_industries ? String(draft.t1_industries) : undefined,
-      notes: draft.t1_notes ? String(draft.t1_notes) : undefined,
+      rankedIndustries: rankedFallback,
     });
   }
   if (draft.t2_fullName) {
+    const rolesArr = parseJsonStringArray(draft.t2_topRoles);
+    const legacyRole = draft.t2_primaryRole ? String(draft.t2_primaryRole) : "";
+    const ranked = parseJsonStringArray(draft.t2_rankedIndustries);
+    const primary2 = rolesArr[0] ?? (legacyRole || undefined);
     talents.push({
       name: String(draft.t2_fullName),
-      role: draft.t2_primaryRole ? String(draft.t2_primaryRole) : undefined,
+      role: primary2 || undefined,
+      skills: rolesArr.length ? rolesArr : legacyRole ? [legacyRole] : [],
       location: draft.t2_location ? String(draft.t2_location) : undefined,
       social: draft.t2_social ? String(draft.t2_social) : undefined,
       portfolio: draft.t2_portfolio ? String(draft.t2_portfolio) : undefined,
+      rankedIndustries: ranked,
     });
   }
 
@@ -85,6 +115,8 @@ export async function POST(req: Request) {
   for (const t of talents) {
     const displayName = (t.name ?? "").trim();
     if (!displayName) continue;
+    const skills =
+      t.skills.length > 0 ? t.skills.slice(0, 8) : [t.role ?? "Creator"].filter(Boolean);
     try {
       await db.creatorProfile.create({
         data: {
@@ -92,13 +124,13 @@ export async function POST(req: Request) {
           userId: null,
           name: displayName.slice(0, 120),
           instagram: pickInstagram(t.social),
-          skills: [t.role ?? "Creator"].filter(Boolean) as string[],
+          skills: skills.length ? skills : ["Creator"],
           niches: [],
           location: t.location ?? null,
           portfolioUrl: t.portfolio?.trim() || null,
-          primaryRole: t.role ?? null,
-          bio: t.notes?.slice(0, 280) ?? null,
-          rankedIndustries: splitIndustries(t.industries),
+          primaryRole: t.role ?? skills[0] ?? null,
+          bio: null,
+          rankedIndustries: t.rankedIndustries.slice(0, 8),
           talentStatus: "draft",
           source: "agency_hero_manual",
         },

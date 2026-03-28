@@ -21,6 +21,7 @@ export const CLIENT_CAMPAIGN_STEPS: ClientBranchStep[] = [
     prompt: "When do you need to start?",
     chips: ["ASAP", "Within 2 weeks", "This month", "Next month"],
   },
+  /** Monthly budget — USD bands (public packages use USD labels). */
   {
     id: "budget",
     prompt: "What's your monthly budget range?",

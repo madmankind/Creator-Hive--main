@@ -65,7 +65,7 @@ function useTypewriter(text: string, speed = 20) {
 
 function StepIcon({ qid }: { qid: string }) {
   if (qid === "location" || qid.includes("location")) return <MapPin size={12} className="text-purple-400/50 shrink-0 mt-1" />;
-  if (qid.includes("Role") || qid === "topRoles") return <Briefcase size={12} className="text-purple-400/50 shrink-0 mt-1" />;
+  if (qid.includes("Role") || qid.includes("topRoles")) return <Briefcase size={12} className="text-purple-400/50 shrink-0 mt-1" />;
   if (qid.includes("pace") || qid === "yearsExperienceBand") return <Clock size={12} className="text-purple-400/50 shrink-0 mt-1" />;
   if (qid.includes("feedback") || qid.includes("Pick")) return <MessageCircle size={12} className="text-purple-400/50 shrink-0 mt-1" />;
   return null;
@@ -110,8 +110,8 @@ export function HeroTalentIntakeBar({
   }, [promptDone, currentQ?.id, currentQ?.industryRank, currentQ?.roleRank]);
 
   useEffect(() => {
-    if (currentQ?.id === "rankedIndustries") setRankedIndustries([]);
-    if (currentQ?.id === "topRoles") setRankedTopRoles([]);
+    if (currentQ?.industryRank) setRankedIndustries([]);
+    if (currentQ?.roleRank) setRankedTopRoles([]);
   }, [currentQ?.id]);
 
   const estTotal = 3 + 1 + TALENT_INDIVIDUAL_TAIL.length;
@@ -153,7 +153,11 @@ export function HeroTalentIntakeBar({
 
   const advance = useCallback(
     (raw: string) => {
-      const isSkip = raw === "Skip";
+      const isSkipChip =
+        raw === "Skip" ||
+        raw === "Skip — add later" ||
+        (Boolean(currentQ?.optional) && raw.startsWith("Skip") && !raw.toLowerCase().includes("save for later"));
+      const isSkip = isSkipChip;
       const t = isSkip ? "" : raw.trim();
       if (!isSkip && !t && !currentQ?.optional) return;
 
@@ -211,6 +215,7 @@ export function HeroTalentIntakeBar({
       }
 
       if (flow.m === "rep_t1" && currentQ) {
+        if (currentQ.roleRank || currentQ.industryRank) return;
         const next = { ...answers, [currentQ.id]: t };
         setAnswers(next);
         setInputVal("");
@@ -222,7 +227,7 @@ export function HeroTalentIntakeBar({
       if (flow.m === "rep_after_t1" && currentQ) {
         setInputVal("");
         if (t.includes("Add Talent 2")) setFlow({ m: "rep_t2", i: 0 });
-        else {
+        else if (t.includes("Done") || t.includes("Skip")) {
           void (async () => {
             try {
               const res = await fetch("/api/onboarding/agency/talent-draft", {
@@ -241,25 +246,11 @@ export function HeroTalentIntakeBar({
       }
 
       if (flow.m === "rep_t2" && currentQ) {
+        if (currentQ.roleRank || currentQ.industryRank) return;
         const next = { ...answers, [currentQ.id]: t };
         setAnswers(next);
         setInputVal("");
         if (flow.i < TALENT_T2_FIELDS.length - 1) setFlow({ m: "rep_t2", i: flow.i + 1 });
-        else {
-          void (async () => {
-            try {
-              const res = await fetch("/api/onboarding/agency/talent-draft", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "commit_manual", draft: next }),
-              });
-              if (!res.ok) throw new Error("save");
-              onComplete({ ...next, creatorType }, { kind: "rep_manual" });
-            } catch {
-              setRosterErr("Could not save — try again");
-            }
-          })();
-        }
         return;
       }
 
@@ -277,30 +268,77 @@ export function HeroTalentIntakeBar({
     [flow, answers, currentQ, creatorType, onComplete, finishIndividual],
   );
 
+  const saveRepManual = useCallback(
+    async (draft: Record<string, string>) => {
+      try {
+        const res = await fetch("/api/onboarding/agency/talent-draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "commit_manual", draft }),
+        });
+        if (!res.ok) throw new Error("save");
+        onComplete({ ...draft, creatorType }, { kind: "rep_manual" });
+      } catch {
+        setRosterErr("Could not save — try again");
+      }
+    },
+    [creatorType, onComplete],
+  );
+
   const confirmIndustries = useCallback(() => {
-    if (flow.m !== "ind" || !currentQ?.industryRank) return;
-    const next = { ...answers, rankedIndustries: JSON.stringify(rankedIndustries) };
+    if (!currentQ?.industryRank) return;
+    const m = flow.m;
+    if (m !== "ind" && m !== "rep_t1" && m !== "rep_t2") return;
+    const next = { ...answers, [currentQ.id]: JSON.stringify(rankedIndustries) };
     setAnswers(next);
-    setFlow({ m: "ind", i: flow.i + 1 });
-  }, [flow, currentQ, answers, rankedIndustries]);
+    if (m === "ind") {
+      setFlow({ m: "ind", i: flow.i + 1 });
+      return;
+    }
+    if (m === "rep_t1") {
+      if (flow.i < TALENT_T1_FIELDS.length - 1) setFlow({ m: "rep_t1", i: flow.i + 1 });
+      else setFlow({ m: "rep_after_t1" });
+      return;
+    }
+    if (m === "rep_t2") {
+      if (flow.i < TALENT_T2_FIELDS.length - 1) setFlow({ m: "rep_t2", i: flow.i + 1 });
+      else void saveRepManual({ ...next, creatorType });
+    }
+  }, [flow, currentQ, answers, rankedIndustries, creatorType, saveRepManual]);
 
   const confirmTopRoles = useCallback(() => {
-    if (flow.m !== "ind" || !currentQ?.roleRank) return;
+    if (!currentQ?.roleRank) return;
+    const m = flow.m;
+    if (m !== "ind" && m !== "rep_t1" && m !== "rep_t2") return;
     if (rankedTopRoles.length < 1) return;
-    const next = { ...answers, topRoles: JSON.stringify(rankedTopRoles) };
+    const next = { ...answers, [currentQ.id]: JSON.stringify(rankedTopRoles) };
     setAnswers(next);
-    setFlow({ m: "ind", i: flow.i + 1 });
-  }, [flow, currentQ, answers, rankedTopRoles]);
+    if (m === "ind") {
+      setFlow({ m: "ind", i: flow.i + 1 });
+      return;
+    }
+    if (m === "rep_t1") {
+      if (flow.i < TALENT_T1_FIELDS.length - 1) setFlow({ m: "rep_t1", i: flow.i + 1 });
+      else setFlow({ m: "rep_after_t1" });
+      return;
+    }
+    if (m === "rep_t2") {
+      if (flow.i < TALENT_T2_FIELDS.length - 1) setFlow({ m: "rep_t2", i: flow.i + 1 });
+      else void saveRepManual({ ...next, creatorType });
+    }
+  }, [flow, currentQ, answers, rankedTopRoles, creatorType, saveRepManual]);
+
+  const industryMax = currentQ?.industryRank?.max ?? 5;
 
   const toggleIndustry = useCallback(
     (chip: string) => {
       setRankedIndustries((prev) => {
         if (prev.includes(chip)) return prev.filter((c) => c !== chip);
-        if (prev.length >= 5) return prev;
+        if (prev.length >= industryMax) return prev;
         return [...prev, chip];
       });
     },
-    [],
+    [industryMax],
   );
 
   const handleRosterFile = useCallback(
@@ -339,13 +377,15 @@ export function HeroTalentIntakeBar({
 
   const chips: string[] =
     currentQ && !currentQ.industryRank && !currentQ.roleRank ? [...currentQ.chips] : [];
+  const discreteChoiceFlow =
+    flow.m === "rep_after_t1" || flow.m === "rep_path" || flow.m === "rep_who" || flow.m === "ct";
   const showInput =
     promptDone &&
     flow.m !== "rep_roster" &&
     currentQ &&
     !currentQ.industryRank &&
     !currentQ.roleRank &&
-    (chips.length === 0 || currentQ.optional);
+    !discreteChoiceFlow;
 
   const canBack = !(flow.m === "name" && flow.i === 0);
 
@@ -411,7 +451,12 @@ export function HeroTalentIntakeBar({
                 )}
               </p>
             </div>
-            {promptDone && currentQ && flow.m === "ind" ? (
+            {promptDone &&
+            currentQ &&
+            (flow.m === "ind" ||
+              flow.m === "rep_root" ||
+              flow.m === "rep_t1" ||
+              flow.m === "rep_t2") ? (
               <p className="text-[10px] text-white/30 mt-2 pl-[22px]">
                 {currentQ.chips.length > 0
                   ? "Examples below — type your own answer or mix with chips."
@@ -464,7 +509,7 @@ export function HeroTalentIntakeBar({
         {promptDone && currentQ?.industryRank ? (
           <div className="space-y-2">
             <p className="text-[11px] text-white/40">
-              Selected {rankedIndustries.length}/5 — order is the tap order.
+              Selected {rankedIndustries.length}/{industryMax} — order is the tap order.
             </p>
             <div className="flex flex-wrap gap-1.5">
               {currentQ.chips.map((chip) => {

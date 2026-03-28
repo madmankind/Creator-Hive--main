@@ -180,31 +180,6 @@ export const TALENT_INDIVIDUAL_TAIL: readonly TalentIntakeQuestion[] = [
     chips: ["freelance", "project-based", "part-time", "full-time"],
   },
   {
-    id: "brandMissionsEnergize",
-    prompt:
-      "Improve your match quality — a few more answers help us place you on better-fit briefs.\n\nWhat type of brand missions or categories energize you?",
-    chips: [
-      "emerging brands",
-      "established brands",
-      "luxury brands",
-      "founder-led brands",
-      "media / publisher brands",
-      "agencies",
-    ],
-  },
-  {
-    id: "brandMissionsDrain",
-    prompt: "What kind of brand missions or categories tend to drain you?",
-    chips: [
-      "emerging brands",
-      "established brands",
-      "luxury brands",
-      "founder-led brands",
-      "media / publisher brands",
-      "agencies",
-    ],
-  },
-  {
     id: "clientValuePick",
     prompt: "What do clients value you most for?",
     chips: ["speed", "taste", "reliability", "ideas", "polish", "organisation"],
@@ -240,58 +215,70 @@ export const TALENT_REP_ROOT: readonly TalentIntakeQuestion[] = [
   },
   {
     id: "repTalentKinds",
-    prompt: "What kind of talent do you represent?",
-    chips: ["UGC & creators", "Production crew", "Mixed roster", "Other — I'll type"],
+    prompt: "What kind of talent do you represent? (pick examples and/or describe in your own words below)",
+    chips: ["UGC & creators", "Production crew", "Mixed roster"],
   },
 ];
 
 export const TALENT_REP_PATH_QUESTION: TalentIntakeQuestion = {
   id: "repOnboardPath",
   prompt: "How would you like to add talent?",
-  chips: ["Add Talent 1 now", "Upload roster — finish later"],
+  chips: ["Add each individually", "Upload roster — finish later"],
 };
 
 export const TALENT_T1_FIELDS: readonly TalentIntakeQuestion[] = [
   { id: "t1_fullName", prompt: "Talent 1 — full name", chips: [] },
-  { id: "t1_primaryRole", prompt: "Talent 1 — primary role", chips: [...CRAFT_CHIPS] },
+  {
+    id: "t1_topRoles",
+    prompt:
+      "Talent 1 — primary roles (pick up to 3 in order of experience — 1st = strongest; search the catalog or add your own).",
+    chips: [...CRAFT_CHIPS],
+    roleRank: { max: 3 },
+  },
   { id: "t1_location", prompt: "Talent 1 — based in", chips: TALENT_INDIVIDUAL_TAIL[1].chips as unknown as string[] },
   { id: "t1_social", prompt: "Talent 1 — social handle", chips: [] },
   {
     id: "t1_portfolio",
-    prompt: "Talent 1 — portfolio link (optional)",
-    chips: ["Skip"],
+    prompt: "Talent 1 — portfolio or showreel (link)",
+    chips: ["Skip — add later"],
     optional: true,
   },
   {
-    id: "t1_industries",
-    prompt: "Talent 1 — top industries (optional, comma-separated)",
-    chips: ["Skip"],
-    optional: true,
-  },
-  {
-    id: "t1_notes",
-    prompt: "Talent 1 — notes (optional)",
-    chips: ["Skip"],
-    optional: true,
+    id: "t1_rankedIndustries",
+    prompt: "Talent 1 — pick top 5 industries in order of experience (tap in order — 1st = most).",
+    chips: [...TALENT_INDUSTRY_OPTIONS],
+    industryRank: { max: 5 },
   },
 ];
 
 export const TALENT_ADD_T2_QUESTION: TalentIntakeQuestion = {
   id: "addSecondTalent",
-  prompt: "Add a second talent now?",
-  chips: ["Add Talent 2", "Done — save"],
+  prompt: "Add another talent or save what you have?",
+  chips: ["Add Talent 2", "Done — save", "Skip — save for later"],
 };
 
 export const TALENT_T2_FIELDS: readonly TalentIntakeQuestion[] = [
   { id: "t2_fullName", prompt: "Talent 2 — full name", chips: [] },
-  { id: "t2_primaryRole", prompt: "Talent 2 — primary role", chips: [...CRAFT_CHIPS] },
+  {
+    id: "t2_topRoles",
+    prompt:
+      "Talent 2 — primary roles (pick up to 3 in order of experience — 1st = strongest; search the catalog or add your own).",
+    chips: [...CRAFT_CHIPS],
+    roleRank: { max: 3 },
+  },
   { id: "t2_location", prompt: "Talent 2 — based in", chips: TALENT_INDIVIDUAL_TAIL[1].chips as unknown as string[] },
   { id: "t2_social", prompt: "Talent 2 — social handle", chips: [] },
   {
     id: "t2_portfolio",
-    prompt: "Talent 2 — portfolio link (optional)",
-    chips: ["Skip"],
+    prompt: "Talent 2 — portfolio or showreel (link)",
+    chips: ["Skip — add later"],
     optional: true,
+  },
+  {
+    id: "t2_rankedIndustries",
+    prompt: "Talent 2 — pick top 5 industries in order of experience (tap in order — 1st = most).",
+    chips: [...TALENT_INDUSTRY_OPTIONS],
+    industryRank: { max: 5 },
   },
 ];
 
@@ -344,8 +331,6 @@ export function draftToProfileBody(draft: Record<string, string>, userName: stri
     (userName.trim().length >= 2 ? userName.trim() : craft);
   const portfolio = draft.portfolioShowreel?.trim() ?? "";
   const ranked = parseRankedIndustries(draft.rankedIndustries);
-  const energize = draft.brandMissionsEnergize?.trim();
-  const drain = draft.brandMissionsDrain?.trim();
   const clientVal = draft.clientValuePick?.trim();
   const teamSetup = draft.teamSetupPick?.trim();
 
@@ -359,8 +344,6 @@ export function draftToProfileBody(draft: Record<string, string>, userName: stri
     craft,
     portfolio ? `Portfolio: ${portfolio}.` : "",
     draft.wantMore ? `Want: ${draft.wantMore}.` : "",
-    energize ? `Energized by: ${energize}.` : "",
-    drain ? `Less energy on: ${drain}.` : "",
   ].filter(Boolean);
 
   return {
@@ -381,7 +364,7 @@ export function draftToProfileBody(draft: Record<string, string>, userName: stri
     workEnvironmentFit: draft.workEnvironmentFit?.trim() || undefined,
     workModeOpenness: draft.workModeOpenness?.trim() || undefined,
     availabilityType: draft.availabilityType?.trim() || undefined,
-    brandFitPreferences: [energize, drain].map((s) => s?.trim()).filter(Boolean) as string[],
+    brandFitPreferences: [],
     clientValueStrengths: clientVal ? [clientVal] : [],
     teamSetupPreference: teamSetup || undefined,
     suitedTeamScale: draft.workEnvironmentFit?.trim() || undefined,
