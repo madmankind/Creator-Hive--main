@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HeroBar } from "@/components/HeroBar";
 import { TalentCarousel } from "@/components/marketing/TalentCarousel";
@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { ChevronDown, Sparkles } from "lucide-react";
 import { LogoLoader } from "@/components/ui/LogoLoader";
 import { analytics } from "@/lib/analytics";
+import { setGoogleJoinIntentForNextSignIn } from "@/lib/auth/googleJoinIntent";
 
 const curatedLookup = new Map(curatedTalent.map((t) => [t.id, t]));
 
@@ -105,6 +106,16 @@ function scrollToRef(ref: React.RefObject<HTMLElement | null>, block: ScrollLogi
   ref.current?.scrollIntoView({ behavior: "smooth", block });
 }
 
+const HERO_INTENT_KEY = "ch_hero_intent";
+
+function persistHeroIntent(m: "client" | "talent") {
+  try {
+    sessionStorage.setItem(HERO_INTENT_KEY, m);
+  } catch {
+    /* ignore */
+  }
+}
+
 function HomePageContent() {
   const [mode, setMode] = useState<"client" | "talent">("client");
   const [showTalentGallery, setShowTalentGallery] = useState(false);
@@ -123,7 +134,9 @@ function HomePageContent() {
   const [showAdvisorModal, setShowAdvisorModal] = useState(false);
   const discoveryStore = useDiscoveryStore();
   // Inline hero auth (replaces full-screen modal for initial sign-in)
-  const [heroAuthStep, setHeroAuthStep] = useState<"idle" | "email" | "phone" | "otp" | "loading">("idle");
+  const [heroAuthStep, setHeroAuthStep] = useState<
+    "idle" | "email" | "phone" | "otp" | "loading" | "waiting_session"
+  >("idle");
   const [heroAuthEmail, setHeroAuthEmail] = useState("");
   const [heroAuthAuthMode, setHeroAuthAuthMode] = useState<"signup" | "login">("signup");
   const [heroAuthSubmitting, setHeroAuthSubmitting] = useState(false);
@@ -133,28 +146,106 @@ function HomePageContent() {
   const [heroAuthGoogleLoading, setHeroAuthGoogleLoading] = useState(false);
   const [heroOtpVerifying, setHeroOtpVerifying] = useState(false);
   const [heroOtpCode, setHeroOtpCode] = useState("");
-  const [talentModalOpen, setTalentModalOpen] = useState<"auth" | "phone" | "talent-type" | null>(null);
+  const [heroSignInNotice, setHeroSignInNotice] = useState<string | null>(null);
 
   const packageRef = useRef<HTMLElement>(null);
   const galleryRef = useRef<HTMLElement>(null);
   const campaignRef = useRef<HTMLElement>(null);
 
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
+  const sessionPending = sessionStatus === "loading";
   const searchParams = useSearchParams();
   const router = useRouter();
   const role = (session?.user as { role?: string | null } | undefined)?.role ?? null;
   const isClient = role === "AGENCY";
+  const [creatorOnboardingComplete, setCreatorOnboardingComplete] = useState<boolean | null>(null);
 
-  // Talent: marketing "/" is the client welcome — send signed-in creators to their dashboard home
+  useEffect(() => {
+    if (role !== "CREATOR" || !session?.user) {
+      setCreatorOnboardingComplete(null);
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/onboarding/creator/profile")
+      .then((r) => r.json())
+      .then((data: { profile?: { onboardingCompletedAt?: string | null } | null }) => {
+        if (!cancelled) {
+          setCreatorOnboardingComplete(!!data.profile?.onboardingCompletedAt);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setCreatorOnboardingComplete(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [role, session?.user]);
+
+  // Restore Client vs Talent after hard navigation (OAuth, replace("/"), refresh)
+  useEffect(() => {
+    try {
+      const v = sessionStorage.getItem(HERO_INTENT_KEY);
+      if (v === "talent") setMode("talent");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    const c = searchParams.get("continueTalentOnboarding");
+    if (c === "1" || c === "true") {
+      persistHeroIntent("talent");
+      setMode("talent");
+      setHeroAuthStep("email");
+      router.replace("/", { scroll: false });
+    }
+  }, [searchParams, router]);
+
+  // Logged-out talent: one surface — email / OTP (no extra "Apply to join" stub)
+  useLayoutEffect(() => {
+    if (mode !== "talent" || session?.user || sessionPending) return;
+    setHeroAuthStep((s) => (s === "idle" ? "email" : s));
+  }, [mode, session?.user, sessionPending]);
+
+  useEffect(() => {
+    if (heroAuthStep !== "waiting_session") return;
+    if (session?.user) setHeroAuthStep("idle");
+  }, [heroAuthStep, session?.user]);
+
+  // Creators who still owe hero onboarding always see the Talent experience (not client brief / hire UI)
+  useEffect(() => {
+    if (role !== "CREATOR" || !session?.user) return;
+    if (creatorOnboardingComplete !== false) return;
+    persistHeroIntent("talent");
+    setMode("talent");
+  }, [role, session?.user, creatorOnboardingComplete]);
+
+  // Brand (AGENCY) accounts cannot use the Talent tab — same email, different workspace type
+  useEffect(() => {
+    if (sessionPending || !session?.user) return;
+    if (role !== "AGENCY") return;
+    if (mode !== "talent") return;
+    persistHeroIntent("client");
+    setMode("client");
+    setHeroSignInNotice(
+      "This email is registered as a brand / client workspace. You're on Client now — use a different email if you also want a creator profile.",
+    );
+  }, [sessionPending, session?.user, role, mode]);
+
+  // Talent: send creators to dashboard only after hero onboarding is complete
   useEffect(() => {
     if (role !== "CREATOR" || !session?.user) return;
     const auth = searchParams.get("auth");
     const bookId = searchParams.get("book");
     const pkgId = searchParams.get("package");
     const skip = searchParams.get("skip");
+    const continueTalent = searchParams.get("continueTalentOnboarding");
     if (auth || bookId || pkgId || skip === "gallery") return;
+    if (continueTalent === "1" || continueTalent === "true") return;
+    if (creatorOnboardingComplete === null) return;
+    if (creatorOnboardingComplete === false) return;
     router.replace("/dashboard/creator");
-  }, [role, session?.user, router, searchParams]);
+  }, [role, session?.user, router, searchParams, creatorOnboardingComplete]);
 
 
   useEffect(() => {
@@ -166,6 +257,7 @@ function HomePageContent() {
 
     // Open auth modal when redirected from protected routes
     if (signin === "required" && !session?.user) {
+      persistHeroIntent("client");
       setMode("client");
       setHeroAuthStep("email");
       return;
@@ -173,11 +265,13 @@ function HomePageContent() {
 
     // Open auth modal when redirected from /signup?type=...
     if (auth === "talent" && !session?.user) {
+      persistHeroIntent("talent");
       setMode("talent");
       setHeroAuthStep("email");
       return;
     }
     if (auth === "client" && !session?.user) {
+      persistHeroIntent("client");
       setMode("client");
       setHeroAuthStep("email");
       return;
@@ -237,13 +331,10 @@ function HomePageContent() {
       const checkData = await checkRes.json();
 
       if (checkRes.ok && checkData.isExistingUser) {
-        // Returning user — sign in directly, no OTP needed
+        const acctRole = checkData.role as string | undefined;
         setHeroAuthAuthMode("login");
         const displayName = checkData.name || email.split("@")[0];
-        const userType = checkData.role === "CREATOR" ? "talent" : "client";
-        // If they came in on client tab but are a creator, or vice versa, adjust mode
-        if (userType === "talent" && mode === "client") setMode("talent");
-        if (userType === "client" && mode === "talent") setMode("client");
+        const userType = mode === "talent" ? "talent" : "client";
 
         const result = await signIn("credentials", {
           redirect: false,
@@ -257,6 +348,17 @@ function HomePageContent() {
           setHeroAuthSubmitting(false);
           await sendOtpAndContinue(email);
           return;
+        }
+        if (acctRole === "AGENCY" && mode === "talent") {
+          persistHeroIntent("client");
+          setMode("client");
+          setHeroSignInNotice(
+            "This email is your brand workspace — opened Client for you. To join as a creator, sign up with another email.",
+          );
+        } else if (acctRole === "CREATOR" && mode === "client") {
+          persistHeroIntent("talent");
+          setMode("talent");
+          setHeroSignInNotice("This email is your creator account — opened Talent for you.");
         }
         setHeroAuthSubmitting(false);
         setHeroAuthStep("loading");
@@ -334,6 +436,21 @@ function HomePageContent() {
       return;
     }
 
+    let existingAccountRole: string | undefined;
+    try {
+      const qlRes = await fetch("/api/auth/quick-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.toLowerCase().trim() }),
+      });
+      const qlData = await qlRes.json();
+      if (qlRes.ok && qlData.isExistingUser) {
+        existingAccountRole = qlData.role as string | undefined;
+      }
+    } catch {
+      /* non-fatal */
+    }
+
     // Step 2 — OTP verified, create the session
     const displayName = heroAuthEmail.trim()
       ? heroAuthEmail.split("@")[0]
@@ -355,6 +472,17 @@ function HomePageContent() {
         setHeroOtpVerifying(false);
         return;
       }
+      if (existingAccountRole === "AGENCY" && mode === "talent") {
+        persistHeroIntent("client");
+        setMode("client");
+        setHeroSignInNotice(
+          "This email is your brand workspace — opened Client for you. To join as a creator, sign up with another email.",
+        );
+      } else if (existingAccountRole === "CREATOR" && mode === "client") {
+        persistHeroIntent("talent");
+        setMode("talent");
+        setHeroSignInNotice("This email is your creator account — opened Talent for you.");
+      }
       try {
         localStorage.setItem(`ch_${mode}_email`, email.toLowerCase());
       } catch { /* ignore */ }
@@ -366,12 +494,10 @@ function HomePageContent() {
 
     setHeroOtpVerifying(false);
     analytics.heroOtpVerified(mode);
+    setHeroAuthStep("loading");
     if (mode === "client" || heroAuthAuthMode === "login") {
-      setHeroAuthStep("loading");
       analytics.loginCompleted("otp");
     } else {
-      setHeroAuthStep("idle");
-      setTalentModalOpen("talent-type");
       analytics.signupStepCompleted("otp_verified");
     }
   };
@@ -380,7 +506,12 @@ function HomePageContent() {
     setHeroAuthGoogleLoading(true);
     analytics.heroGoogleClicked(mode);
     try {
-      await signIn("google", { callbackUrl: mode === "talent" ? "/onboarding/step-1" : "/" });
+      if (mode === "talent") persistHeroIntent("talent");
+      else persistHeroIntent("client");
+      setGoogleJoinIntentForNextSignIn(mode === "talent" ? "creator" : "client");
+      await signIn("google", {
+        callbackUrl: mode === "talent" ? "/?continueTalentOnboarding=1" : "/",
+      });
     } catch {
       setHeroAuthGoogleLoading(false);
     }
@@ -504,6 +635,8 @@ function HomePageContent() {
               <button
                 key={m}
                 onClick={() => {
+                  persistHeroIntent(m);
+                  setHeroSignInNotice(null);
                   setMode(m);
                   if (!session?.user) {
                     setHeroAuthStep("email");
@@ -546,9 +679,44 @@ function HomePageContent() {
             </motion.div>
           </AnimatePresence>
 
+          {heroSignInNotice ? (
+            <div
+              className="mx-auto max-w-[480px] rounded-xl px-4 py-3 text-left text-[12px] leading-relaxed text-amber-100/90"
+              style={{
+                background: "rgba(251,191,36,0.08)",
+                border: "1px solid rgba(251,191,36,0.22)",
+              }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <p>{heroSignInNotice}</p>
+                <button
+                  type="button"
+                  onClick={() => setHeroSignInNotice(null)}
+                  className="shrink-0 text-amber-200/50 hover:text-amber-100/80 text-[11px] uppercase tracking-wide"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          ) : null}
+
           <div className="flex flex-col justify-start">
             <AnimatePresence mode="wait">
-              {!session?.user && heroAuthStep !== "idle" ? (
+              {sessionPending && mode === "talent" ? (
+                <motion.div
+                  key="talent-session-pending"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2 }}
+                  className="w-full"
+                >
+                  <div
+                    className="w-full h-14 rounded-2xl animate-pulse"
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+                  />
+                </motion.div>
+              ) : !session?.user && heroAuthStep !== "idle" ? (
                 <motion.div
                   key="hero-auth"
                   initial={{ opacity: 0, y: 8 }}
@@ -680,7 +848,18 @@ function HomePageContent() {
                     </div>
                   )}
                   {heroAuthStep === "loading" && (
-                    <HeroInlineLoading onDone={() => setHeroAuthStep("idle")} />
+                    <HeroInlineLoading
+                      onDone={() => {
+                        if (mode === "talent") setHeroAuthStep("waiting_session");
+                        else setHeroAuthStep("idle");
+                      }}
+                    />
+                  )}
+                  {heroAuthStep === "waiting_session" && (
+                    <div
+                      className="w-full max-w-[760px] mx-auto h-14 rounded-2xl animate-pulse"
+                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+                    />
                   )}
                 </motion.div>
               ) : mode === "client" ? (
@@ -744,6 +923,7 @@ function HomePageContent() {
                     onQueryChange={(q) => setSearchQuery(q)}
                     onRolesChange={(roles) => setSelectedRoles(roles)}
                     onDiscover={() => { setHeroAuthStep("email"); setHeroAuthEmail(""); setHeroAuthError(""); setHeroAuthAuthMode("signup"); }}
+                    onTalentProfileSaved={() => setCreatorOnboardingComplete(true)}
                   />
                 </motion.div>
               )}
@@ -991,14 +1171,6 @@ function HomePageContent() {
             setPendingDiscover(false);
           }
         }}
-      />
-
-      <HiveAuthModal
-        open={talentModalOpen !== null}
-        mode="talent"
-        initialStep={talentModalOpen ?? "auth"}
-        onClose={() => setTalentModalOpen(null)}
-        onSuccess={() => {}}
       />
 
       {/* ─── Discovery flow overlay ─── */}

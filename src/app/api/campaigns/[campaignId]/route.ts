@@ -117,33 +117,42 @@ export async function DELETE(
 
   const campaign = await db.campaign.findUnique({
     where: { id: campaignId },
-    select: { id: true, title: true, status: true },
+    select: { id: true, title: true, status: true, startDate: true, dueDate: true },
   });
 
   if (!campaign) {
     return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
   }
 
-  // Guard active campaigns: only allow non-active states (including COMPLETED/CANCELLED/DRAFT).
-  const ACTIVE_STATUSES = new Set([
-    "ACTIVE",
-    "IN_PROGRESS",
-    "PAUSED",
-    "PROVISIONAL",
-    "CONFIRMED_BRIEF_PENDING",
-    "BRIEF_SENT",
-  ]);
-
-  const isActiveCampaign = ACTIVE_STATUSES.has(campaign.status);
+  // Deletion window:
+  // - allowed: campaigns that have not started yet
+  // - allowed: campaigns that have ended (completed/cancelled/past due date)
+  // - blocked: anything currently active/in flight
+  const now = new Date();
+  const PRE_START_STATUSES = new Set(["DRAFT", "PROVISIONAL", "CONFIRMED_BRIEF_PENDING", "BRIEF_SENT"]);
+  const hasStarted = campaign.startDate ? campaign.startDate <= now : false;
+  const hasEnded =
+    campaign.status === "COMPLETED" ||
+    campaign.status === "CANCELLED" ||
+    (campaign.dueDate ? campaign.dueDate < now : false);
+  const isNotStarted = PRE_START_STATUSES.has(campaign.status) && !hasStarted;
+  const isTimingEligible = isNotStarted || hasEnded;
 
   // Financial/workflow guardrails.
   const [
-    paymentRecordsCount,
+    activeTalentCount,
+    assetCount,
     duePaymentCount,
     openInvoiceCount,
     signedContractCount,
   ] = await Promise.all([
-    db.campaignPayment.count({ where: { campaignId } }),
+    db.campaignTalent.count({
+      where: {
+        campaignId,
+        status: { in: ["ASSIGNED", "IN_PROGRESS"] },
+      },
+    }),
+    db.campaignFile.count({ where: { campaignId } }),
     db.campaignPayment.count({
       where: {
         campaignId,
@@ -165,8 +174,9 @@ export async function DELETE(
   ]);
 
   const reasons: string[] = [];
-  if (isActiveCampaign) reasons.push(`campaign is still active (${campaign.status})`);
-  if (paymentRecordsCount > 0) reasons.push("payment records exist");
+  if (!isTimingEligible) reasons.push(`campaign has already started and has not ended (${campaign.status})`);
+  if (activeTalentCount > 0) reasons.push("active talent assignments exist");
+  if (assetCount > 0) reasons.push("campaign assets/files exist");
   if (duePaymentCount > 0) reasons.push("talent payments are still due");
   if (openInvoiceCount > 0) reasons.push("open invoices are pending");
   if (signedContractCount > 0) reasons.push("signed contracts exist");

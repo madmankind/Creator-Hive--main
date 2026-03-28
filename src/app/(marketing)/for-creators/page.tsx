@@ -19,7 +19,7 @@ export default function ForCreatorsPage() {
           Join a curated network of UAE and GCC-based creators. Get matched with brands that fit your niche, negotiate scope once, then get paid on time.
         </p>
         <a
-          href="/onboarding/step-1"
+          href="/?continueTalentOnboarding=1"
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[14px] font-medium transition-all"
           style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.90)' }}
         >

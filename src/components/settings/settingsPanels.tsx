@@ -616,7 +616,7 @@ export function WorkspacePanel({
           {!hasProfile && !cLoading ? (
             <div className="px-5 py-4 text-[13px] text-white/70 lg:px-6">
               No creator profile yet.{" "}
-              <a className="text-teal-300/90 underline-offset-2 hover:underline" href="/onboarding/step-1">
+              <a className="text-teal-300/90 underline-offset-2 hover:underline" href="/?continueTalentOnboarding=1">
                 Complete onboarding
               </a>{" "}
               to edit these fields.

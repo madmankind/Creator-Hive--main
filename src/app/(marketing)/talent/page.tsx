@@ -21,7 +21,7 @@ export default function TalentLandingPage() {
             Creator Hive
           </Link>
           <Link
-            href="/onboarding/step-1"
+            href="/?continueTalentOnboarding=1"
             className="text-[13px] px-4 py-2 rounded-lg transition-all"
             style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.70)' }}
           >
@@ -45,7 +45,7 @@ export default function TalentLandingPage() {
           </p>
           <div className="mt-8 flex items-center gap-4">
             <Link
-              href="/onboarding/step-1"
+              href="/?continueTalentOnboarding=1"
               className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-[14px] font-medium transition-all"
               style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.90)' }}
             >
@@ -118,7 +118,7 @@ export default function TalentLandingPage() {
             Applications take 5 minutes. We review and respond within 3 business days.
           </p>
           <Link
-            href="/onboarding/step-1"
+            href="/?continueTalentOnboarding=1"
             className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-[14px] font-medium transition-all"
             style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.90)' }}
           >

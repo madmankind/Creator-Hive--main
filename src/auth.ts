@@ -200,7 +200,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               where: { userId: user.id },
               update: {},
               create: {
-                userId: user.id,
+                user: { connect: { id: user.id } },
                 name: user.name || "Creator",
                 skills: [],
                 niches: [],
@@ -240,25 +240,55 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user?.role) {
         token.role = user.role;
       }
-      // Google OAuth sign-in — upsert user as AGENCY (client) by default
+      // Google OAuth — new users default to AGENCY unless the client set
+      // ch_google_join_as=creator (talent signup) before signIn("google").
+      // Existing users: only name may update; role stays as in DB.
       if (account?.provider === "google" && !token.role) {
         const googleUser = user as { email?: string; name?: string } | undefined;
         if (googleUser?.email) {
           try {
             const { db } = await import("@/server/db");
+            let joinAsCreator = false;
+            try {
+              const { cookies } = await import("next/headers");
+              const jar = await cookies();
+              joinAsCreator = jar.get("ch_google_join_as")?.value === "creator";
+            } catch {
+              /* cookies() unavailable outside a request */
+            }
+            const defaultRole: UserRole = joinAsCreator ? "CREATOR" : "AGENCY";
             const dbUser = await db.user.upsert({
               where: { email: googleUser.email },
               update: { name: googleUser.name ?? undefined },
-              create: { email: googleUser.email, name: googleUser.name ?? googleUser.email.split("@")[0], role: "AGENCY" },
+              create: {
+                email: googleUser.email,
+                name: googleUser.name ?? googleUser.email.split("@")[0],
+                role: defaultRole,
+              },
             });
             token.role = dbUser.role;
             token.sub = dbUser.id;
-            await db.agencyAccount.upsert({
-              where: { userId: dbUser.id },
-              update: {},
-              create: { userId: dbUser.id, name: dbUser.name || "My Brand" },
-            });
-          } catch { token.role = "AGENCY"; }
+            if (dbUser.role === "AGENCY") {
+              await db.agencyAccount.upsert({
+                where: { userId: dbUser.id },
+                update: {},
+                create: { userId: dbUser.id, name: dbUser.name || "My Brand" },
+              });
+            } else if (dbUser.role === "CREATOR") {
+              await db.creatorProfile.upsert({
+                where: { userId: dbUser.id },
+                update: {},
+                create: {
+                  user: { connect: { id: dbUser.id } },
+                  name: dbUser.name || "Creator",
+                  skills: [],
+                  niches: [],
+                },
+              });
+            }
+          } catch {
+            token.role = "AGENCY";
+          }
         }
       }
       if (!token.role && token.sub) token.role = "AGENCY";

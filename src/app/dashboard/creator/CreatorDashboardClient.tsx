@@ -208,7 +208,7 @@ export function CreatorDashboardClient({ profile }: { profile: Profile; userId: 
   if (!profile) return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: "#07070B", color: "rgba(255,255,255,0.88)" }}>
       <p className="text-white/60 text-[15px]">Complete your creator profile to get started.</p>
-      <a href="/onboarding/step-1" className="rounded-full px-6 py-3 text-[14px] font-medium" style={{ background: "rgba(124,92,255,0.25)", color: "rgba(167,139,250,0.95)", boxShadow: "0 0 0 1px rgba(124,92,255,0.45)" }}>Set up profile</a>
+      <a href="/?continueTalentOnboarding=1" className="rounded-full px-6 py-3 text-[14px] font-medium" style={{ background: "rgba(124,92,255,0.25)", color: "rgba(167,139,250,0.95)", boxShadow: "0 0 0 1px rgba(124,92,255,0.45)" }}>Set up profile</a>
     </div>
   );
 

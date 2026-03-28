@@ -13,6 +13,18 @@ export default async function CreatorDashboardPage() {
     select: { id: true, role: true },
   }).catch(() => null);
 
+  if (user?.role === "CREATOR") {
+    const quick = await db.creatorProfile
+      .findUnique({
+        where: { userId: user.id },
+        select: { onboardingCompletedAt: true },
+      })
+      .catch(() => null);
+    if (quick && !quick.onboardingCompletedAt) {
+      redirect("/?continueTalentOnboarding=1");
+    }
+  }
+
   const profile = user
     ? await db.creatorProfile.findUnique({
         where: { userId: user.id },

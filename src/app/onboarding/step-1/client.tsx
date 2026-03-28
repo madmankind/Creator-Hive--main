@@ -1,10 +1,15 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 
 export default function OnboardingStep1Client() {
   const router = useRouter();
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.cookie = 'ch_google_join_as=; Path=/; Max-Age=0';
+  }, []);
   const [selected, setSelected] = useState<'independent' | 'agency' | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

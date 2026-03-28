@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import Fuse from "fuse.js";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
@@ -8,6 +9,19 @@ import { useRouter } from "next/navigation";
 import { ArrowUp, Loader2, Plus, X, Sparkles } from "lucide-react";
 import { curatedTalent } from "@/lib/curatedTalent";
 import { useDiscoveryStore } from "@/store/useDiscoveryStore";
+
+import {
+  TALENT_COACH_SEQUENTIAL_STEPS,
+  TALENT_CREATOR_TYPES,
+  TALENT_INTAKE_NAME_QUESTIONS,
+  TALENT_INTAKE_QUESTIONS,
+  draftToProfileBody,
+} from "@/lib/heroTalentIntake";
+import { TALENT_ROLE_CATALOG } from "@/lib/talentRoleCatalog";
+import {
+  ARCHETYPE_PUBLIC_BLURB,
+  type CreatorHiveArchetypeLabel,
+} from "@/lib/talent-onboarding/prismPlaybook";
 
 interface HeroBarProps {
   mode: "client" | "talent";
@@ -18,6 +32,8 @@ interface HeroBarProps {
   onClear?: () => void;
   onAIResults?: (ids: string[], summary: string) => void;
   onOpenBriefBuilder?: () => void;
+  /** After profile save from hero talent flow */
+  onTalentProfileSaved?: () => void;
 }
 
 const BIZ_TYPES = ["Brand / In-house", "Agency", "Startup / Founder", "Media / Publisher"];
@@ -98,6 +114,11 @@ function useTypewriter(text: string, speed = 22) {
   useEffect(() => {
     setOut(""); setDone(false);
     if (!text) { setDone(true); return; }
+    if (speed <= 0) {
+      setOut(text);
+      setDone(true);
+      return;
+    }
     let i = 0;
     const id = setInterval(() => {
       i++;
@@ -460,12 +481,1006 @@ function AdvisorChat({
   );
 }
 
+// ── Talent intake (same shell as IntakeBar, talent prompts) ─────────────────
+type TalentIntakePhase = number | "ct";
+
+function talentProgressIndex(phase: TalentIntakePhase): number {
+  if (phase === "ct") return 3;
+  if (typeof phase === "number") {
+    if (phase < 3) return phase;
+    return 4 + (phase - 3);
+  }
+  return 0;
+}
+
+const TALENT_INTAKE_TOTAL_STEPS = 3 + 1 + TALENT_INTAKE_QUESTIONS.length;
+
+function TalentIntakeBar({ onComplete }: { onComplete: (draft: Record<string, string>) => void }) {
+  const [phase, setPhase] = useState<TalentIntakePhase>(0);
+  const [creatorType, setCreatorType] = useState("");
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [inputVal, setInputVal] = useState("");
+  const [multiSelected, setMultiSelected] = useState<string[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const roleFuse = useMemo(
+    () =>
+      new Fuse(TALENT_ROLE_CATALOG, {
+        threshold: 0.34,
+        includeScore: true,
+        ignoreLocation: true,
+        minMatchCharLength: 1,
+      }),
+    [],
+  );
+
+  const roleSuggestions = useMemo(() => {
+    const q = inputVal.trim();
+    if (q.length < 1) return [];
+    return roleFuse.search(q).slice(0, 8).map((r) => r.item);
+  }, [inputVal, roleFuse]);
+
+  const nameQ =
+    typeof phase === "number" && phase < 3 ? TALENT_INTAKE_NAME_QUESTIONS[phase] : null;
+  const tailQ =
+    typeof phase === "number" && phase >= 3 ? TALENT_INTAKE_QUESTIONS[phase - 3] : null;
+
+  const promptText =
+    phase === "ct"
+      ? "How do you usually work?"
+      : nameQ?.prompt ?? tailQ?.prompt ?? "";
+  const chips: string[] =
+    phase === "ct"
+      ? [...TALENT_CREATOR_TYPES]
+      : tailQ && !tailQ.rolePicker
+        ? [...tailQ.chips]
+        : [];
+
+  const isRolePicker = Boolean(tailQ?.rolePicker);
+  const isMultiStep = Boolean(tailQ?.multiSelect);
+  const multiMax = tailQ?.multiSelect?.max ?? 2;
+
+  const { out: typedPrompt, done: promptDone } = useTypewriter(promptText, 20);
+
+  useEffect(() => {
+    if (promptDone && !isMultiStep) setTimeout(() => inputRef.current?.focus(), 80);
+  }, [promptDone, phase, isMultiStep]);
+
+  useEffect(() => {
+    if (typeof phase === "number" && phase >= 3) {
+      const q = TALENT_INTAKE_QUESTIONS[phase - 3];
+      if (q?.multiSelect) setMultiSelected([]);
+    }
+  }, [phase]);
+
+  const progressFrac =
+    (talentProgressIndex(phase) + 1) / TALENT_INTAKE_TOTAL_STEPS;
+
+  const addRoleFromInput = useCallback(() => {
+    const t = inputVal.trim();
+    if (!t) return;
+    const exact = TALENT_ROLE_CATALOG.find((r) => r.toLowerCase() === t.toLowerCase());
+    const fuzzy = roleFuse.search(t);
+    const best =
+      exact ??
+      (fuzzy[0]?.score !== undefined && fuzzy[0].score < 0.28 ? fuzzy[0].item : t.trim());
+    setMultiSelected((prev) => {
+      if (prev.includes(best)) return prev;
+      if (prev.length >= multiMax) return prev;
+      return [...prev, best];
+    });
+    setInputVal("");
+  }, [inputVal, multiMax, roleFuse]);
+
+  const advance = useCallback(
+    (val: string) => {
+      const t = val.trim();
+      if (!t) return;
+
+      if (typeof phase === "number" && phase < 3 && nameQ) {
+        if (nameQ.id === "displayName" && t.length < 2) return;
+        if ((nameQ.id === "firstName" || nameQ.id === "lastName") && t.length < 1) return;
+        const next = { ...answers, [nameQ.id]: t };
+        setAnswers(next);
+        setInputVal("");
+        if (phase === 2) setPhase("ct");
+        else setPhase((phase as number) + 1);
+        return;
+      }
+
+      if (phase === "ct") {
+        setCreatorType(t);
+        setInputVal("");
+        setPhase(3);
+        return;
+      }
+
+      if (typeof phase === "number" && tailQ) {
+        if (tailQ.multiSelect || tailQ.rolePicker) return;
+        if (tailQ.id === "instagram" && t.length < 2) return;
+        const next = { ...answers, [tailQ.id]: t };
+        setAnswers(next);
+        setInputVal("");
+        const idx = phase - 3;
+        if (idx < TALENT_INTAKE_QUESTIONS.length - 1) {
+          setPhase(phase + 1);
+        } else {
+          onComplete({ ...next, creatorType });
+        }
+      }
+    },
+    [phase, answers, creatorType, nameQ, tailQ, onComplete],
+  );
+
+  const advanceMultiContinue = useCallback(() => {
+    if (typeof phase !== "number" || phase < 3) return;
+    const q = TALENT_INTAKE_QUESTIONS[phase - 3];
+    if (!q?.multiSelect) return;
+    const next = { ...answers, [q.id]: JSON.stringify(multiSelected) };
+    setAnswers(next);
+    setInputVal("");
+    const idx = phase - 3;
+    if (idx < TALENT_INTAKE_QUESTIONS.length - 1) {
+      setPhase(phase + 1);
+    } else {
+      onComplete({ ...next, creatorType });
+    }
+  }, [phase, answers, creatorType, multiSelected, onComplete]);
+
+  const toggleMultiChip = useCallback(
+    (chip: string) => {
+      setMultiSelected((prev) => {
+        if (prev.includes(chip)) return prev.filter((c) => c !== chip);
+        if (prev.length >= multiMax) return prev;
+        return [...prev, chip];
+      });
+    },
+    [multiMax],
+  );
+
+  const handleKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    if (isRolePicker) {
+      addRoleFromInput();
+      return;
+    }
+    if (isMultiStep) return;
+    if (inputVal.trim()) advance(inputVal.trim());
+  };
+
+  const placeholder = (() => {
+    if (isRolePicker) return "Search roles or type your own…";
+    if (tailQ?.id === "instagram") return "e.g. @yourhandle";
+    return "Type your answer or pick below…";
+  })();
+
+  return (
+    <div
+      className="w-full rounded-2xl transition-all duration-300 overflow-hidden"
+      style={{
+        background: "rgba(10,10,18,0.92)",
+        border: "1px solid rgba(124,92,255,0.30)",
+        boxShadow: "0 0 40px rgba(124,92,255,0.12), 0 0 0 1px rgba(124,92,255,0.08)",
+      }}
+    >
+      <div className="h-[2px] w-full" style={{ background: "rgba(255,255,255,0.05)" }}>
+        <motion.div
+          className="h-full rounded-full"
+          style={{
+            background: "linear-gradient(90deg, rgba(124,92,255,0.8), rgba(93,208,255,0.7))",
+          }}
+          animate={{ width: `${Math.max(progressFrac * 100, 6)}%` }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        />
+      </div>
+
+      <div className="px-5 pt-4 pb-3 space-y-3">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={String(phase)}
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            transition={{ duration: 0.22 }}
+          >
+            <div className="flex items-start gap-2">
+              <Sparkles size={12} className="text-purple-400/70 mt-1 shrink-0" />
+              <p
+                className="text-[15px] font-semibold leading-snug"
+                style={{
+                  color: "rgba(255,255,255,0.92)",
+                  textShadow: "0 0 20px rgba(167,139,250,0.60)",
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                {typedPrompt}
+                {!promptDone && (
+                  <span className="inline-block w-[2px] h-[14px] bg-purple-400/80 animate-pulse ml-0.5 align-middle rounded-full" />
+                )}
+              </p>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {promptDone && (!isMultiStep || isRolePicker) && (
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18 }}
+            >
+              <div className="flex items-center gap-2">
+                <input
+                  ref={inputRef}
+                  value={inputVal}
+                  onChange={(e) => setInputVal(e.target.value)}
+                  onKeyDown={handleKey}
+                  placeholder={placeholder}
+                  className="flex-1 bg-transparent outline-none text-[14px] text-white/80 placeholder:text-white/20"
+                />
+                {isRolePicker && inputVal.trim() ? (
+                  <button
+                    type="button"
+                    onClick={addRoleFromInput}
+                    className="flex items-center justify-center w-7 h-7 rounded-xl bg-white text-black shrink-0 transition hover:bg-white/90"
+                    title="Add role"
+                  >
+                    <ArrowUp size={13} />
+                  </button>
+                ) : !isRolePicker && inputVal.trim() ? (
+                  <button
+                    type="button"
+                    onClick={() => advance(inputVal.trim())}
+                    className="flex items-center justify-center w-7 h-7 rounded-xl bg-white text-black shrink-0 transition hover:bg-white/90"
+                  >
+                    <ArrowUp size={13} />
+                  </button>
+                ) : null}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {promptDone && isRolePicker && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="space-y-2"
+            >
+              {multiSelected.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {multiSelected.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => toggleMultiChip(r)}
+                      className="rounded-full px-2.5 py-0.5 text-[10px]"
+                      style={{
+                        background: "rgba(124,92,255,0.22)",
+                        border: "1px solid rgba(167,139,250,0.45)",
+                        color: "rgba(220,210,255,0.92)",
+                      }}
+                    >
+                      {r} ×
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {roleSuggestions.length > 0 ? (
+                <div
+                  className="rounded-xl border border-white/[0.08] max-h-32 overflow-y-auto divide-y divide-white/[0.06]"
+                  style={{ background: "rgba(0,0,0,0.25)" }}
+                >
+                  {roleSuggestions.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => toggleMultiChip(r)}
+                      className="w-full text-left px-3 py-1.5 text-[12px] text-white/70 hover:bg-white/[0.06] transition"
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              ) : inputVal.trim().length >= 2 ? (
+                <p className="text-[10px] text-white/30">No close match — tap ↑ to add what you typed.</p>
+              ) : null}
+              <p className="text-[11px] text-white/38">
+                Up to {multiMax} roles. Pick from suggestions or add a custom title.
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {promptDone && isMultiStep && !isRolePicker && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-[11px] text-white/38"
+            >
+              Tap up to {multiMax} roles (or continue with none).
+            </motion.p>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {promptDone && chips.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              className="flex flex-wrap gap-1.5"
+            >
+              {chips.map((chip) => {
+                const selected = isMultiStep && multiSelected.includes(chip);
+                return (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => (isMultiStep ? toggleMultiChip(chip) : advance(chip))}
+                    className="rounded-full px-3 py-1 text-[11px] transition-all duration-100"
+                    style={{
+                      background: selected ? "rgba(124,92,255,0.22)" : "rgba(255,255,255,0.05)",
+                      border: selected
+                        ? "1px solid rgba(167,139,250,0.45)"
+                        : "1px solid rgba(255,255,255,0.09)",
+                      color: selected ? "rgba(220,210,255,0.92)" : "rgba(255,255,255,0.45)",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (selected) return;
+                      (e.currentTarget as HTMLElement).style.background = "rgba(124,92,255,0.15)";
+                      (e.currentTarget as HTMLElement).style.borderColor = "rgba(124,92,255,0.35)";
+                      (e.currentTarget as HTMLElement).style.color = "rgba(196,174,255,0.90)";
+                    }}
+                    onMouseLeave={(e) => {
+                      if (selected) return;
+                      (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)";
+                      (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.09)";
+                      (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.45)";
+                    }}
+                  >
+                    {chip}
+                  </button>
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {promptDone && isMultiStep && (
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.12 }}
+            >
+              <button
+                type="button"
+                onClick={advanceMultiContinue}
+                className="mt-1 rounded-full px-4 py-1.5 text-[11px] font-semibold bg-white text-black hover:bg-white/90 transition"
+              >
+                Continue
+                {multiSelected.length > 0 ? ` (${multiSelected.length}/${multiMax})` : ""}
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+/** Grok finalize only — PRISM / portfolio / extra are sequential like TalentIntakeBar */
+function normalizeHttpUrl(raw: string): string | undefined {
+  const t = raw.trim();
+  if (!t) return undefined;
+  const withProto = /^https?:\/\//i.test(t) ? t : `https://${t}`;
+  try {
+    const u = new URL(withProto);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return undefined;
+    return u.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function archetypeWithArticle(label: string): string {
+  const short = label.replace(/^The\s+/i, "").trim() || label;
+  const article = /^[aeiou]/i.test(short) ? "an" : "a";
+  return `${article} ${short}`;
+}
+
+function buildCoachTranscript(
+  welcomeText: string,
+  steps: typeof TALENT_COACH_SEQUENTIAL_STEPS,
+  stepAnswers: Record<string, string>,
+): { role: "user" | "assistant"; content: string }[] {
+  const transcript: { role: "user" | "assistant"; content: string }[] = [];
+  const w = welcomeText.trim();
+  if (w) transcript.push({ role: "assistant", content: w });
+  transcript.push({ role: "user", content: "Continue" });
+  for (const s of steps) {
+    if (s.inputKind === "portfolio") {
+      const link = stepAnswers.portfolio_link?.trim() ?? "";
+      const file = stepAnswers.portfolio_file?.trim() ?? "";
+      if (!link && !file) continue;
+      const parts: string[] = [];
+      if (link) parts.push(`Link: ${link}`);
+      if (file) parts.push(`Upload: ${file}`);
+      transcript.push({ role: "user", content: `${s.prompt}\n${parts.join("\n")}` });
+      continue;
+    }
+    const ans = stepAnswers[s.id]?.trim();
+    if (!ans) continue;
+    transcript.push({ role: "user", content: `${s.prompt}\n${ans}` });
+  }
+  return transcript;
+}
+
+function TalentCoachChat({
+  draft,
+  userName,
+  onDone,
+  onBack,
+}: {
+  draft: Record<string, string>;
+  userName: string;
+  onDone: (assessment: {
+    prismArchetype: string;
+    prismArchetypeSecondary?: string | null;
+    celebrationLine?: string;
+  }) => void;
+  onBack: () => void;
+}) {
+  const steps = TALENT_COACH_SEQUENTIAL_STEPS;
+  const totalSteps = 1 + steps.length;
+  /** -1 welcome, 0..steps.length-1 questions, steps.length = ready to save */
+  const [phase, setPhase] = useState(-1);
+  const [welcomeText, setWelcomeText] = useState("");
+  const [welcomeReady, setWelcomeReady] = useState(false);
+  const [stepAnswers, setStepAnswers] = useState<Record<string, string>>({});
+  const [inputVal, setInputVal] = useState("");
+  const [uploadedAssetUrl, setUploadedAssetUrl] = useState<string | null>(null);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [uploadHint, setUploadHint] = useState("");
+  const [finalizing, setFinalizing] = useState(false);
+  const [err, setErr] = useState("");
+  const [celebration, setCelebration] = useState<{
+    primary: string;
+    secondary: string | null;
+    prefLine: string;
+  } | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const flowComplete = phase >= steps.length;
+  const currentStep = phase >= 0 && phase < steps.length ? steps[phase] : null;
+
+  useEffect(() => {
+    const fn = draft.firstName?.trim() || userName.split(/\s+/)[0] || "there";
+    setWelcomeText(
+      `Hi ${fn}, welcome to Creator Hive! Few more questions to assess best fit and your working persona.`,
+    );
+    setWelcomeReady(true);
+  }, [draft.firstName, userName]);
+
+  useEffect(() => {
+    if (currentStep?.id === "portfolio") {
+      setUploadedAssetUrl(null);
+      setUploadHint("");
+    }
+  }, [phase, currentStep?.id]);
+
+  const promptText =
+    phase === -1
+      ? welcomeReady
+        ? welcomeText
+        : "Welcome — loading…"
+      : flowComplete
+        ? "All set — save your profile when you're ready."
+        : (currentStep?.prompt ?? "");
+
+  const typeSpeed = flowComplete ? 0 : 20;
+  const { out: typedPrompt, done: promptDone } = useTypewriter(promptText, typeSpeed);
+
+  useEffect(() => {
+    if (promptDone && phase >= 0 && phase < steps.length) {
+      setTimeout(() => inputRef.current?.focus(), 80);
+    }
+  }, [promptDone, phase, steps.length]);
+
+  const progressFrac =
+    phase === -1 ? 1 / totalSteps : flowComplete ? 1 : (1 + phase + 1) / totalSteps;
+
+  const linkCandidate = inputVal.trim();
+  const hasPortfolioLink = Boolean(normalizeHttpUrl(linkCandidate));
+  const hasPortfolioPayload = Boolean(uploadedAssetUrl) || hasPortfolioLink;
+
+  const chips: string[] =
+    phase === -1
+      ? ["Continue"]
+      : flowComplete || !currentStep
+        ? []
+        : [
+            ...currentStep.chips,
+            ...(currentStep.inputKind === "portfolio" && hasPortfolioPayload ? (["Continue"] as const) : []),
+          ];
+
+  const isPortfolioStep = currentStep?.inputKind === "portfolio";
+  const showTextLine = phase >= 0 && phase < steps.length;
+
+  const goNext = useCallback(() => {
+    setPhase((p) => p + 1);
+    setInputVal("");
+  }, []);
+
+  const advance = useCallback(
+    (raw: string) => {
+      const trimmed = raw.trim();
+      const isSkip = raw.startsWith("Skip");
+
+      if (phase === -1) {
+        if (raw === "Continue" && welcomeReady) {
+          setPhase(0);
+          setInputVal("");
+        }
+        return;
+      }
+
+      if (flowComplete || !currentStep) return;
+
+      if (currentStep.inputKind === "portfolio") {
+        if (isSkip) {
+          setStepAnswers((a) => ({ ...a, portfolio_link: "", portfolio_file: "" }));
+          setInputVal("");
+          goNext();
+          return;
+        }
+        if (raw === "Continue") {
+          const url = normalizeHttpUrl(linkCandidate);
+          const linkStored = url ?? (linkCandidate ? linkCandidate : "");
+          const fileStored = uploadedAssetUrl ?? "";
+          setStepAnswers((a) => ({
+            ...a,
+            portfolio_link: linkStored,
+            portfolio_file: fileStored,
+          }));
+          setInputVal("");
+          goNext();
+          return;
+        }
+        return;
+      }
+
+      if (isSkip) {
+        setStepAnswers((a) => ({ ...a, [currentStep.id]: "" }));
+        goNext();
+        return;
+      }
+      if (!trimmed) return;
+      setStepAnswers((a) => ({ ...a, [currentStep.id]: trimmed }));
+      goNext();
+    },
+    [phase, welcomeReady, flowComplete, currentStep, uploadedAssetUrl, goNext, linkCandidate],
+  );
+
+  const handleKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    if (currentStep?.inputKind === "portfolio") {
+      if (inputVal.trim() || uploadedAssetUrl) advance("Continue");
+      return;
+    }
+    if (inputVal.trim()) advance(inputVal.trim());
+  };
+
+  const placeholder =
+    currentStep?.inputKind === "portfolio"
+      ? "Portfolio URL (optional)…"
+      : "Type your answer or pick below…";
+
+  const finalize = useCallback(async () => {
+    setFinalizing(true);
+    setErr("");
+    try {
+      const transcript = buildCoachTranscript(welcomeText, steps, stepAnswers);
+      const finRes = await fetch("/api/onboarding/creator/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "finalize",
+          draft,
+          transcript,
+        }),
+      });
+      const finText = await finRes.text();
+      let fin: Record<string, unknown> = {};
+      try {
+        fin = finText ? (JSON.parse(finText) as Record<string, unknown>) : {};
+      } catch {
+        setErr("Could not read AI response — try again.");
+        setFinalizing(false);
+        return;
+      }
+      if (!finRes.ok) {
+        setErr(typeof fin.error === "string" ? fin.error : "Save failed");
+        setFinalizing(false);
+        return;
+      }
+
+      const tagsRaw = fin.generatedMatchTags;
+      const generatedMatchTags = Array.isArray(tagsRaw)
+        ? tagsRaw.map((t) => String(t).trim()).filter(Boolean).slice(0, 24)
+        : [];
+
+      const base = draftToProfileBody(draft, userName);
+      const linkRaw = stepAnswers.portfolio_link?.trim() ?? "";
+      const linkUrl = normalizeHttpUrl(linkRaw) ?? (linkRaw ? linkRaw : undefined);
+      const fileUrl = stepAnswers.portfolio_file?.trim() || null;
+      const portfolioUrl = linkUrl ?? (fileUrl ? normalizeHttpUrl(fileUrl) ?? fileUrl : undefined);
+
+      const primary =
+        typeof fin.prismArchetype === "string" && fin.prismArchetype.trim()
+          ? fin.prismArchetype.trim()
+          : "The Translator";
+      const secondaryRaw =
+        typeof fin.prismArchetypeSecondary === "string" && fin.prismArchetypeSecondary.trim()
+          ? fin.prismArchetypeSecondary.trim()
+          : null;
+      const secondary = secondaryRaw && secondaryRaw !== primary ? secondaryRaw : null;
+
+      const celebrationLineRaw =
+        typeof fin.celebrationPreferences === "string" && fin.celebrationPreferences.trim()
+          ? fin.celebrationPreferences.trim()
+          : typeof fin.workEnvironmentFit === "string" && fin.workEnvironmentFit.trim()
+            ? fin.workEnvironmentFit.trim()
+            : "";
+
+      const putBody = {
+        ...base,
+        prismArchetype: primary,
+        ...(secondary ? { prismArchetypeSecondary: secondary } : {}),
+        generatedMatchTags,
+        workEnvironmentFit: typeof fin.workEnvironmentFit === "string" ? fin.workEnvironmentFit : undefined,
+        onboardingAiSummary: typeof fin.onboardingAiSummary === "string" ? fin.onboardingAiSummary : undefined,
+        onboardingTranscriptJson: transcript,
+        onboardingComplete: true,
+        ...(portfolioUrl ? { portfolioUrl } : {}),
+      };
+
+      const putRes = await fetch("/api/onboarding/creator/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(putBody),
+      });
+      const putText = await putRes.text();
+      let putData: unknown = null;
+      try {
+        putData = putText ? JSON.parse(putText) : null;
+      } catch {
+        setErr(putText ? putText.slice(0, 200) : "Invalid server response");
+        setFinalizing(false);
+        return;
+      }
+      if (!putRes.ok) {
+        const msg =
+          typeof putData === "object" && putData !== null
+            ? [
+                (putData as { error?: unknown }).error,
+                (putData as { message?: unknown }).message,
+              ].find((x) => typeof x === "string" && x.trim()) ?? null
+            : null;
+        setErr(typeof msg === "string" ? msg : "Profile save failed");
+        setFinalizing(false);
+        return;
+      }
+
+      if (fileUrl) {
+        const mediaType = /\.(mp4|mov|webm)(\?|$)/i.test(fileUrl) ? "video" : "image";
+        await fetch("/api/creator/portfolio", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mediaUrl: fileUrl,
+            mediaType,
+            title: "Showcase",
+            position: 0,
+          }),
+        }).catch(() => {});
+      }
+
+      const prefLine =
+        celebrationLineRaw ||
+        "settings that match how you described your pace, collaboration, and creative instincts";
+
+      setCelebration({
+        primary,
+        secondary,
+        prefLine,
+      });
+    } catch {
+      setErr("Something went wrong — try again.");
+    } finally {
+      setFinalizing(false);
+    }
+  }, [draft, userName, welcomeText, steps, stepAnswers]);
+
+  if (celebration) {
+    const line = `Congrats! Your Hive archetype is ${archetypeWithArticle(celebration.primary)}. You prefer to work in ${celebration.prefLine}.`;
+    return (
+      <div className="w-full flex flex-col">
+        <div
+          className="w-full rounded-2xl px-5 py-5 space-y-4"
+          style={{
+            background: "rgba(10,10,18,0.92)",
+            border: "1px solid rgba(124,92,255,0.32)",
+            boxShadow: "0 0 40px rgba(124,92,255,0.14)",
+          }}
+        >
+          <div className="flex items-start gap-2">
+            <Sparkles size={16} className="text-purple-400/90 mt-0.5 shrink-0" />
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-purple-200/50">
+                You&apos;re in
+              </p>
+              <p className="text-[15px] font-semibold text-white/92 leading-relaxed">{line}</p>
+              {celebration.secondary ? (
+                <p className="text-[12px] text-white/45">Secondary pattern: {celebration.secondary}</p>
+              ) : null}
+              {celebration.primary in ARCHETYPE_PUBLIC_BLURB ? (
+                <p className="text-[12px] text-white/55 leading-relaxed pt-1 border-t border-white/[0.08]">
+                  {ARCHETYPE_PUBLIC_BLURB[celebration.primary as CreatorHiveArchetypeLabel]}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              onDone({
+                prismArchetype: celebration.primary,
+                prismArchetypeSecondary: celebration.secondary,
+                celebrationLine: line,
+              })
+            }
+            className="w-full rounded-full bg-white py-2.5 text-xs font-semibold text-black hover:bg-white/90 transition"
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full flex flex-col">
+      <div
+        className="w-full rounded-2xl transition-all duration-300 overflow-hidden"
+        style={{
+          background: "rgba(10,10,18,0.92)",
+          border: "1px solid rgba(124,92,255,0.30)",
+          boxShadow: "0 0 40px rgba(124,92,255,0.12), 0 0 0 1px rgba(124,92,255,0.08)",
+        }}
+      >
+        <div className="h-[2px] w-full" style={{ background: "rgba(255,255,255,0.05)" }}>
+          <motion.div
+            className="h-full rounded-full"
+            style={{
+              background: "linear-gradient(90deg, rgba(124,92,255,0.8), rgba(93,208,255,0.7))",
+            }}
+            animate={{ width: `${Math.max(progressFrac * 100, 6)}%` }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+          />
+        </div>
+
+        <div className="px-5 pt-4 pb-3 space-y-3">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={String(phase)}
+              initial={{ opacity: 0, x: 16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -16 }}
+              transition={{ duration: 0.22 }}
+            >
+              <div className="flex items-start gap-2">
+                <Sparkles size={12} className="text-purple-400/70 mt-1 shrink-0" />
+                <p
+                  className="text-[15px] font-semibold leading-snug"
+                  style={{
+                    color: "rgba(255,255,255,0.92)",
+                    textShadow: "0 0 20px rgba(167,139,250,0.60)",
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  {typedPrompt}
+                  {!promptDone && (
+                    <span className="inline-block w-[2px] h-[14px] bg-purple-400/80 animate-pulse ml-0.5 align-middle rounded-full" />
+                  )}
+                </p>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {promptDone && showTextLine && (
+              <motion.div
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18 }}
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={inputRef}
+                    value={inputVal}
+                    onChange={(e) => setInputVal(e.target.value)}
+                    onKeyDown={handleKey}
+                    placeholder={placeholder}
+                    className="flex-1 bg-transparent outline-none text-[14px] text-white/80 placeholder:text-white/20"
+                  />
+                  {isPortfolioStep && hasPortfolioPayload ? (
+                    <button
+                      type="button"
+                      onClick={() => advance("Continue")}
+                      className="flex items-center justify-center w-7 h-7 rounded-xl bg-white text-black shrink-0 transition hover:bg-white/90"
+                    >
+                      <ArrowUp size={13} />
+                    </button>
+                  ) : !isPortfolioStep && inputVal.trim() ? (
+                    <button
+                      type="button"
+                      onClick={() => advance(inputVal.trim())}
+                      className="flex items-center justify-center w-7 h-7 rounded-xl bg-white text-black shrink-0 transition hover:bg-white/90"
+                    >
+                      <ArrowUp size={13} />
+                    </button>
+                  ) : null}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {promptDone && isPortfolioStep && (
+              <motion.div
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18 }}
+                className="flex flex-wrap items-center gap-2 pt-0.5"
+              >
+                <label
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] cursor-pointer transition border",
+                    uploadBusy
+                      ? "border-white/10 text-white/25 cursor-wait"
+                      : "border-purple-400/25 text-purple-200/80 hover:bg-purple-500/10",
+                  )}
+                >
+                  <Plus size={12} />
+                  {uploadBusy ? "Uploading…" : "Choose file"}
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm"
+                    disabled={uploadBusy}
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (!f) return;
+                      setUploadHint("");
+                      setUploadBusy(true);
+                      try {
+                        const fd = new FormData();
+                        fd.set("file", f);
+                        const res = await fetch("/api/onboarding/creator/portfolio-upload", {
+                          method: "POST",
+                          body: fd,
+                        });
+                        const data = (await res.json()) as { url?: string; error?: string };
+                        if (!res.ok || !data.url) {
+                          setUploadHint(data.error ?? "Upload failed");
+                          return;
+                        }
+                        setUploadedAssetUrl(data.url);
+                        setUploadHint("Link and/or file ready — tap Continue or the arrow.");
+                      } catch {
+                        setUploadHint("Upload failed — try again or skip.");
+                      } finally {
+                        setUploadBusy(false);
+                      }
+                    }}
+                  />
+                </label>
+                {uploadedAssetUrl ? (
+                  <span className="text-[10px] text-emerald-300/70">File attached</span>
+                ) : null}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {uploadHint ? <p className="text-[10px] text-white/35">{uploadHint}</p> : null}
+
+          <AnimatePresence>
+            {promptDone && chips.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.08 }}
+                className="flex flex-wrap gap-1.5"
+              >
+                {chips.map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    disabled={phase === -1 && !welcomeReady}
+                    onClick={() => advance(chip)}
+                    className="rounded-full px-3 py-1 text-[11px] transition-all duration-100 disabled:opacity-35 disabled:pointer-events-none"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.09)",
+                      color: "rgba(255,255,255,0.45)",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (phase === -1 && !welcomeReady) return;
+                      (e.currentTarget as HTMLElement).style.background = "rgba(124,92,255,0.15)";
+                      (e.currentTarget as HTMLElement).style.borderColor = "rgba(124,92,255,0.35)";
+                      (e.currentTarget as HTMLElement).style.color = "rgba(196,174,255,0.90)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)";
+                      (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.09)";
+                      (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.45)";
+                    }}
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between mt-2 px-1 gap-2">
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-[11px] text-white/22 hover:text-white/45 transition shrink-0"
+        >
+          ← Edit answers
+        </button>
+        <button
+          type="button"
+          onClick={() => void finalize()}
+          disabled={finalizing || !flowComplete || !welcomeReady}
+          className={cn(
+            "rounded-full px-4 py-1.5 text-[11px] font-semibold transition",
+            finalizing || !flowComplete || !welcomeReady
+              ? "bg-white/10 text-white/25 cursor-not-allowed"
+              : "bg-white text-black hover:bg-white/90",
+          )}
+        >
+          {finalizing ? "Saving…" : "Finish & save profile"}
+        </button>
+      </div>
+      {err ? <p className="text-[11px] text-rose-300/90 mt-1.5 px-1">{err}</p> : null}
+    </div>
+  );
+}
+
 // ── Main HeroBar ─────────────────────────────────────────────────────────────
 export function HeroBar({
-  mode, onQueryChange, onDiscover, showClear, onClear, onAIResults,
+  mode,
+  onQueryChange,
+  onDiscover,
+  showClear,
+  onClear,
+  onAIResults,
+  onTalentProfileSaved,
 }: HeroBarProps) {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const store = useDiscoveryStore();
 
   // track: "intake" | "returning-new" | "returning-resume" | "activated"
@@ -535,20 +1550,207 @@ export function HeroBar({
     industry: store.industry,
   }), [store]);
 
+  type TalentGate = "loading" | "anon" | "needs_onboarding" | "coach" | "pending_review" | "done";
+  const userRole = (session?.user as { role?: string } | undefined)?.role;
+  const [talentGate, setTalentGate] = useState<TalentGate>("loading");
+  const [talentDraft, setTalentDraft] = useState<Record<string, string>>({});
+  const [talentArchetype, setTalentArchetype] = useState<{
+    prismArchetype: string;
+    prismArchetypeSecondary?: string | null;
+    celebrationLine?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (mode !== "talent") return;
+    if (!session?.user) {
+      setTalentGate("anon");
+      return;
+    }
+    if (userRole !== "CREATOR") {
+      setTalentGate("done");
+      return;
+    }
+    let cancelled = false;
+    setTalentGate("loading");
+    fetch("/api/onboarding/creator/profile")
+      .then((r) => r.json())
+      .then((data: { profile?: { onboardingCompletedAt?: string | null } | null }) => {
+        if (cancelled) return;
+        if (data.profile?.onboardingCompletedAt) setTalentGate("done");
+        else setTalentGate("needs_onboarding");
+      })
+      .catch(() => {
+        if (!cancelled) setTalentGate("needs_onboarding");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, session?.user, userRole]);
+
   if (mode === "talent") {
-    return (
-      <div className="flex flex-1 items-center gap-3">
-        <div className="rounded-full bg-[#0D0D14] ring-1 ring-white/10 p-2 pl-5 pr-3 flex-1">
-          <span className={cn("block text-[15px] leading-8", session?.user ? "text-slate-200" : "text-slate-400/40")}>
-            {session?.user ? "Welcome back" : "Apply to join as a creator or talent"}
-          </span>
+    const displayName =
+      session?.user?.name?.trim() ||
+      session?.user?.email?.split("@")[0] ||
+      "Creator";
+
+    if (sessionStatus === "loading") {
+      return (
+        <div
+          className="w-full h-14 rounded-2xl animate-pulse"
+          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+        />
+      );
+    }
+
+    // Logged-out talent auth lives in page.tsx (email / OTP) — no second "Continue" bar here
+    if (!session?.user || talentGate === "anon") {
+      return null;
+    }
+
+    if (talentGate === "loading") {
+      return (
+        <div
+          className="w-full h-14 rounded-2xl animate-pulse"
+          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+        />
+      );
+    }
+
+    if (talentGate === "done") {
+      return (
+        <div className="flex flex-1 items-center gap-3">
+          <div className="rounded-full bg-[#0D0D14] ring-1 ring-white/10 p-2 pl-5 pr-3 flex-1">
+            <span className="block text-[15px] leading-8 text-slate-200">Welcome back</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.push("/dashboard/creator")}
+            className="rounded-full bg-white px-5 py-2 text-xs font-semibold text-black hover:bg-white/90 transition"
+          >
+            Dashboard
+          </button>
         </div>
-        <button type="button"
-          onClick={() => session?.user ? router.push("/dashboard/creator") : onDiscover?.()}
-          className="rounded-full bg-white px-5 py-2 text-xs font-semibold text-black hover:bg-white/90 transition">
-          {session?.user ? "Dashboard" : "Continue"}
-        </button>
-      </div>
+      );
+    }
+
+    if (talentGate === "pending_review") {
+      const archLabel = talentArchetype?.prismArchetype;
+      const archBlurb =
+        archLabel && archLabel in ARCHETYPE_PUBLIC_BLURB
+          ? ARCHETYPE_PUBLIC_BLURB[archLabel as CreatorHiveArchetypeLabel]
+          : null;
+      const archSecondary = talentArchetype?.prismArchetypeSecondary;
+
+      return (
+        <motion.div
+          key="talent-pending-review"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="w-full rounded-2xl px-5 py-5 space-y-3"
+          style={{
+            background: "rgba(10,10,18,0.92)",
+            border: "1px solid rgba(124,92,255,0.28)",
+            boxShadow: "0 0 40px rgba(124,92,255,0.12)",
+          }}
+        >
+          {talentArchetype?.celebrationLine ? (
+            <p className="text-[13px] text-white/72 leading-relaxed">{talentArchetype.celebrationLine}</p>
+          ) : archLabel && archBlurb ? (
+            <div
+              className="rounded-xl px-4 py-3 space-y-1.5 mb-1"
+              style={{
+                background: "linear-gradient(135deg, rgba(124,92,255,0.14), rgba(93,208,255,0.08))",
+                border: "1px solid rgba(167,139,250,0.28)",
+              }}
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-purple-200/55">
+                Your fit archetype
+              </p>
+              <p className="text-[17px] font-bold text-white/95 leading-tight">{archLabel}</p>
+              <p className="text-[12px] text-white/60 leading-relaxed">{archBlurb}</p>
+              {archSecondary ? (
+                <p className="text-[11px] text-purple-200/45 pt-0.5">Also: {archSecondary}</p>
+              ) : null}
+            </div>
+          ) : null}
+          <div className="flex items-start gap-2">
+            <Sparkles size={14} className="text-purple-400/80 mt-0.5 shrink-0" />
+            <div className="space-y-2">
+              <p className="text-[16px] font-semibold text-white/92 leading-snug">Your profile is under review</p>
+              <p className="text-[13px] text-white/55 leading-relaxed">
+                Creator Hive vets every talent before matching you with brands. We&apos;ll email you when your profile
+                is approved — usually within a few business days.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setTalentGate("done")}
+              className="rounded-full bg-white px-5 py-2 text-xs font-semibold text-black hover:bg-white/90 transition"
+            >
+              Got it
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard/creator")}
+              className="rounded-full px-5 py-2 text-xs font-medium transition"
+              style={{
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "rgba(255,255,255,0.55)",
+              }}
+            >
+              Open dashboard
+            </button>
+          </div>
+        </motion.div>
+      );
+    }
+
+    if (talentGate === "coach") {
+      return (
+        <motion.div
+          key="talent-coach"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="w-full"
+        >
+          <TalentCoachChat
+            draft={talentDraft}
+            userName={displayName}
+            onBack={() => {
+              setTalentArchetype(null);
+              setTalentGate("needs_onboarding");
+            }}
+            onDone={(assessment) => {
+              setTalentArchetype(assessment);
+              onTalentProfileSaved?.();
+              setTalentGate("pending_review");
+            }}
+          />
+        </motion.div>
+      );
+    }
+
+    return (
+      <motion.div
+        key="talent-intake"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="w-full"
+      >
+        <TalentIntakeBar
+          onComplete={(draft) => {
+            setTalentArchetype(null);
+            setTalentDraft(draft);
+            setTalentGate("coach");
+          }}
+        />
+      </motion.div>
     );
   }
 

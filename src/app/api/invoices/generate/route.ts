@@ -43,7 +43,11 @@ export async function POST(req: Request) {
     if (!talentId) {
       // Create minimal issuer profile
       const newProfile = await db.creatorProfile.create({
-        data: { userId: user.id, name: user.name || "Creator Hive", instagram: "" },
+        data: {
+          user: { connect: { id: user.id } },
+          name: user.name || "Creator Hive",
+          instagram: "",
+        },
       });
       talentId = newProfile.id;
     }

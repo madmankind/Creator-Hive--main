@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { ChevronDown, Copy, Plus, Check, Minus } from "lucide-react";
-import { useSession } from "next-auth/react";
 import { useCampaign } from "@/contexts/CampaignContext";
 import { useLocalCampaignStore } from "@/store/useLocalCampaignStore";
 import { cn } from "@/lib/utils";
@@ -14,7 +13,6 @@ export function CampaignSwitcher() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { data: session } = useSession();
   const { activeCampaign, campaigns, setActiveCampaign, refreshCampaigns } = useCampaign();
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState<DropdownView>("list");
@@ -98,8 +96,6 @@ export function CampaignSwitcher() {
 
   const otherCampaigns = campaigns.filter((c) => c.id !== activeCampaign?.id);
   const label = activeCampaign?.name ?? "Select campaign";
-  const role = (session?.user as { role?: string } | undefined)?.role;
-  const canDeleteCampaign = role === "AGENCY" || role === "ADMIN";
 
   return (
     <div className="relative flex-shrink-0" ref={dropdownRef}>
@@ -181,21 +177,19 @@ export function CampaignSwitcher() {
                           </div>
                           {isActive && <Check size={12} style={{ color: "rgba(255,255,255,0.45)", flexShrink: 0 }} />}
                         </button>
-                        {canDeleteCampaign && (
-                          <button
-                            type="button"
-                            aria-label={`Delete ${c.name}`}
-                            title="Delete campaign"
-                            disabled={deletingId === c.id}
-                            onClick={() => void handleDeleteCampaign(c.id)}
-                            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-40"
-                            style={{ color: "rgba(255,255,255,0.35)" }}
-                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; }}
-                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                          >
-                            <Minus size={12} />
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          aria-label={`Delete ${c.name}`}
+                          title="Delete campaign"
+                          disabled={deletingId === c.id}
+                          onClick={() => void handleDeleteCampaign(c.id)}
+                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-40"
+                          style={{ color: "rgba(255,255,255,0.35)" }}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                        >
+                          <Minus size={12} />
+                        </button>
                       </div>
                     );
                   })

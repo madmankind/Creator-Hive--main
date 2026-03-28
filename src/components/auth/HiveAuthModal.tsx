@@ -7,6 +7,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { feyTokens } from "@/lib/fey-design-tokens";
 import { LogoLoader } from "@/components/ui/LogoLoader";
+import { setGoogleJoinIntentForNextSignIn } from "@/lib/auth/googleJoinIntent";
 
 /* ─────────────────────────────────────────
    TYPES
@@ -1597,7 +1598,11 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
   };
 
   const handleGoogleClick = () => {
-    signIn("google", { callbackUrl: mode === "talent" ? "/onboarding/step-1" : "/dashboard/campaigns" });
+    setGoogleJoinIntentForNextSignIn(mode === "talent" ? "creator" : "client");
+    void signIn("google", {
+      callbackUrl:
+        mode === "talent" ? "/?continueTalentOnboarding=1" : "/dashboard/campaigns",
+    });
   };
 
   const handleWhatsAppClick = () => {
@@ -1629,10 +1634,9 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
   const handleTalentTypeSelect = (type: TalentAccountType) => {
     setTalentAccountType(type);
     if (type === "independent") {
-      // Independent creators go through the Prism archetype quiz
-      setStep("prism-intro");
+      // Sign in, then same web onboarding as Google (fit profile / booking readiness)
+      setStep("loading");
     } else {
-      // Manager / Agency go through dedicated profile setup
       setStep("manager-profile");
     }
   };
@@ -1815,16 +1819,16 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
                               redirect: false,
                               email: email.trim(),
                               userType: mode,
-                              displayName: brandName || email.split("@")[0],
+                              displayName:
+                                mode === "talent"
+                                  ? email.split("@")[0]
+                                  : brandName || email.split("@")[0],
                             });
                             if (result?.ok !== true) {
                               throw new Error(result?.error || "Sign in failed");
                             }
-                            // Verify session exists before allowing navigation
                             const sessionCheck = await fetch('/api/auth/session').then(r => r.json());
                             if (!sessionCheck?.user) {
-                              console.warn('[Auth] Session not established after signIn, attempting cookie sync...');
-                              // Try one more time after brief delay
                               await new Promise(r => setTimeout(r, 500));
                               const retryCheck = await fetch('/api/auth/session').then(r => r.json());
                               if (!retryCheck?.user) {
@@ -1832,10 +1836,18 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
                               }
                             }
                           }}
-                          onDone={() => { onSuccess(); onClose(); }}
+                          onDone={() => {
+                            if (mode === "talent") {
+                              onClose();
+                              router.push("/?continueTalentOnboarding=1");
+                              onSuccess();
+                            } else {
+                              onSuccess();
+                              onClose();
+                            }
+                          }}
                           onError={(err) => {
                             console.error("Sign in failed:", err);
-                            // Could show error state here
                           }}
                         />
                     </motion.div>

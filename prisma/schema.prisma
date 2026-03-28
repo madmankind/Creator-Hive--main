@@ -184,6 +184,25 @@ model CreatorProfile {
   isVerified                  Boolean                       @default(false)
   isActive                    Boolean                       @default(true)
   prismArchetype              String?
+  prismArchetypeSecondary     String?
+  primaryRole                 String?
+  rankedIndustries            String[]                      @default([])
+  yearsExperienceBand         String?
+  preferredProjectTypes       String[]                      @default([])
+  preferredPace               String?
+  feedbackStyle               String?
+  workEnvironmentFit          String?
+  howIWorkBest                String?
+  suitedTeamScale             String?
+  availabilityType            String?
+  workModeOpenness            String?
+  brandFitPreferences         String[]                      @default([])
+  clientValueStrengths        String[]                      @default([])
+  teamSetupPreference         String?
+  generatedMatchTags          String[]                      @default([])
+  onboardingTranscriptJson    Json?
+  onboardingAiSummary         String?                       @db.Text
+  onboardingCompletedAt       DateTime?
   stripeAccountId             String?                       @unique
   stripeOnboardingStatus      StripeOnboardingStatus        @default(NOT_STARTED)
   availabilityStatus          String                        @default("AVAILABLE")

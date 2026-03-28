@@ -8,7 +8,11 @@ async function resolveIssuerTalentId(user: { id: string; name?: string | null })
   const profile = await db.creatorProfile.findFirst({ where: { userId: user.id } });
   if (profile?.id) return profile.id;
   const created = await db.creatorProfile.create({
-    data: { userId: user.id, name: user.name || "Creator Hive", instagram: "" },
+    data: {
+      user: { connect: { id: user.id } },
+      name: user.name || "Creator Hive",
+      instagram: "",
+    },
   });
   return created.id;
 }
