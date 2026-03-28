@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { curatedTalent } from "@/lib/curatedTalent";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { auth } from "@/auth";
+import { db } from "@/server/db";
+import { formatClientFitForMatching } from "@/lib/matchingFitContext";
 
 // ── Roster context ────────────────────────────────────────────────────────────
 // Built once at module load — server-only, never sent to the browser
@@ -36,8 +38,9 @@ RULES:
 }
 3. Only use IDs that appear in the roster. Never invent IDs.
 4. Match based on: specialisation, niche, platform, location, follower tier, brand history.
-5. Prefer UAE-based talent unless the brief specifies otherwise.
-6. If the brief is too vague, pick a well-rounded team spanning content creation, video, and strategy.`;
+5. When CLIENT_WORKFLOW_CONTEXT is present, weigh pace, feedback style, collaboration preference, logistics, and engagement type alongside roles and niche — PRISM-style fit is secondary to hard skills and category fit.
+6. Prefer UAE-based talent unless the brief specifies otherwise.
+7. If the brief is too vague, pick a well-rounded team spanning content creation, video, and strategy.`;
 
 // ── Provider config ───────────────────────────────────────────────────────────
 // API keys are read server-side from env — never exposed to the browser.
@@ -108,6 +111,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "AI search not configured" }, { status: 503 });
     }
 
+    let workflowBlock = "";
+    if (userId) {
+      const u = await db.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      });
+      if (u?.role === "AGENCY" || u?.role === "ADMIN") {
+        const brief = await db.discoveryBrief.findUnique({ where: { userId } });
+        if (brief) {
+          const formatted = formatClientFitForMatching(brief);
+          if (formatted.trim()) workflowBlock = formatted;
+        }
+      }
+    }
+
+    const userContent = workflowBlock
+      ? `CLIENT_WORKFLOW_CONTEXT:\n${workflowBlock}\n\nBrand brief: "${query.trim()}"`
+      : `Brand brief: "${query.trim()}"`;
+
     const response = await fetch(provider.endpoint, {
       method: "POST",
       headers: {
@@ -118,7 +140,7 @@ export async function POST(req: NextRequest) {
         model: provider.model,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: `Brand brief: "${query.trim()}"` },
+          { role: "user", content: userContent },
         ],
         stream: false,
         temperature: 0.2,

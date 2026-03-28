@@ -202,6 +202,8 @@ model CreatorProfile {
   generatedMatchTags          String[]                      @default([])
   onboardingTranscriptJson    Json?
   onboardingAiSummary         String?                       @db.Text
+  /** Optional freeform notes / deal-breakers after PRISM completion. */
+  onboardingMatchNotes        String?                       @db.Text
   onboardingCompletedAt       DateTime?
   stripeAccountId             String?                       @unique
   stripeOnboardingStatus      StripeOnboardingStatus        @default(NOT_STARTED)
@@ -451,6 +453,8 @@ model DiscoveryBrief {
   companyName      String?
   industry         String?
   notes            String?
+  /** Structured client workflow-fit answers (mirrors talent PRISM dimensions). */
+  clientFitProfile Json?
   advisorRequested Boolean         @default(false)
   currentStep      Int             @default(0)
   status           DiscoveryStatus @default(INCOMPLETE)

@@ -151,6 +151,7 @@ function IntakeBar({
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [inputVal, setInputVal] = useState("");
   const [rolePicks, setRolePicks] = useState<string[]>([]);
+  const [fuzzyPicks, setFuzzyPicks] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const briefFileRef = useRef<HTMLInputElement>(null);
 
@@ -208,6 +209,24 @@ function IntakeBar({
       setRolePicks(raw ? [raw] : []);
     }
   }, [phase, answers.roles]);
+
+  const fuzzyPickStep = phase.k === "camp" ? CLIENT_CAMPAIGN_STEPS[phase.i] : null;
+  const fuzzyPickRaw =
+    fuzzyPickStep?.fuzzyPickMulti && fuzzyPickStep.id ? answers[fuzzyPickStep.id] : undefined;
+  useEffect(() => {
+    if (!fuzzyPickStep?.fuzzyPickMulti) return;
+    const raw = fuzzyPickRaw?.trim();
+    if (!raw) {
+      setFuzzyPicks([]);
+      return;
+    }
+    try {
+      const j = JSON.parse(raw) as unknown;
+      setFuzzyPicks(Array.isArray(j) ? j.map((x) => String(x).trim()).filter(Boolean) : []);
+    } catch {
+      setFuzzyPicks(raw ? [raw] : []);
+    }
+  }, [fuzzyPickStep?.id, fuzzyPickRaw]);
 
   const progress =
     totalSteps > 0 ? Math.min(1, (stepIndex + (promptDone ? 1 : 0.35)) / totalSteps) : 0.05;
@@ -273,7 +292,8 @@ function IntakeBar({
   };
 
   const isRolePickerStep = Boolean(step?.rolePickerMulti);
-  const showInputRow = promptDone && phase.k !== "biz" && !isRolePickerStep;
+  const isFuzzyPickStep = Boolean(step?.fuzzyPickMulti);
+  const showInputRow = promptDone && phase.k !== "biz" && !isRolePickerStep && !isFuzzyPickStep;
 
   const canBack = phase.k !== "biz";
 
@@ -287,6 +307,17 @@ function IntakeBar({
     if (phase.i < CLIENT_CAMPAIGN_STEPS.length - 1) setPhase({ k: "camp", i: phase.i + 1 });
     else onComplete(next, bizType);
   }, [phase, answers, rolePicks, bizType, onComplete]);
+
+  const commitFuzzyPicks = useCallback(() => {
+    if (phase.k !== "camp") return;
+    const c = CLIENT_CAMPAIGN_STEPS[phase.i];
+    if (!c?.fuzzyPickMulti) return;
+    const next = { ...answers, [c.id]: JSON.stringify(fuzzyPicks) };
+    setAnswers(next);
+    setInputVal("");
+    if (phase.i < CLIENT_CAMPAIGN_STEPS.length - 1) setPhase({ k: "camp", i: phase.i + 1 });
+    else onComplete(next, bizType);
+  }, [phase, answers, fuzzyPicks, bizType, onComplete]);
 
   return (
     <div
@@ -349,7 +380,9 @@ function IntakeBar({
               <p className="text-[10px] text-white/30 mt-1.5 pl-[22px]">
                 {isRolePickerStep
                   ? "Examples below — search the full role list or add custom titles."
-                  : "Examples below — type your own answer anytime."}
+                  : isFuzzyPickStep
+                    ? "Pick any mix — chips are shortcuts; add custom lines if needed."
+                    : "Examples below — type your own answer anytime."}
               </p>
             ) : null}
           </motion.div>
@@ -404,8 +437,29 @@ function IntakeBar({
           </div>
         ) : null}
 
+        {promptDone && isFuzzyPickStep && step?.fuzzyPickMulti ? (
+          <div className="space-y-3 pl-1">
+            <RoleFuzzyMultiPicker
+              value={fuzzyPicks}
+              onChange={setFuzzyPicks}
+              max={step.fuzzyPickMulti.max}
+              ordered={step.fuzzyPickMulti.ordered ?? false}
+              catalog={chips}
+              quickChips={chips}
+              placeholder="Search or type your own…"
+            />
+            <button
+              type="button"
+              onClick={commitFuzzyPicks}
+              className="rounded-full px-4 py-2 text-[12px] font-semibold bg-white text-black hover:bg-white/90 transition"
+            >
+              Continue{fuzzyPicks.length > 0 ? ` (${fuzzyPicks.length} selected)` : ""}
+            </button>
+          </div>
+        ) : null}
+
         <AnimatePresence>
-          {promptDone && chips.length > 0 && !isRolePickerStep && (
+          {promptDone && chips.length > 0 && !isRolePickerStep && !isFuzzyPickStep && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="flex flex-wrap gap-1.5">
               {chips.map((chip) => (
                 <button
@@ -760,8 +814,10 @@ function TalentCoachChat({
   const [celebration, setCelebration] = useState<{
     primary: string;
     secondary: string | null;
-    prefLine: string;
+    putBody: Record<string, unknown>;
   } | null>(null);
+  const [postArchNotes, setPostArchNotes] = useState("");
+  const [notesSaveBusy, setNotesSaveBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const flowComplete = steps.length === 0 ? phase >= 1 : phase >= steps.length;
@@ -769,9 +825,7 @@ function TalentCoachChat({
 
   useEffect(() => {
     const fn = draft.firstName?.trim() || userName.split(/\s+/)[0] || "there";
-    setWelcomeText(
-      `Hi ${fn}, welcome to Creator Hive! Tap Continue to save your profile — we'll lock in your PRISM fit from the answers you already shared.`,
-    );
+    setWelcomeText(`Hi ${fn}. Tap Continue to save your profile and reveal your PRISM fit.`);
     setWelcomeReady(true);
   }, [draft.firstName, userName]);
 
@@ -788,9 +842,7 @@ function TalentCoachChat({
         ? welcomeText
         : "Welcome — loading…"
       : flowComplete
-        ? steps.length === 0
-          ? ""
-          : "All set — save your profile when you're ready."
+        ? ""
         : (currentStep?.prompt ?? "");
 
   const typeSpeed = flowComplete ? 0 : 20;
@@ -951,13 +1003,6 @@ function TalentCoachChat({
           : null;
       const secondary = secondaryRaw && secondaryRaw !== primary ? secondaryRaw : null;
 
-      const celebrationLineRaw =
-        typeof fin.celebrationPreferences === "string" && fin.celebrationPreferences.trim()
-          ? fin.celebrationPreferences.trim()
-          : typeof fin.workEnvironmentFit === "string" && fin.workEnvironmentFit.trim()
-            ? fin.workEnvironmentFit.trim()
-            : "";
-
       const putBody = {
         ...base,
         prismArchetype: primary,
@@ -1011,14 +1056,11 @@ function TalentCoachChat({
         }).catch(() => {});
       }
 
-      const prefLine =
-        celebrationLineRaw ||
-        "settings that match how you described your pace, collaboration, and creative instincts";
-
+      setPostArchNotes("");
       setCelebration({
         primary,
         secondary,
-        prefLine,
+        putBody,
       });
     } catch {
       setErr("Something went wrong — try again.");
@@ -1033,8 +1075,46 @@ function TalentCoachChat({
       archKey && archKey in ARCHETYPE_CELEBRATION_ICON
         ? ARCHETYPE_CELEBRATION_ICON[archKey]
         : "✦";
-    const shortName = celebration.primary.replace(/^The\s+/i, "").trim() || celebration.primary;
-    const line = `Congrats! Your Hive archetype as per our PRISM intelligence is "${shortName}". You prefer to work in ${celebration.prefLine}.`;
+    const blurb =
+      celebration.primary in ARCHETYPE_PUBLIC_BLURB
+        ? ARCHETYPE_PUBLIC_BLURB[celebration.primary as CreatorHiveArchetypeLabel]
+        : null;
+
+    const finishWithNotes = async () => {
+      setNotesSaveBusy(true);
+      setErr("");
+      try {
+        const notes = postArchNotes.trim();
+        const body =
+          notes.length > 0
+            ? { ...celebration.putBody, onboardingMatchNotes: notes.slice(0, 4000) }
+            : celebration.putBody;
+        const putRes = await fetch("/api/onboarding/creator/profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!putRes.ok) {
+          const t = await putRes.text();
+          setErr(t ? t.slice(0, 200) : "Could not save notes");
+          setNotesSaveBusy(false);
+          return;
+        }
+        const summaryBlurb = blurb ? blurb.slice(0, 220) : "";
+        onDone({
+          prismArchetype: celebration.primary,
+          prismArchetypeSecondary: celebration.secondary,
+          celebrationLine: summaryBlurb
+            ? `You're a ${celebration.primary}. ${summaryBlurb}`
+            : `You're a ${celebration.primary}.`,
+        });
+      } catch {
+        setErr("Something went wrong — try again.");
+      } finally {
+        setNotesSaveBusy(false);
+      }
+    };
+
     return (
       <div className="w-full flex flex-col">
         <div
@@ -1048,11 +1128,9 @@ function TalentCoachChat({
           <div className="flex items-start gap-2">
             <Sparkles size={16} className="text-purple-400/90 mt-0.5 shrink-0" />
             <div className="space-y-2 flex-1 min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-purple-200/50">
-                You&apos;re in
-              </p>
+              <p className="text-[20px] font-bold text-white/95 leading-tight">Congrats!</p>
               <div
-                className="text-[44px] leading-none py-1 select-none"
+                className="text-[40px] leading-none py-1 select-none"
                 style={{
                   filter:
                     "drop-shadow(0 0 20px rgba(167, 139, 250, 0.9)) drop-shadow(0 0 10px rgba(124, 92, 255, 0.55))",
@@ -1061,35 +1139,39 @@ function TalentCoachChat({
               >
                 {iconChar}
               </div>
-              <p className="text-[15px] font-semibold text-white/92 leading-relaxed">
-                Congrats! Your Hive archetype as per our PRISM intelligence is &quot;{shortName}&quot;.
+              <p className="text-[15px] font-semibold text-white/92 leading-snug">
+                You&apos;re an {celebration.primary}.
               </p>
-              <p className="text-[13px] text-white/55 leading-relaxed">
-                You prefer to work in {celebration.prefLine}.
-              </p>
-              {celebration.secondary ? (
-                <p className="text-[12px] text-white/45">Secondary pattern: {celebration.secondary}</p>
+              {blurb ? (
+                <p className="text-[12px] text-white/58 leading-relaxed">{blurb}</p>
               ) : null}
-              {celebration.primary in ARCHETYPE_PUBLIC_BLURB ? (
-                <p className="text-[12px] text-white/55 leading-relaxed pt-1 border-t border-white/[0.08]">
-                  {ARCHETYPE_PUBLIC_BLURB[celebration.primary as CreatorHiveArchetypeLabel]}
-                </p>
+              {celebration.secondary ? (
+                <p className="text-[11px] text-purple-200/45">Also: {celebration.secondary}</p>
               ) : null}
             </div>
           </div>
+          <div className="space-y-1.5 pt-1 border-t border-white/[0.08]">
+            <p className="text-[12px] text-white/50">
+              Any other notes, deal breakers, or preferences to share?{" "}
+              <span className="text-white/30">(optional)</span>
+            </p>
+            <textarea
+              value={postArchNotes}
+              onChange={(e) => setPostArchNotes(e.target.value)}
+              rows={3}
+              placeholder="Type anything that helps us match you better…"
+              className="w-full rounded-xl bg-transparent outline-none text-[13px] text-white/78 placeholder:text-white/22 border border-white/[0.1] px-3 py-2 resize-none"
+            />
+          </div>
           <button
             type="button"
-            onClick={() =>
-              onDone({
-                prismArchetype: celebration.primary,
-                prismArchetypeSecondary: celebration.secondary,
-                celebrationLine: line,
-              })
-            }
-            className="w-full rounded-full bg-white py-2.5 text-xs font-semibold text-black hover:bg-white/90 transition"
+            disabled={notesSaveBusy}
+            onClick={() => void finishWithNotes()}
+            className="w-full rounded-full bg-white py-2.5 text-xs font-semibold text-black hover:bg-white/90 transition disabled:opacity-50"
           >
-            Continue
+            {notesSaveBusy ? "Saving…" : "Continue"}
           </button>
+          {err ? <p className="text-[11px] text-rose-300/90">{err}</p> : null}
         </div>
       </div>
     );
@@ -1494,6 +1576,7 @@ export function HeroBar({
         companyName: mapped.companyName ?? "",
         industry: mapped.industry ?? "",
         notes: mapped.notes ?? "",
+        clientFitProfile: mapped.clientFitProfile,
         currentStep: 3,
         completed: true,
       });
@@ -1508,6 +1591,7 @@ export function HeroBar({
           companyName: mapped.companyName,
           industry: mapped.industry,
           notes: mapped.notes,
+          clientFitProfile: mapped.clientFitProfile,
           currentStep: 3,
           completed: true,
         }),

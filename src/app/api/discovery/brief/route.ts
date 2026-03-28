@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { db } from "@/server/db";
 import { requireUser } from "@/server/authz";
+
+function toClientFitJson(value: unknown): Prisma.InputJsonValue | typeof Prisma.JsonNull | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return Prisma.JsonNull;
+  try {
+    return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+  } catch {
+    return Prisma.JsonNull;
+  }
+}
 
 // GET — fetch current user's discovery brief
 export async function GET() {
@@ -26,6 +37,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  const fitJson = toClientFitJson(payload.clientFitProfile);
+
   const data = {
     primaryObjective: (payload.primaryObjective as string) || null,
     requestedRoles: (payload.requestedRoles as string[]) || [],
@@ -34,6 +47,7 @@ export async function POST(req: Request) {
     companyName: (payload.companyName as string) || null,
     industry: (payload.industry as string) || null,
     notes: (payload.notes as string) || null,
+    ...(fitJson !== undefined ? { clientFitProfile: fitJson } : {}),
     advisorRequested: Boolean(payload.advisorRequested),
     currentStep: typeof payload.currentStep === "number" ? payload.currentStep : 0,
     status: payload.completed ? "COMPLETE" as const : "INCOMPLETE" as const,

@@ -144,6 +144,7 @@ const CREATOR_PROFILE_RAW_UPDATABLE = new Set([
   "onboardingTranscriptJson",
   "onboardingAiSummary",
   "onboardingCompletedAt",
+  "onboardingMatchNotes",
   "isActive",
 ]);
 
@@ -359,6 +360,16 @@ const profileSchema = z.object({
     z.string().max(4000).nullable().optional(),
   ),
   onboardingComplete: z.boolean().optional(),
+  onboardingMatchNotes: z.preprocess(
+    (v) => {
+      if (v == null || v === "") return undefined;
+      if (typeof v !== "string") return undefined;
+      const t = v.trim();
+      if (!t) return undefined;
+      return t.slice(0, 4000);
+    },
+    z.string().max(4000).optional(),
+  ),
 });
 
 const mapHourlyRate = (value?: string | null): number | null => {
@@ -476,6 +487,7 @@ export async function GET() {
       prismArchetypeSecondary: profile.prismArchetypeSecondary ?? null,
       generatedMatchTags: profile.generatedMatchTags ?? [],
       onboardingCompletedAt: profile.onboardingCompletedAt ?? null,
+      onboardingMatchNotes: profile.onboardingMatchNotes ?? null,
     },
   });
 }
@@ -543,6 +555,7 @@ export async function PUT(req: Request) {
     generatedMatchTags: (data.generatedMatchTags || []).slice(0, 24),
     onboardingAiSummary: data.onboardingAiSummary ?? undefined,
     onboardingCompletedAt: data.onboardingComplete ? new Date() : undefined,
+    onboardingMatchNotes: data.onboardingMatchNotes ?? undefined,
     isActive: true,
     ...(transcriptJson !== undefined ? { onboardingTranscriptJson: transcriptJson } : {}),
   });

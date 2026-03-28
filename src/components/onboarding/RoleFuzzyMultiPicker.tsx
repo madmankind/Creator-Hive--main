@@ -5,12 +5,6 @@ import Fuse from "fuse.js";
 import { TALENT_ROLE_CATALOG } from "@/lib/talentRoleCatalog";
 import { cn } from "@/lib/utils";
 
-const fuse = new Fuse(TALENT_ROLE_CATALOG, {
-  threshold: 0.38,
-  includeScore: true,
-  ignoreLocation: true,
-});
-
 type Props = {
   value: string[];
   onChange: (next: string[]) => void;
@@ -18,6 +12,8 @@ type Props = {
   min?: number;
   /** Show 1. 2. 3. on pills (ordered picks) */
   ordered?: boolean;
+  /** Searchable catalog (defaults to full role list) */
+  catalog?: readonly string[];
   quickChips?: readonly string[];
   placeholder?: string;
 };
@@ -28,18 +24,30 @@ export function RoleFuzzyMultiPicker({
   max,
   min: _min = 1,
   ordered = false,
+  catalog: catalogProp,
   quickChips = [],
   placeholder = "Search roles or type a custom title…",
 }: Props) {
+  const catalog = catalogProp ?? TALENT_ROLE_CATALOG;
+  const fuse = useMemo(
+    () =>
+      new Fuse([...catalog], {
+        threshold: 0.38,
+        includeScore: true,
+        ignoreLocation: true,
+      }),
+    [catalog],
+  );
+
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   const suggestions = useMemo(() => {
     const t = q.trim();
-    if (t.length < 1) return TALENT_ROLE_CATALOG.slice(0, 12);
+    if (t.length < 1) return catalog.slice(0, 12);
     return fuse.search(t, { limit: 10 }).map((r) => r.item);
-  }, [q]);
+  }, [q, fuse, catalog]);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -161,8 +169,8 @@ export function RoleFuzzyMultiPicker({
 
       <p className="text-[10px] text-white/28">
         {ordered
-          ? `Pick up to ${max} in order (${value.length}/${max}) — search the full catalog or add your own.`
-          : `Select up to ${max} — search the full catalog or add your own.`}
+          ? `Pick up to ${max} in order (${value.length}/${max}) — search or add your own.`
+          : `Select up to ${max} (${value.length}/${max}) — search or add your own.`}
       </p>
     </div>
   );

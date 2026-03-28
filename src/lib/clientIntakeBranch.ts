@@ -8,6 +8,8 @@ export type ClientBranchStep = {
   optional?: boolean;
   /** Fuzzy multi-select role picker (full catalog + custom); stored as JSON string[] in answers */
   rolePickerMulti?: { max: number };
+  /** Fuzzy multi-select from step.chips as catalog (+ custom); JSON string[] in answers */
+  fuzzyPickMulti?: { max: number; ordered?: boolean };
 };
 
 export const CLIENT_CAMPAIGN_STEPS: ClientBranchStep[] = [
@@ -40,6 +42,58 @@ export const CLIENT_CAMPAIGN_STEPS: ClientBranchStep[] = [
       "UGC Creator",
     ],
     rolePickerMulti: { max: 12 },
+  },
+  {
+    id: "clientHowWorkRuns",
+    prompt: "How do you want this work to run?",
+    chips: [
+      "we'll provide a clear brief and want talent to take ownership",
+      "we want to collaborate closely throughout",
+      "we want to shape the work as it evolves",
+      "we already know exactly what we want and need strong execution",
+    ],
+  },
+  {
+    id: "clientWorkKind",
+    prompt: "What kind of work is this mainly?",
+    chips: ["social content", "campaigns", "brand storytelling", "premium editorial work"],
+  },
+  {
+    id: "clientPace",
+    prompt: "What pace do you need this project to run at?",
+    chips: [
+      "working in sprints",
+      "one full delivery at the end",
+      "ongoing weekly or monthly flow",
+      "campaign-based work with milestone check-ins",
+    ],
+  },
+  {
+    id: "clientFeedback",
+    prompt: "How does your team usually give feedback?",
+    chips: [
+      "fast feedback and quick changes",
+      "structured review rounds",
+      "collaborative discussion before changes",
+      "milestone-based approvals",
+    ],
+  },
+  {
+    id: "clientSetup",
+    prompt: "What setup do you need?",
+    chips: ["remote", "on-site", "hybrid", "travel if needed"],
+    fuzzyPickMulti: { max: 4, ordered: false },
+  },
+  {
+    id: "clientEngagement",
+    prompt: "What kind of engagement is this?",
+    chips: ["one-off project", "project-based engagement", "part-time support", "ongoing / retainer"],
+  },
+  {
+    id: "clientFinalNotes",
+    prompt: "Any preferences, deal breakers, or ways you like to work?",
+    chips: ["Skip"],
+    optional: true,
   },
 ];
 
@@ -128,6 +182,34 @@ export function getClientBranchSteps(bizType: string): ClientBranchStep[] {
   }
 }
 
+function parseJsonStringArray(raw: string | undefined): string[] {
+  if (!raw?.trim()) return [];
+  try {
+    const v = JSON.parse(raw) as unknown;
+    if (!Array.isArray(v)) return [];
+    return v.map((x) => String(x).trim()).filter(Boolean);
+  } catch {
+    return raw
+      .split(/[,|]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+}
+
+/** Structured workflow-fit answers for matching (mirrors talent intake dimensions). */
+export function buildClientFitProfile(answers: Record<string, string>): Record<string, unknown> {
+  const setup = parseJsonStringArray(answers.clientSetup);
+  return {
+    howWorkRuns: answers.clientHowWorkRuns?.trim() || null,
+    workKind: answers.clientWorkKind?.trim() || null,
+    pace: answers.clientPace?.trim() || null,
+    feedbackStyle: answers.clientFeedback?.trim() || null,
+    setup: setup.length ? setup : null,
+    engagement: answers.clientEngagement?.trim() || null,
+    finalNotes: answers.clientFinalNotes?.trim() || null,
+  };
+}
+
 /** Map branch + campaign answers + biz type → discovery brief + advisor profile keys */
 export function mapClientIntakeToDiscovery(
   answers: Record<string, string>,
@@ -140,6 +222,7 @@ export function mapClientIntakeToDiscovery(
   companyName: string | null;
   industry: string | null;
   notes: string | null;
+  clientFitProfile: Record<string, unknown>;
   profileFlat: Record<string, string>;
 } {
   const noteParts: string[] = [`Business type: ${bizType}`];
@@ -179,6 +262,20 @@ export function mapClientIntakeToDiscovery(
     }
   }
 
+  const clientFitProfile = buildClientFitProfile(answers);
+  const fitSummaryParts = [
+    clientFitProfile.howWorkRuns && `Work style: ${clientFitProfile.howWorkRuns}`,
+    clientFitProfile.workKind && `Deliverable focus: ${clientFitProfile.workKind}`,
+    clientFitProfile.pace && `Pace: ${clientFitProfile.pace}`,
+    clientFitProfile.feedbackStyle && `Feedback: ${clientFitProfile.feedbackStyle}`,
+    Array.isArray(clientFitProfile.setup) && clientFitProfile.setup.length
+      ? `Setup: ${(clientFitProfile.setup as string[]).join(", ")}`
+      : null,
+    clientFitProfile.engagement && `Engagement: ${clientFitProfile.engagement}`,
+    clientFitProfile.finalNotes && `Notes: ${clientFitProfile.finalNotes}`,
+  ].filter(Boolean) as string[];
+  if (fitSummaryParts.length) noteParts.push(...fitSummaryParts);
+
   const profileFlat: Record<string, string> = {
     businessType: bizType,
     objective: answers.objective ?? "",
@@ -198,6 +295,7 @@ export function mapClientIntakeToDiscovery(
     companyName,
     industry,
     notes: noteParts.length > 1 ? noteParts.join("\n") : noteParts[0] ?? null,
+    clientFitProfile,
     profileFlat,
   };
 }

@@ -6,12 +6,16 @@ import {
   TALENT_CREATOR_TYPES,
   TALENT_INTAKE_NAME_QUESTIONS,
   TALENT_INDIVIDUAL_TAIL,
+  TALENT_INDUSTRY_OPTIONS,
   TALENT_REP_WHO_QUESTION,
   TALENT_REP_ROOT,
   TALENT_REP_PATH_QUESTION,
   TALENT_T1_FIELDS,
   TALENT_ADD_T2_QUESTION,
   TALENT_T2_FIELDS,
+  parseRankedRoles,
+  parseRankedIndustries,
+  parseChipsMulti,
   type TalentIntakeQuestion,
 } from "@/lib/heroTalentIntake";
 import { RoleFuzzyMultiPicker } from "@/components/onboarding/RoleFuzzyMultiPicker";
@@ -64,10 +68,10 @@ function useTypewriter(text: string, speed = 20) {
 }
 
 function StepIcon({ qid }: { qid: string }) {
-  if (qid === "location" || qid.includes("location")) return <MapPin size={12} className="text-purple-400/50 shrink-0 mt-1" />;
+  if (qid.includes("Industries") || qid === "rankedIndustries") return <MapPin size={12} className="text-purple-400/50 shrink-0 mt-1" />;
   if (qid.includes("Role") || qid.includes("topRoles")) return <Briefcase size={12} className="text-purple-400/50 shrink-0 mt-1" />;
   if (qid.includes("pace") || qid === "yearsExperienceBand") return <Clock size={12} className="text-purple-400/50 shrink-0 mt-1" />;
-  if (qid.includes("feedback") || qid.includes("Pick")) return <MessageCircle size={12} className="text-purple-400/50 shrink-0 mt-1" />;
+  if (qid.includes("feedback") || qid.includes("open")) return <MessageCircle size={12} className="text-purple-400/50 shrink-0 mt-1" />;
   return null;
 }
 
@@ -82,6 +86,7 @@ export function HeroTalentIntakeBar({
   const [inputVal, setInputVal] = useState("");
   const [rankedIndustries, setRankedIndustries] = useState<string[]>([]);
   const [rankedTopRoles, setRankedTopRoles] = useState<string[]>([]);
+  const [multiPicks, setMultiPicks] = useState<string[]>([]);
   const [rosterBusy, setRosterBusy] = useState(false);
   const [rosterErr, setRosterErr] = useState<string | null>(null);
   const rosterRef = useRef<HTMLInputElement>(null);
@@ -106,13 +111,17 @@ export function HeroTalentIntakeBar({
   const { out: typedPrompt, done: promptDone } = useTypewriter(promptText, 18);
 
   useEffect(() => {
-    if (promptDone && !currentQ?.industryRank && !currentQ?.roleRank) setTimeout(() => inputRef.current?.focus(), 80);
-  }, [promptDone, currentQ?.id, currentQ?.industryRank, currentQ?.roleRank]);
+    if (promptDone && !currentQ?.industryRank && !currentQ?.roleRank && !currentQ?.chipsMulti)
+      setTimeout(() => inputRef.current?.focus(), 80);
+  }, [promptDone, currentQ?.id, currentQ?.industryRank, currentQ?.roleRank, currentQ?.chipsMulti]);
 
+  const answerForCurrentPick = currentQ ? answers[currentQ.id] : undefined;
   useEffect(() => {
-    if (currentQ?.industryRank) setRankedIndustries([]);
-    if (currentQ?.roleRank) setRankedTopRoles([]);
-  }, [currentQ?.id]);
+    if (!currentQ) return;
+    if (currentQ.roleRank) setRankedTopRoles(parseRankedRoles(answerForCurrentPick));
+    else if (currentQ.industryRank) setRankedIndustries(parseRankedIndustries(answerForCurrentPick));
+    else if (currentQ.chipsMulti) setMultiPicks(parseChipsMulti(answerForCurrentPick));
+  }, [currentQ, answerForCurrentPick]);
 
   const estTotal = 3 + 1 + TALENT_INDIVIDUAL_TAIL.length;
   const progressFrac = useMemo(() => {
@@ -215,7 +224,7 @@ export function HeroTalentIntakeBar({
       }
 
       if (flow.m === "rep_t1" && currentQ) {
-        if (currentQ.roleRank || currentQ.industryRank) return;
+        if (currentQ.roleRank || currentQ.industryRank || currentQ.chipsMulti) return;
         const next = { ...answers, [currentQ.id]: t };
         setAnswers(next);
         setInputVal("");
@@ -246,7 +255,7 @@ export function HeroTalentIntakeBar({
       }
 
       if (flow.m === "rep_t2" && currentQ) {
-        if (currentQ.roleRank || currentQ.industryRank) return;
+        if (currentQ.roleRank || currentQ.industryRank || currentQ.chipsMulti) return;
         const next = { ...answers, [currentQ.id]: t };
         setAnswers(next);
         setInputVal("");
@@ -257,7 +266,7 @@ export function HeroTalentIntakeBar({
       if (flow.m === "ind" && currentQ) {
         if (currentQ.roleRank) return;
         if (currentQ.industryRank) return;
-        if (currentQ.id === "instagram" && t.length < 2 && !isSkip) return;
+        if (currentQ.chipsMulti) return;
         const next = { ...answers, [currentQ.id]: t };
         setAnswers(next);
         setInputVal("");
@@ -306,6 +315,27 @@ export function HeroTalentIntakeBar({
     }
   }, [flow, currentQ, answers, rankedIndustries, creatorType, saveRepManual]);
 
+  const confirmChipsMulti = useCallback(() => {
+    if (!currentQ?.chipsMulti) return;
+    const m = flow.m;
+    if (m !== "ind" && m !== "rep_t1" && m !== "rep_t2") return;
+    const next = { ...answers, [currentQ.id]: JSON.stringify(multiPicks) };
+    setAnswers(next);
+    if (m === "ind") {
+      setFlow({ m: "ind", i: flow.i + 1 });
+      return;
+    }
+    if (m === "rep_t1") {
+      if (flow.i < TALENT_T1_FIELDS.length - 1) setFlow({ m: "rep_t1", i: flow.i + 1 });
+      else setFlow({ m: "rep_after_t1" });
+      return;
+    }
+    if (m === "rep_t2") {
+      if (flow.i < TALENT_T2_FIELDS.length - 1) setFlow({ m: "rep_t2", i: flow.i + 1 });
+      else void saveRepManual({ ...next, creatorType });
+    }
+  }, [flow, currentQ, answers, multiPicks, creatorType, saveRepManual]);
+
   const confirmTopRoles = useCallback(() => {
     if (!currentQ?.roleRank) return;
     const m = flow.m;
@@ -329,17 +359,6 @@ export function HeroTalentIntakeBar({
   }, [flow, currentQ, answers, rankedTopRoles, creatorType, saveRepManual]);
 
   const industryMax = currentQ?.industryRank?.max ?? 5;
-
-  const toggleIndustry = useCallback(
-    (chip: string) => {
-      setRankedIndustries((prev) => {
-        if (prev.includes(chip)) return prev.filter((c) => c !== chip);
-        if (prev.length >= industryMax) return prev;
-        return [...prev, chip];
-      });
-    },
-    [industryMax],
-  );
 
   const handleRosterFile = useCallback(
     async (file: File) => {
@@ -376,7 +395,9 @@ export function HeroTalentIntakeBar({
   );
 
   const chips: string[] =
-    currentQ && !currentQ.industryRank && !currentQ.roleRank ? [...currentQ.chips] : [];
+    currentQ && !currentQ.industryRank && !currentQ.roleRank && !currentQ.chipsMulti
+      ? [...currentQ.chips]
+      : [];
   const discreteChoiceFlow =
     flow.m === "rep_after_t1" || flow.m === "rep_path" || flow.m === "rep_who" || flow.m === "ct";
   const showInput =
@@ -385,6 +406,7 @@ export function HeroTalentIntakeBar({
     currentQ &&
     !currentQ.industryRank &&
     !currentQ.roleRank &&
+    !currentQ.chipsMulti &&
     !discreteChoiceFlow;
 
   const canBack = !(flow.m === "name" && flow.i === 0);
@@ -508,37 +530,44 @@ export function HeroTalentIntakeBar({
 
         {promptDone && currentQ?.industryRank ? (
           <div className="space-y-2">
-            <p className="text-[11px] text-white/40">
-              Selected {rankedIndustries.length}/{industryMax} — order is the tap order.
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {currentQ.chips.map((chip) => {
-                const ord = rankedIndustries.indexOf(chip);
-                const on = ord >= 0;
-                return (
-                  <button
-                    key={chip}
-                    type="button"
-                    onClick={() => toggleIndustry(chip)}
-                    className="rounded-full px-2.5 py-1 text-[10px] transition"
-                    style={{
-                      background: on ? "rgba(124,92,255,0.25)" : "rgba(255,255,255,0.05)",
-                      border: on ? "1px solid rgba(167,139,250,0.45)" : "1px solid rgba(255,255,255,0.09)",
-                      color: on ? "rgba(220,210,255,0.95)" : "rgba(255,255,255,0.45)",
-                    }}
-                  >
-                    {on ? `${ord + 1}. ` : ""}
-                    {chip}
-                  </button>
-                );
-              })}
-            </div>
+            <RoleFuzzyMultiPicker
+              value={rankedIndustries}
+              onChange={setRankedIndustries}
+              max={industryMax}
+              ordered
+              catalog={[...TALENT_INDUSTRY_OPTIONS]}
+              quickChips={currentQ.chips as string[]}
+              placeholder="Search industries or add your own…"
+            />
             <button
               type="button"
               onClick={confirmIndustries}
+              disabled={rankedIndustries.length < 1}
+              className="rounded-full px-4 py-1.5 text-[11px] font-semibold bg-white text-black hover:bg-white/90 disabled:opacity-35 disabled:cursor-not-allowed"
+            >
+              Continue
+              {rankedIndustries.length > 0 ? ` (${rankedIndustries.length}/${industryMax})` : ""}
+            </button>
+          </div>
+        ) : null}
+
+        {promptDone && currentQ?.chipsMulti ? (
+          <div className="space-y-2">
+            <RoleFuzzyMultiPicker
+              value={multiPicks}
+              onChange={setMultiPicks}
+              max={currentQ.chipsMulti.max}
+              ordered={false}
+              catalog={currentQ.chips as unknown as string[]}
+              quickChips={currentQ.chips as string[]}
+              placeholder="Search or type your own…"
+            />
+            <button
+              type="button"
+              onClick={confirmChipsMulti}
               className="rounded-full px-4 py-1.5 text-[11px] font-semibold bg-white text-black hover:bg-white/90"
             >
-              Continue {rankedIndustries.length > 0 ? `(${rankedIndustries.length} picked)` : ""}
+              Continue{multiPicks.length > 0 ? ` (${multiPicks.length} selected)` : ""}
             </button>
           </div>
         ) : null}
@@ -565,7 +594,7 @@ export function HeroTalentIntakeBar({
           </div>
         ) : null}
 
-        {promptDone && chips.length > 0 && !currentQ?.industryRank && !currentQ?.roleRank ? (
+        {promptDone && chips.length > 0 && !currentQ?.industryRank && !currentQ?.roleRank && !currentQ?.chipsMulti ? (
           <div className="flex flex-wrap gap-1.5">
             {chips.map((chip) => (
               <button

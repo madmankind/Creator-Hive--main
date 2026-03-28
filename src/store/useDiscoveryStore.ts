@@ -15,6 +15,8 @@ export interface DiscoveryState {
   industry: string;
   // Step 3
   notes: string;
+  /** Workflow-fit mirror of talent PRISM dimensions — used for matching / AI search. */
+  clientFitProfile: Record<string, unknown> | null;
   advisorRequested: boolean;
   // Flow state
   currentStep: number;
@@ -40,6 +42,7 @@ const INITIAL: DiscoveryState = {
   companyName: "",
   industry: "",
   notes: "",
+  clientFitProfile: null,
   advisorRequested: false,
   currentStep: 0,
   completed: false,
