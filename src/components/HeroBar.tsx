@@ -130,15 +130,36 @@ function useTypewriter(text: string, speed = 22) {
   return { out, done };
 }
 
+function openAdvisorBookingLink(): void {
+  const url = (process.env.NEXT_PUBLIC_ADVISOR_BOOKING_URL ?? "").trim();
+  if (url) {
+    window.open(url, "_blank", "noopener,noreferrer");
+    return;
+  }
+  window.location.href =
+    "mailto:ajil@creatorhive.ae?subject=" +
+    encodeURIComponent("Schedule a call — Creator Hive") +
+    "&body=" +
+    encodeURIComponent("Hi Ajil — I'd like to schedule a short call to discuss a campaign.\n\n");
+}
+
 // ── Inline intake bar (questions inside the bar) ─────────────────────────────
 function IntakeBar({
   onComplete,
+  showSkipQuestions,
   onSkipToGrok,
-  resumeLabel,
+  onScheduleAdvisor,
+  onBriefFile,
+  uploadBusy,
+  uploadError,
 }: {
   onComplete: (answers: Record<string, string>, bizType: string) => void;
+  showSkipQuestions?: boolean;
   onSkipToGrok?: () => void;
-  resumeLabel?: string;
+  onScheduleAdvisor?: () => void;
+  onBriefFile?: (file: File) => void;
+  uploadBusy?: boolean;
+  uploadError?: string | null;
 }) {
   // phase: "biz" | 0 | 1 | 2 | 3
   const [phase, setPhase] = useState<"biz" | number>("biz");
@@ -146,6 +167,7 @@ function IntakeBar({
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [inputVal, setInputVal] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const briefFileRef = useRef<HTMLInputElement>(null);
 
   const currentQ = typeof phase === "number" ? QUESTIONS[phase] : null;
   const promptText = phase === "biz"
@@ -281,24 +303,75 @@ function IntakeBar({
         </AnimatePresence>
       </div>
 
-      {/* Bottom: skip option for returning users */}
-      {resumeLabel && (
-        <div className="border-t px-5 py-2.5 flex items-center justify-between"
-          style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-          <span className="text-[11px] text-white/25">Already have a brief?</span>
-          <button type="button" onClick={onSkipToGrok}
-            className="text-[11px] text-purple-400/60 hover:text-purple-300/80 transition">
-            {resumeLabel} →
-          </button>
+      {/* Bottom: brief upload + schedule + optional skip to chat */}
+      <div
+        className="border-t px-5 py-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2"
+        style={{ borderColor: "rgba(255,255,255,0.06)" }}
+      >
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <input
+            ref={briefFileRef}
+            type="file"
+            className="hidden"
+            accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f && onBriefFile) onBriefFile(f);
+            }}
+          />
+          {onBriefFile ? (
+            <button
+              type="button"
+              disabled={uploadBusy}
+              onClick={() => briefFileRef.current?.click()}
+              className="text-[11px] text-purple-400/60 hover:text-purple-300/80 transition disabled:opacity-40 text-left"
+            >
+              {uploadBusy ? "Reading your brief…" : "Upload brief →"}
+            </button>
+          ) : null}
+          {uploadError ? (
+            <span className="text-[10px] text-rose-300/85 max-w-[200px] leading-snug">{uploadError}</span>
+          ) : (
+            onBriefFile && (
+              <span className="text-[10px] text-white/22 hidden sm:inline">PDF, DOCX, or TXT</span>
+            )
+          )}
         </div>
-      )}
+        <div className="flex items-center gap-3 shrink-0">
+          {onScheduleAdvisor ? (
+            <button
+              type="button"
+              onClick={onScheduleAdvisor}
+              className="text-[11px] text-white/38 hover:text-white/62 transition"
+            >
+              Schedule with advisor →
+            </button>
+          ) : null}
+          {showSkipQuestions && onSkipToGrok ? (
+            <button
+              type="button"
+              onClick={onSkipToGrok}
+              className="text-[11px] text-purple-400/60 hover:text-purple-300/80 transition"
+            >
+              Skip questions →
+            </button>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
 
 // ── Grok advisor chat ────────────────────────────────────────────────────────
 function AdvisorChat({
-  systemPrompt, welcomeMsg, onAIResults, onDiscover, onReset, autoQuery,
+  systemPrompt,
+  welcomeMsg,
+  onAIResults,
+  onDiscover,
+  onReset,
+  autoQuery,
+  onBriefFile,
 }: {
   systemPrompt: string;
   welcomeMsg: string;
@@ -306,6 +379,7 @@ function AdvisorChat({
   onDiscover?: () => void;
   onReset?: () => void;
   autoQuery?: string;
+  onBriefFile?: (file: File) => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([
     { id: "welcome", role: "assistant", content: welcomeMsg },
@@ -451,10 +525,20 @@ function AdvisorChat({
             className="flex-1 bg-transparent outline-none text-[13px] text-white/78 placeholder:text-white/20 resize-none leading-relaxed"
             style={{ minHeight: "24px", maxHeight: "100px" }} />
           <div className="flex items-center gap-1.5 shrink-0">
-            <label className="cursor-pointer p-1.5 rounded-lg text-white/18 hover:text-white/40 transition" title="Attach brief">
+            <label className="cursor-pointer p-1.5 rounded-lg text-white/18 hover:text-white/40 transition" title="Upload brief file">
               <Plus size={13} />
-              <input type="file" className="hidden" accept=".pdf,.pptx,.docx,.png,.jpg"
-                onChange={e => { const f = e.target.files?.[0]; if (f) setInput(p => p ? `${p} [${f.name}]` : `Brief: ${f.name}`); }} />
+              <input
+                type="file"
+                className="hidden"
+                accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!f) return;
+                  if (onBriefFile) onBriefFile(f);
+                  else setInput((p) => (p ? `${p} [${f.name}]` : `Brief: ${f.name}`));
+                }}
+              />
             </label>
             <button type="button" onClick={send} disabled={!input.trim() || loading}
               className={cn("flex items-center justify-center w-7 h-7 rounded-xl transition-all",
@@ -1482,33 +1566,165 @@ export function HeroBar({
   const router = useRouter();
   const { data: session, status: sessionStatus } = useSession();
   const store = useDiscoveryStore();
+  const hydrate = useDiscoveryStore((s) => s.hydrate);
 
   // track: "intake" | "returning-new" | "returning-resume" | "activated"
   type Track = "intake" | "returning-new" | "returning-resume" | "activated";
   const [track, setTrack] = useState<Track | null>(null);
   const [profile, setProfile] = useState<Record<string, string>>({});
+  const [welcomeOverride, setWelcomeOverride] = useState<string | null>(null);
+  const [autoQueryOverride, setAutoQueryOverride] = useState<string | null>(null);
+  const [advisorChatKey, setAdvisorChatKey] = useState(0);
+  const [briefUploadBusy, setBriefUploadBusy] = useState(false);
+  const [briefUploadErr, setBriefUploadErr] = useState<string | null>(null);
+  const [discoveryRehydrated, setDiscoveryRehydrated] = useState(() =>
+    Boolean(useDiscoveryStore.persist?.hasHydrated?.()),
+  );
 
-  // Determine track on mount once session is known
   useEffect(() => {
-    if (!session?.user) return;
-    if (track !== null) return;
-
-    if (!store.completed) {
-      // Brand new user — full intake
-      setTrack("intake");
-    } else {
-      // Returning user — check if they have a previous brief
-      const hasBrief = store.primaryObjective || store.requestedRoles.length > 0;
-      setTrack(hasBrief ? "returning-resume" : "returning-new");
+    if (discoveryRehydrated) return;
+    if (useDiscoveryStore.persist.hasHydrated()) {
+      setDiscoveryRehydrated(true);
+      return;
     }
-  }, [session, store, track]);
+    const unsub = useDiscoveryStore.persist.onFinishHydration(() => setDiscoveryRehydrated(true));
+    return unsub;
+  }, [discoveryRehydrated]);
 
-  // For non-logged-in: show intake
+  // Client hero: pick track only after persisted discovery store has rehydrated (avoids wrong "intake" before completed loads)
   useEffect(() => {
-    if (!session?.user && track === null) setTrack("intake");
-  }, [session, track]);
+    if (mode !== "client") return;
+    if (!discoveryRehydrated) return;
+    if (track !== null) return;
+    if (session?.user) {
+      if (!store.completed) setTrack("intake");
+      else {
+        const hasBrief = store.primaryObjective || store.requestedRoles.length > 0;
+        setTrack(hasBrief ? "returning-resume" : "returning-new");
+      }
+    } else {
+      setTrack("intake");
+    }
+  }, [
+    mode,
+    session?.user,
+    discoveryRehydrated,
+    store.completed,
+    store.primaryObjective,
+    store.requestedRoles.length,
+    track,
+  ]);
+
+  const handleBriefFile = useCallback(
+    async (file: File) => {
+      if (!session?.user) {
+        onDiscover?.();
+        setBriefUploadErr("Sign in to upload your brief");
+        return;
+      }
+      setBriefUploadBusy(true);
+      setBriefUploadErr(null);
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch("/api/discovery/parse-brief", { method: "POST", body: fd });
+        const data = (await res.json()) as {
+          error?: string;
+          assistantFallback?: string;
+          savePayload?: {
+            primaryObjective: string;
+            requestedRoles: string[];
+            startTiming: string;
+            budgetRange: string;
+            companyName: string;
+            industry: string;
+            notes: string;
+            currentStep: number;
+            completed: boolean;
+          };
+          assistantMessage?: string;
+        };
+        if (!res.ok) {
+          setBriefUploadErr(data.error ?? "Could not read this brief");
+          if (data.assistantFallback) {
+            setWelcomeOverride(data.assistantFallback);
+            setAutoQueryOverride("");
+            setProfile({
+              businessType: "",
+              objective: "",
+              timeline: "",
+              budget: "",
+              roles: "",
+              company: "",
+              industry: "",
+            });
+            setAdvisorChatKey((k) => k + 1);
+            setTrack("activated");
+          }
+          return;
+        }
+        const sp = data.savePayload;
+        if (!sp) {
+          setBriefUploadErr("Unexpected response");
+          return;
+        }
+        hydrate({
+          primaryObjective: sp.primaryObjective,
+          rankedObjectives: sp.primaryObjective ? [sp.primaryObjective] : [],
+          requestedRoles: sp.requestedRoles,
+          startTiming: sp.startTiming,
+          budgetRange: sp.budgetRange,
+          companyName: sp.companyName,
+          industry: sp.industry,
+          notes: sp.notes,
+          currentStep: sp.currentStep,
+          completed: true,
+        });
+        fetch("/api/discovery/brief", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            primaryObjective: sp.primaryObjective,
+            requestedRoles: sp.requestedRoles,
+            startTiming: sp.startTiming,
+            budgetRange: sp.budgetRange,
+            companyName: sp.companyName,
+            industry: sp.industry,
+            notes: sp.notes,
+            currentStep: 3,
+            completed: true,
+          }),
+        }).catch(() => {});
+        setProfile({
+          businessType: "",
+          objective: sp.primaryObjective,
+          timeline: sp.startTiming,
+          budget: sp.budgetRange,
+          roles: sp.requestedRoles.join(", "),
+          company: sp.companyName,
+          industry: sp.industry,
+        });
+        setWelcomeOverride(
+          data.assistantMessage ??
+            "I’ve pulled the key points from your brief — tell me if anything should change before we match talent.",
+        );
+        setAutoQueryOverride(
+          [sp.requestedRoles.join(" "), sp.primaryObjective].filter(Boolean).join(" ").trim(),
+        );
+        setAdvisorChatKey((k) => k + 1);
+        setTrack("activated");
+      } catch {
+        setBriefUploadErr("Something went wrong — try again");
+      } finally {
+        setBriefUploadBusy(false);
+      }
+    },
+    [session?.user, onDiscover, hydrate],
+  );
 
   const handleIntakeComplete = useCallback((answers: Record<string, string>, bizType: string) => {
+    setWelcomeOverride(null);
+    setAutoQueryOverride(null);
     const fullProfile: Record<string, string> = {
       businessType: bizType,
       objective: answers.objective ?? "",
@@ -1533,6 +1749,10 @@ export function HeroBar({
   }, []);
 
   const handleReset = useCallback(() => {
+    setWelcomeOverride(null);
+    setAutoQueryOverride(null);
+    setBriefUploadErr(null);
+    setAdvisorChatKey((k) => k + 1);
     setTrack("intake");
     setProfile({});
     onAIResults?.([], "");
@@ -1549,6 +1769,19 @@ export function HeroBar({
     company: store.companyName,
     industry: store.industry,
   }), [store]);
+
+  const advisorWelcomeMsg = useMemo(() => {
+    if (welcomeOverride) return welcomeOverride;
+    if (profile.objective) {
+      return `Got it — ${profile.businessType ? profile.businessType + ", " : ""}${profile.objective}, ${profile.timeline ? profile.timeline + ", " : ""}${profile.budget || ""}. Let me find your team.`;
+    }
+    return `Welcome back. Your last brief is loaded — what would you like to explore?`;
+  }, [welcomeOverride, profile]);
+
+  const advisorAutoQuery =
+    autoQueryOverride !== null
+      ? autoQueryOverride.trim() || undefined
+      : [profile.roles, profile.objective].filter(Boolean).join(" ").trim() || undefined;
 
   type TalentGate = "loading" | "anon" | "needs_onboarding" | "coach" | "pending_review" | "done";
   const userRole = (session?.user as { role?: string } | undefined)?.role;
@@ -1768,8 +2001,11 @@ export function HeroBar({
           transition={{ duration: 0.3 }} className="w-full">
           <IntakeBar
             onComplete={handleIntakeComplete}
-            onSkipToGrok={store.completed ? () => { setProfile(buildReturningProfile()); setTrack("activated"); } : undefined}
-            resumeLabel={store.completed ? "Skip to advisor" : undefined}
+            showSkipQuestions={false}
+            onScheduleAdvisor={openAdvisorBookingLink}
+            onBriefFile={handleBriefFile}
+            uploadBusy={briefUploadBusy}
+            uploadError={briefUploadErr}
           />
         </motion.div>
       )}
@@ -1780,8 +2016,17 @@ export function HeroBar({
           exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="w-full">
           <IntakeBar
             onComplete={handleIntakeComplete}
-            onSkipToGrok={() => { setProfile(buildReturningProfile()); setTrack("activated"); }}
-            resumeLabel="Skip questions"
+            showSkipQuestions
+            onSkipToGrok={() => {
+              setWelcomeOverride(null);
+              setAutoQueryOverride(null);
+              setProfile(buildReturningProfile());
+              setTrack("activated");
+            }}
+            onScheduleAdvisor={openAdvisorBookingLink}
+            onBriefFile={handleBriefFile}
+            uploadBusy={briefUploadBusy}
+            uploadError={briefUploadErr}
           />
         </motion.div>
       )}
@@ -1805,7 +2050,12 @@ export function HeroBar({
             </div>
             <div className="flex gap-2">
               <button type="button"
-                onClick={() => { setProfile(buildReturningProfile()); setTrack("activated"); }}
+                onClick={() => {
+                  setWelcomeOverride(null);
+                  setAutoQueryOverride(null);
+                  setProfile(buildReturningProfile());
+                  setTrack("activated");
+                }}
                 className="rounded-full px-4 py-2 text-[12px] font-medium transition-all"
                 style={{ background: "rgba(124,92,255,0.18)", border: "1px solid rgba(124,92,255,0.35)", color: "rgba(196,174,255,0.90)" }}>
                 Continue last brief
@@ -1826,13 +2076,11 @@ export function HeroBar({
         <motion.div key="activated" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="w-full">
           <AdvisorChat
+            key={advisorChatKey}
             systemPrompt={buildSystemPrompt(profile)}
-            welcomeMsg={
-              profile.objective
-                ? `Got it — ${profile.businessType ? profile.businessType + ", " : ""}${profile.objective}, ${profile.timeline ? profile.timeline + ", " : ""}${profile.budget || ""}. Let me find your team.`
-                : `Welcome back. Your last brief is loaded — what would you like to explore?`
-            }
-            autoQuery={[profile.roles, profile.objective].filter(Boolean).join(" ")}
+            welcomeMsg={advisorWelcomeMsg}
+            autoQuery={advisorAutoQuery}
+            onBriefFile={handleBriefFile}
             onAIResults={onAIResults}
             onDiscover={onDiscover}
             onReset={handleReset}

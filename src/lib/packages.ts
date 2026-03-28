@@ -120,7 +120,7 @@ export const PACKAGES: PackageConfig[] = [
     category: "social",
     tier: "starter",
     name: "Social Pulse",
-    tagline: "Recurring content production and managed social execution.",
+    tagline: "Monthly content production plus hands-on social execution.",
     description: "For SMEs, hospitality, retail, clinics, and lifestyle brands that need consistent monthly presence with actual account management. Content production plus posting, calendar, and reporting.",
     cardDeliverableLine: "12x Short-form Videos · 2x Camera-shot Reels · 8x Static Images · Social Media Management",
     emoji: "◉",
@@ -134,7 +134,7 @@ export const PACKAGES: PackageConfig[] = [
     ],
     priceAED: 25000,
     priceRangeAED: [25000, 25000],
-    priceNote: "AED 25,000 / month",
+    priceNote: "AED 25K / month · retainer",
     idealFor: "SMEs, hospitality, retail, clinics, lifestyle brands",
     defaultObjective: "engagement",
     bookingType: "retainer",
@@ -158,8 +158,8 @@ export const PACKAGES: PackageConfig[] = [
     category: "build",
     tier: "starter",
     name: "Build Stack",
-    tagline: "Design and development support for your digital product.",
-    description: "For brands building or evolving their digital product layer. A monthly build sprint covering UI/UX design, front-end and back-end development, CMS, QA, and deployment — not a content subscription.",
+    tagline: "Modular design & dev sprints — scope follows your roadmap.",
+    description: "For brands shipping or evolving a digital product surface. Each sprint bundles UI/UX, build, QA, and release support — priced from a clear floor and scaled to your modules, not a generic content retainer.",
     cardDeliverableLine: "1x Active Build Sprint · Up to 5 Pages or 2 Feature Modules · QA & Deployment Support",
     emoji: "⬡",
     roles: ["Designer", "Other"],
@@ -168,9 +168,9 @@ export const PACKAGES: PackageConfig[] = [
       { platform: "Cross-Platform", format: "Pages Designed / Developed", quantity: 5, notesTemplate: "Up to 5 core pages, or up to 2 feature modules" },
       { platform: "Cross-Platform", format: "QA, Deployment & Sprint Review", quantity: 1 },
     ],
-    priceAED: 0,
-    priceRangeAED: [0, 0],
-    priceNote: "Custom / sprint",
+    priceAED: 10000,
+    priceRangeAED: [10000, 100000],
+    priceNote: "per sprint · modular scope",
     idealFor: "Brands building websites, apps, or digital product features",
     defaultObjective: "conversions",
     bookingType: "retainer",
@@ -188,7 +188,7 @@ export const PACKAGES: PackageConfig[] = [
     category: "growth",
     tier: "elite",
     name: "Growth Pod",
-    tagline: "A full outsourced content and strategy team. Monthly, ongoing.",
+    tagline: "Flagship monthly team — strategy, production, and social in one pod.",
     description: "For brands that need stronger output and strategic oversight. Strategy, production, social management, and operational consistency — a complete outsourced content team.",
     cardDeliverableLine: "16x Short-form Videos · 4x Camera-shot Reels · 12x Static Images · Strategy & Full Social Media Management",
     emoji: "⬡",
@@ -202,7 +202,7 @@ export const PACKAGES: PackageConfig[] = [
     ],
     priceAED: 45000,
     priceRangeAED: [45000, 45000],
-    priceNote: "AED 45,000 / month",
+    priceNote: "AED 45K / month · retainer",
     idealFor: "Brands needing full content output, strategy, and social management",
     defaultObjective: "engagement",
     bookingType: "retainer",
@@ -253,6 +253,7 @@ export function formatAED(amount: number): string {
 
 /** Returns the fixed public-facing price label for a package */
 export function getPackagePriceLabel(pkg: PackageConfig): string {
+  if (pkg.bookingModel === "build" && pkg.id === "build-stack") return "From AED 10K";
   return formatAED(pkg.priceAED);
 }
 

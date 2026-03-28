@@ -53,8 +53,9 @@ export function PackageSelector({ onSelect, onSkip, selectedPackageId }: Package
           <p className="text-[11px] font-medium tracking-[0.12em] uppercase text-white/30 mb-1">
             Campaign Packages
           </p>
-          <p className="text-[13px] font-light text-white/40">
-            Pre-configured teams, deliverables, and pricing — swap any role to customise
+          <p className="text-[13px] font-light text-white/40 leading-relaxed max-w-xl">
+            Pre-configured teams and deliverables — card prices in AED (UAE). Ballpark USD equivalents roughly
+            $3.4K–12K/mo at common FX; final quotes in AED.
           </p>
         </div>
         {/* Nav arrows */}
