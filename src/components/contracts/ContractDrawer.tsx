@@ -4,6 +4,7 @@ import { useState, useEffect, type CSSProperties } from "react";
 import { FileText, CheckCircle2, Clock, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
 import { RightDrawer } from "@/components/campaigns/primitives/RightDrawer";
 import { feyTokens } from "@/lib/fey-design-tokens";
+import { BookingOrderPanel } from "@/components/contracts/BookingOrderPanel";
 
 interface Milestone {
   id: string; title: string; description?: string | null;
@@ -130,6 +131,7 @@ function ContractCard({contract}:{contract:Contract}) {
 export function ContractDrawer({isOpen,onClose,campaignId,campaignName}:ContractDrawerProps) {
   const [contracts,setContracts]=useState<Contract[]>([]);
   const [loading,setLoading]=useState(false);
+  const [tab, setTab]=useState<"order"|"contracts">("order");
 
   useEffect(()=>{
     if(!isOpen) return;
@@ -141,30 +143,58 @@ export function ContractDrawer({isOpen,onClose,campaignId,campaignName}:Contract
       .finally(()=>setLoading(false));
   },[isOpen,campaignId]);
 
+  const TabBtn = ({ id, label }: { id: "order"|"contracts"; label: string }) => (
+    <button onClick={() => setTab(id)}
+      className="px-4 py-1.5 rounded-lg text-[12px] font-medium transition-colors"
+      style={{
+        background: tab === id ? "rgba(124,92,255,0.15)" : "transparent",
+        border: `1px solid ${tab === id ? "rgba(124,92,255,0.4)" : "rgba(255,255,255,0.07)"}`,
+        color: tab === id ? "rgba(167,139,250,0.9)" : "rgba(255,255,255,0.35)",
+      }}>
+      {label}
+    </button>
+  );
+
   return (
-    <RightDrawer isOpen={isOpen} onClose={onClose} title="Contracts" width="520px">
+    <RightDrawer isOpen={isOpen} onClose={onClose} title="Contracts &amp; Orders" width="520px">
       <div className="p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[13px] font-medium text-white/80">{campaignName??"All campaigns"}</p>
-            <p className="text-[11px] text-white/35 mt-0.5">{loading?"Loading…":`${contracts.length} contract${contracts.length!==1?"s":""}`}</p>
-          </div>
-          <a href="/dashboard/contracts" className="text-[11px] text-purple-400/70 hover:text-purple-400 transition-colors">View all →</a>
+        {/* Tab row */}
+        <div className="flex items-center gap-2">
+          <TabBtn id="order" label="Booking Order" />
+          <TabBtn id="contracts" label={`Contracts (${contracts.length})`} />
         </div>
-        {loading ? (
-          <div className="py-8 text-center"><div className="w-5 h-5 rounded-full border-2 border-white/15 border-t-white/60 animate-spin mx-auto" /></div>
-        ) : contracts.length===0 ? (
-          <div className="py-10 text-center space-y-2">
-            <FileText className="w-8 h-8 text-white/15 mx-auto" />
-            <p className="text-[13px] text-white/30">No contracts yet</p>
-            <p className="text-[11px] text-white/20">Contracts are auto-generated when a campaign is confirmed.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">{contracts.map(c=><ContractCard key={c.id} contract={c}/>)}</div>
+
+        {/* Booking Order tab */}
+        {tab === "order" && (
+          <BookingOrderPanel campaignId={campaignId} />
         )}
-        <p className="text-[10px] text-white/20 pt-2 leading-relaxed">
-          Each creator receives an individual contract with milestones pre-configured from your selected payment schedule.
-        </p>
+
+        {/* Contracts tab */}
+        {tab === "contracts" && (
+          <>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[13px] font-medium text-white/80">{campaignName??"All campaigns"}</p>
+                <p className="text-[11px] text-white/35 mt-0.5">{loading?"Loading…":`${contracts.length} contract${contracts.length!==1?"s":""}`}</p>
+              </div>
+              <a href="/dashboard/contracts" className="text-[11px] text-purple-400/70 hover:text-purple-400 transition-colors">View all →</a>
+            </div>
+            {loading ? (
+              <div className="py-8 text-center"><div className="w-5 h-5 rounded-full border-2 border-white/15 border-t-white/60 animate-spin mx-auto" /></div>
+            ) : contracts.length===0 ? (
+              <div className="py-10 text-center space-y-2">
+                <FileText className="w-8 h-8 text-white/15 mx-auto" />
+                <p className="text-[13px] text-white/30">No contracts yet</p>
+                <p className="text-[11px] text-white/20">Contracts are generated when booking is approved.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">{contracts.map(c=><ContractCard key={c.id} contract={c}/>)}</div>
+            )}
+            <p className="text-[10px] text-white/20 pt-2 leading-relaxed">
+              Each creator receives an individual contract with milestones pre-configured from your selected payment schedule.
+            </p>
+          </>
+        )}
       </div>
     </RightDrawer>
   );

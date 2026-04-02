@@ -161,3 +161,76 @@ export function paymentInstructionsEmail(data: {
     `Invoice ${data.invoiceNumber} — AED ${data.total.toLocaleString()} due`
   )
 }
+
+// 9. Booking Order sent to client — with PDF attachment reference
+export function bookingOrderEmail(data: {
+  orderRef: string;
+  clientName: string;
+  packageLabel: string;
+  totalAed: number;
+  paymentSchedule: string;
+  dashboardUrl: string;
+}): string {
+  return baseLayout(
+    `${h1(`Your booking order is ready, ${data.clientName.split(" ")[0]}.`)}
+     ${p(`We've received your brief and prepared your booking order <strong style="color:#fff;">${data.orderRef}</strong>.`)}
+     <table style="width:100%;border-collapse:collapse;margin-top:20px;margin-bottom:24px;">
+       <tr><td style="padding:8px 0;color:rgba(255,255,255,0.4);font-size:13px;width:160px;">Order Ref</td>
+           <td style="padding:8px 0;color:#fff;font-size:14px;font-family:monospace;font-weight:700;">${data.orderRef}</td></tr>
+       <tr><td style="padding:8px 0;color:rgba(255,255,255,0.4);font-size:13px;">Package</td>
+           <td style="padding:8px 0;color:#fff;font-size:14px;">${data.packageLabel}</td></tr>
+       <tr><td style="padding:8px 0;color:rgba(255,255,255,0.4);font-size:13px;">Total (incl. VAT)</td>
+           <td style="padding:8px 0;color:#fff;font-size:18px;font-weight:700;">AED ${data.totalAed.toLocaleString()}</td></tr>
+       <tr><td style="padding:8px 0;color:rgba(255,255,255,0.4);font-size:13px;">Payment</td>
+           <td style="padding:8px 0;color:rgba(255,255,255,0.7);font-size:13px;">${data.paymentSchedule}</td></tr>
+     </table>
+     ${p("Your booking order PDF is attached. Our team will confirm your talent within <strong style=\"color:#fff;\">48 hours</strong> and send a follow-up for your approval.")}
+     <div style="margin-top:28px;">${btn("View your booking", data.dashboardUrl)}</div>
+     ${divider()}
+     ${p('Questions? Reply to this email — <a href="mailto:hello@creatorhive.ae" style="color:#fff;">hello@creatorhive.ae</a>')}`,
+    `Booking Order ${data.orderRef} — Creator Hive`
+  );
+}
+
+// 10. Talent confirmation — 48h follow-up with talent names + approve/replace/cancel
+export function talentConfirmationEmail(data: {
+  orderRef: string;
+  clientName: string;
+  talentNames: string[];
+  replaced: boolean;
+  replacementNote?: string;
+  approveUrl: string;
+  replaceUrl: string;
+  cancelUrl: string;
+}): string {
+  const talentList = data.talentNames.map(
+    (n) => `<li style="padding:4px 0;color:rgba(255,255,255,0.85);font-size:14px;">${n}</li>`
+  ).join("");
+  return baseLayout(
+    `${h1(`Your talent is confirmed, ${data.clientName.split(" ")[0]}.`)}
+     ${data.replaced
+       ? `<div style="margin-bottom:20px;padding:14px 16px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:10px;">
+            <p style="margin:0;font-size:13px;color:rgba(245,158,11,0.9);">One or more of your original selections were unavailable. We've suggested replacements below.${data.replacementNote ? ` ${data.replacementNote}` : ""}</p>
+          </div>`
+       : ""}
+     ${p(`For booking order <strong style="color:#fff;">${data.orderRef}</strong>, we've confirmed the following talent:`)}
+     <ul style="margin:16px 0;padding-left:20px;">${talentList}</ul>
+     ${p("Please review and take one of the following actions:")}
+     <table style="width:100%;border-collapse:collapse;margin-top:20px;">
+       <tr>
+         <td style="padding:8px;text-align:center;">
+           <a href="${data.approveUrl}" style="display:inline-block;background:#fff;color:#07070B;font-size:13px;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none;">✓ Approve talent</a>
+         </td>
+         <td style="padding:8px;text-align:center;">
+           <a href="${data.replaceUrl}" style="display:inline-block;background:rgba(245,158,11,0.12);color:rgba(245,158,11,0.9);border:1px solid rgba(245,158,11,0.35);font-size:13px;font-weight:600;padding:12px 24px;border-radius:8px;text-decoration:none;">↻ Request replacement</a>
+         </td>
+         <td style="padding:8px;text-align:center;">
+           <a href="${data.cancelUrl}" style="display:inline-block;background:rgba(248,113,113,0.08);color:rgba(248,113,113,0.80);border:1px solid rgba(248,113,113,0.25);font-size:13px;font-weight:600;padding:12px 24px;border-radius:8px;text-decoration:none;">✕ Cancel</a>
+         </td>
+       </tr>
+     </table>
+     ${divider()}
+     ${p("This link expires in 48 hours. Reply to this email with any questions.")}`,
+    `Talent Confirmed — Booking ${data.orderRef} | Action Required`
+  );
+}

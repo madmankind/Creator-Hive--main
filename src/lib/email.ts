@@ -8,6 +8,8 @@ import {
   bookingReceivedEmail,
   adminBookingAlertEmail,
   paymentInstructionsEmail,
+  bookingOrderEmail,
+  talentConfirmationEmail,
 } from '@/emails/templates'
 
 const ADMIN_EMAIL = 'ajil@creatorhive.ae'
@@ -74,4 +76,50 @@ export async function sendPaymentInstructions(to: string, data: {
   clientName: string; method: 'bank_transfer' | 'stripe'; stripeUrl?: string
 }) {
   return send(to, `Payment instructions — Invoice ${data.invoiceNumber}`, paymentInstructionsEmail(data))
+}
+
+async function sendWithAttachment(
+  to: string, subject: string, html: string,
+  attachment: { filename: string; content: Uint8Array }
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY missing — skipping send')
+    return { ok: true }
+  }
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL, replyTo: REPLY_TO, to, subject, html,
+      attachments: [{ filename: attachment.filename, content: Buffer.from(attachment.content) }],
+    })
+    return { ok: true }
+  } catch (err) {
+    console.error('[email] sendWithAttachment failed:', err)
+    return { ok: false, error: String(err) }
+  }
+}
+
+export async function sendBookingOrder(to: string, data: {
+  orderRef: string; clientName: string; packageLabel: string;
+  totalAed: number; paymentSchedule: string; dashboardUrl: string;
+  pdfBytes: Uint8Array;
+}) {
+  const { pdfBytes, ...emailData } = data
+  return sendWithAttachment(
+    to,
+    `Booking Order ${data.orderRef} — Creator Hive`,
+    bookingOrderEmail(emailData),
+    { filename: `${data.orderRef}.pdf`, content: pdfBytes }
+  )
+}
+
+export async function sendTalentConfirmation(to: string, data: {
+  orderRef: string; clientName: string; talentNames: string[];
+  replaced: boolean; replacementNote?: string;
+  approveUrl: string; replaceUrl: string; cancelUrl: string;
+}) {
+  return send(
+    to,
+    `Talent Confirmed — Booking ${data.orderRef} | Action Required`,
+    talentConfirmationEmail(data)
+  )
 }

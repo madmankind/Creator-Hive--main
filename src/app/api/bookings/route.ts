@@ -108,6 +108,27 @@ export async function POST(req: Request) {
       }),
     ]);
 
+    // Auto-generate Booking Order PDF + email if budget is parseable
+    const rawBudget = payload.budgetRange
+      ? parseInt(payload.budgetRange.replace(/[^\d]/g, "")) || 0
+      : 0;
+    if (rawBudget > 0) {
+      void fetch(`${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/booking-orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-internal-secret": process.env.INTERNAL_SECRET ?? "" },
+        body: JSON.stringify({
+          bookingRequestId: booking.id,
+          clientName: payload.clientName || user.name || "Client",
+          clientEmail: payload.email,
+          clientCompany: payload.clientCompany,
+          packageLabel: payload.packageId ? `Package — ${payload.packageId}` : "Creative Campaign Package",
+          budgetAed: rawBudget,
+          paymentSchedule: "milestone_50_50",
+          campaignId: campaignId ?? undefined,
+        }),
+      }).catch((e) => console.warn("[bookings] booking-order auto-create failed:", e));
+    }
+
     return NextResponse.json({
       data: {
         ...booking,

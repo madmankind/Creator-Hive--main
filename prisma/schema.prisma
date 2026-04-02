@@ -440,10 +440,56 @@ model BookingRequest {
   updatedAt    DateTime       @updatedAt
   agency       AgencyAccount? @relation(fields: [agencyId], references: [id])
   user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookingOrder BookingOrder?
 
   @@index([userId])
   @@index([agencyId])
   @@map("booking_requests")
+}
+
+model BookingOrder {
+  id                 String        @id @default(cuid())
+  bookingRequestId   String        @unique
+  orderRef           String        @unique
+  campaignId         String?
+  clientName         String
+  clientEmail        String
+  clientCompany      String?
+  packageLabel       String?
+  budgetAed          Int
+  vatAed             Int
+  totalAed           Int
+  paymentSchedule    String        @default("milestone_50_50")
+  scope              Json?
+  pdfStoragePath     String?
+  pdfPublicUrl       String?
+  status             BookingOrderStatus @default(DRAFT)
+  confirmedTalentIds String[]
+  replacedTalentIds  String[]
+  clientActionToken  String?       @unique
+  clientActionAt     DateTime?
+  clientAction       String?
+  sentAt             DateTime?
+  talentConfirmedAt  DateTime?
+  expiresAt          DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  bookingRequest     BookingRequest @relation(fields: [bookingRequestId], references: [id], onDelete: Cascade)
+
+  @@index([orderRef])
+  @@index([campaignId])
+  @@index([clientActionToken])
+  @@map("booking_orders")
+}
+
+enum BookingOrderStatus {
+  DRAFT
+  SENT
+  TALENT_PENDING
+  TALENT_CONFIRMED
+  CLIENT_APPROVED
+  CLIENT_REPLACEMENT_REQUESTED
+  CANCELLED
 }
 
 model DiscoveryBrief {
@@ -846,7 +892,11 @@ enum BookingType {
 enum BookingStatus {
   PENDING
   REVIEWING
+  TALENT_CONFIRMED
+  TALENT_REPLACED
   CONFIRMED
+  CLIENT_APPROVED
+  CANCELLED
 }
 
 enum DiscoveryStatus {
