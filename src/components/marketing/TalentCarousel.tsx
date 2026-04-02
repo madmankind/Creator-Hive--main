@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import type { CuratedTalent, TalentCategoryTag } from '@/lib/curatedTalent'
 import { getTalentDisplayName } from '@/lib/curatedTalent'
 import { LandingTalentCard } from '@/components/marketing/LandingTalentCard'
+import { HiveRoleCard } from '@/components/marketing/HiveRoleCard'
+import { hiveRoles } from '@/lib/hiveRoles'
 import { useCampaignPodStore, type Talent as PodTalent } from '@/store/useCampaignPodStore'
 import { ChevronLeft, ChevronRight, Search, X, Sparkles, SlidersHorizontal, Globe, MapPin } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -74,6 +76,8 @@ interface TalentCarouselProps {
   onBook?: (talent: PodTalent) => void
   selectedPodIds?: string[]
   selectedPackage?: PackageConfig | null
+  /** Called when a client requests a generic Hive Role */
+  onRoleRequest?: (roleId: string, roleTitle: string) => void
 }
 
 
@@ -88,6 +92,7 @@ export function TalentCarousel({
   onBook,
   selectedPodIds = [],
   selectedPackage = null,
+  onRoleRequest,
 }: TalentCarouselProps) {
   const { addToPod, removeFromPod } = useCampaignPodStore()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -235,7 +240,7 @@ export function TalentCarousel({
         {/* Count */}
         <div className="flex items-baseline gap-2 mr-1">
           <h2 className="text-[15px] font-medium text-white/80 tracking-tight">Creative talent</h2>
-          <span className="text-[12px] text-white/30">{flat.length} available</span>
+          <span className="text-[12px] text-white/30">{flat.length} signature · {hiveRoles.length} roles</span>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap ml-auto">
@@ -435,7 +440,6 @@ export function TalentCarousel({
                   <div key={item.id}
                     className={cn(
                       'flex-shrink-0 snap-start py-2 relative transition-opacity duration-300',
-                      // Mobile: full-width single card swipe. Desktop: fixed card width.
                       'w-[calc(100vw-32px)] sm:w-auto',
                       isGroupStart && 'before:content-[\'\'] before:absolute before:left-[-12px] before:top-[15%] before:bottom-[15%] before:w-px before:bg-white/[0.06] before:pointer-events-none'
                     )}>
@@ -461,6 +465,39 @@ export function TalentCarousel({
                   </div>
                 )
               })}
+
+              {/* ── Hive Role Cards — shown when not filtering to Signature only ── */}
+              {tierFilter !== 'signature' && !internalQuery.trim() && (
+                <>
+                  {/* Divider with label */}
+                  <div className="flex-shrink-0 snap-start flex flex-col items-center justify-center py-2"
+                    style={{ width: "60px" }}>
+                    <div style={{ width: "1px", height: "60%", background: "rgba(255,255,255,0.06)" }} />
+                    <span style={{
+                      writingMode: "vertical-rl", textOrientation: "mixed",
+                      fontSize: "9px", letterSpacing: "0.12em", textTransform: "uppercase",
+                      color: "rgba(255,255,255,0.18)", margin: "8px 0",
+                    }}>Hive Roles</span>
+                    <div style={{ width: "1px", height: "60%", background: "rgba(255,255,255,0.06)" }} />
+                  </div>
+
+                  {hiveRoles
+                    .filter(r => !roleFilter || r.primaryRole === roleFilter)
+                    .map((role, idx) => (
+                      <motion.div key={role.id}
+                        className="flex-shrink-0 snap-start py-2 w-[calc(100vw-32px)] sm:w-auto"
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: (flat.length + idx) * 0.018, duration: 0.28 }}>
+                        <HiveRoleCard
+                          role={role}
+                          onRequest={(r) => onRoleRequest?.(r.id, r.title)}
+                        />
+                      </motion.div>
+                    ))
+                  }
+                </>
+              )}
             </div>
           </div>
 

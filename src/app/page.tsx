@@ -1090,6 +1090,13 @@ function HomePageContent() {
                   if (selectedPodIds.includes(talentId)) removeFromPod(talentId);
                   else addToPod(talentId);
                 }}
+                onRoleRequest={(roleId, roleTitle) => {
+                  // Pre-fill search with role title and open auth / booking flow
+                  setSearchQuery(roleTitle);
+                  setSelectedRoles([roleTitle]);
+                  if (!session) { setClientAuthOpen(true); }
+                  else { setShowTalentGallery(true); }
+                }}
               />
             </div>
           </motion.section>
