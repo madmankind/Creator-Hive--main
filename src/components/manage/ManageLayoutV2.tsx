@@ -98,7 +98,9 @@ export function ManageLayoutV2({
       className="relative flex flex-col"
       style={{
         minHeight: "100dvh",
-        width: "100vw",
+        width: "100%",
+        maxWidth: "100vw",
+        overflowX: "hidden",
         color: feyTokens.colors.text.primary,
         background: "#07070B",
         isolation: "isolate",
@@ -313,14 +315,15 @@ export function ManageLayoutV2({
             className="flex-1 min-h-0 flex flex-col"
             style={{
               gap: `${VERTICAL_GAP}px`,
-              overflow: "auto",
+              overflowX: "hidden",
+              overflowY: "auto",
               paddingTop: "28px",
             }}
           >
             {/* Talent Frame — single flat scrollable pane, no inner glass wrapper */}
             <div
+              className="flex-shrink-0"
               style={{
-                flex: `0 0 ${TALENT_FRAME_HEIGHT}px`,
                 height: `${TALENT_FRAME_HEIGHT}px`,
                 ...outlineStyle,
               }}
@@ -377,11 +380,10 @@ export function ManageLayoutV2({
                 alignItems: "stretch",
               }}
             >
-              {/* Left Panel: Execution Hub (spans 7 columns) */}
+              {/* Left Panel: Execution Hub (spans 7 columns on desktop, full on mobile) */}
               <div
+                className="col-span-12 lg:col-span-7"
                 style={{
-                  gridColumn: "span 7",
-                  height: "100%",
                   minHeight: 0,
                   ...outlineStyle,
                 }}
@@ -391,11 +393,10 @@ export function ManageLayoutV2({
                 </div>
               </div>
 
-              {/* Right Panel: Weekly Calendar (spans 5 columns) */}
+              {/* Right Panel: Weekly Calendar (spans 5 columns on desktop, full on mobile) */}
               <div
+                className="col-span-12 lg:col-span-5"
                 style={{
-                  gridColumn: "span 5",
-                  height: "100%",
                   minHeight: 0,
                   ...outlineStyle,
                 }}

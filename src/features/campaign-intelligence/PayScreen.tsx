@@ -649,117 +649,139 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
         )}
       </div>
 
-      {/* Table */}
+      {/* Table — desktop grid / mobile cards */}
       <div
-        className="overflow-x-auto"
         style={{
           background: "rgba(255,255,255,0.03)",
           border: "1px solid rgba(255,255,255,0.07)",
           borderRadius: "14px",
+          overflow: "hidden",
         }}
       >
-        <div style={{ minWidth: "560px" }}>
-        {/* Table header */}
-        <div
-          className="grid px-5 py-3"
-          style={{
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-            gridTemplateColumns: activeTab === "invoices"
-              ? "1fr 2fr 1fr 1fr 1fr 80px"
-              : "2fr 1fr 1fr 1fr 1fr",
-          }}
-        >
-          {activeTab === "invoices" && (
-            <>
-              {["Invoice #", "Campaign", "Amount", "Status", "Due Date", "Actions"].map((h) => (
-                <span key={h} className="text-[11px] font-semibold uppercase tracking-widest"
-                  style={{ color: feyTokens.colors.text.label }}>{h}</span>
-              ))}
-            </>
+        {/* ── Desktop table (sm+) ── */}
+        <div className="hidden sm:block">
+          <div style={{ minWidth: "560px" }}>
+          {/* Table header */}
+          <div
+            className="grid px-5 py-3"
+            style={{
+              borderBottom: "1px solid rgba(255,255,255,0.06)",
+              gridTemplateColumns: activeTab === "invoices"
+                ? "1fr 2fr 1fr 1fr 1fr 80px"
+                : "2fr 1fr 1fr 1fr 1fr",
+            }}
+          >
+            {activeTab === "invoices" && (
+              <>
+                {["Invoice #", "Campaign", "Amount", "Status", "Due Date", "Actions"].map((h) => (
+                  <span key={h} className="text-[11px] font-semibold uppercase tracking-widest"
+                    style={{ color: feyTokens.colors.text.label }}>{h}</span>
+                ))}
+              </>
+            )}
+            {activeTab === "payouts" && (
+              <>
+                {["Creator", "Amount", "Status", "Scheduled", "Method"].map((h) => (
+                  <span key={h} className="text-[11px] font-semibold uppercase tracking-widest"
+                    style={{ color: feyTokens.colors.text.label }}>{h}</span>
+                ))}
+              </>
+            )}
+            {activeTab === "transactions" && (
+              <>
+                {["Date", "Type", "Amount", "Status", "Reference"].map((h) => (
+                  <span key={h} className="text-[11px] font-semibold uppercase tracking-widest"
+                    style={{ color: feyTokens.colors.text.label }}>{h}</span>
+                ))}
+              </>
+            )}
+          </div>
+
+          {/* Rows or empty state */}
+          {activeTab === "invoices" && invoices.length === 0 && (
+            <EmptyState icon="📄" title="No invoices yet" subtitle="Start a campaign and your first invoice will appear here" />
           )}
-          {activeTab === "payouts" && (
-            <>
-              {["Creator", "Amount", "Status", "Scheduled", "Method"].map((h) => (
-                <span key={h} className="text-[11px] font-semibold uppercase tracking-widest"
-                  style={{ color: feyTokens.colors.text.label }}>{h}</span>
-              ))}
-            </>
+          {activeTab === "invoices" && invoices.map((inv) => (
+            <div key={inv.id} className="grid px-5 py-3.5 transition-colors hover:bg-white/[0.03]"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", gridTemplateColumns: "1fr 2fr 1fr 1fr 1fr 80px", alignItems: "center" }}>
+              <span className="text-[13px] font-medium" style={{ color: feyTokens.colors.text.primary }}>{inv.invoiceNumber}</span>
+              <span className="text-[13px]" style={{ color: feyTokens.colors.text.secondary }}>{inv.campaign}</span>
+              <span className="text-[13px] font-medium tabular-nums" style={{ color: feyTokens.colors.text.primary }}>AED {inv.amount.toLocaleString()}</span>
+              <StatusBadge status={inv.status} />
+              <span className="text-[13px]" style={{ color: feyTokens.colors.text.muted }}>
+                {inv.dueDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              </span>
+              <div className="flex items-center gap-2">
+                <button onClick={() => handleDownloadInvoice(inv)} className="p-1 rounded transition-colors hover:bg-white/10" style={{ color: feyTokens.colors.text.muted }}><Download size={13} /></button>
+                <button onClick={() => router.push(`/dashboard/pay?invoice=${inv.id}`)} className="p-1 rounded transition-colors hover:bg-white/10" style={{ color: feyTokens.colors.text.muted }}><ArrowUpRight size={13} /></button>
+              </div>
+            </div>
+          ))}
+          {activeTab === "payouts" && payouts.length === 0 && (
+            <EmptyState icon="💸" title="No payouts scheduled" subtitle="Payout schedules appear once a campaign is active" />
           )}
+          {activeTab === "payouts" && payouts.map((po) => (
+            <div key={po.id} className="grid px-5 py-3.5 transition-colors hover:bg-white/[0.03]"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr", alignItems: "center" }}>
+              <span className="text-[13px] font-medium" style={{ color: feyTokens.colors.text.primary }}>{po.creator}</span>
+              <span className="text-[13px] font-medium tabular-nums" style={{ color: feyTokens.colors.text.primary }}>AED {po.amount.toLocaleString()}</span>
+              <StatusBadge status={po.status} />
+              <span className="text-[13px]" style={{ color: feyTokens.colors.text.muted }}>{po.scheduledDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+              <span className="text-[13px]" style={{ color: feyTokens.colors.text.muted }}>{po.method}</span>
+            </div>
+          ))}
           {activeTab === "transactions" && (
-            <>
-              {["Date", "Type", "Amount", "Status", "Reference"].map((h) => (
-                <span key={h} className="text-[11px] font-semibold uppercase tracking-widest"
-                  style={{ color: feyTokens.colors.text.label }}>{h}</span>
-              ))}
-            </>
+            <EmptyState icon="🔄" title="No transactions yet" subtitle="Funding and releases will appear here" />
           )}
+          </div>
         </div>
 
-        {/* Rows or empty state */}
-        {activeTab === "invoices" && invoices.length === 0 && (
-          <EmptyState
-            icon="📄"
-            title="No invoices yet"
-            subtitle="Start a campaign and your first invoice will appear here"
-          />
-        )}
-        {activeTab === "invoices" && invoices.map((inv) => (
-          <div
-            key={inv.id}
-            className="grid px-5 py-3.5 transition-colors hover:bg-white/[0.03]"
-            style={{
-              borderBottom: "1px solid rgba(255,255,255,0.04)",
-              gridTemplateColumns: "1fr 2fr 1fr 1fr 1fr 80px",
-              alignItems: "center",
-            }}
-          >
-            <span className="text-[13px] font-medium" style={{ color: feyTokens.colors.text.primary }}>{inv.invoiceNumber}</span>
-            <span className="text-[13px]" style={{ color: feyTokens.colors.text.secondary }}>{inv.campaign}</span>
-            <span className="text-[13px] font-medium tabular-nums" style={{ color: feyTokens.colors.text.primary }}>AED {inv.amount.toLocaleString()}</span>
-            <StatusBadge status={inv.status} />
-            <span className="text-[13px]" style={{ color: feyTokens.colors.text.muted }}>
-              {inv.dueDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleDownloadInvoice(inv)}
-                className="p-1 rounded transition-colors hover:bg-white/10" style={{ color: feyTokens.colors.text.muted }}>
-                <Download size={13} />
-              </button>
-              <button
-                onClick={() => router.push(`/dashboard/pay?invoice=${inv.id}`)}
-                className="p-1 rounded transition-colors hover:bg-white/10" style={{ color: feyTokens.colors.text.muted }}>
-                <ArrowUpRight size={13} />
-              </button>
+        {/* ── Mobile card stack (< sm) ── */}
+        <div className="sm:hidden divide-y" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+          {activeTab === "invoices" && invoices.length === 0 && (
+            <EmptyState icon="📄" title="No invoices yet" subtitle="Start a campaign and your first invoice will appear here" />
+          )}
+          {activeTab === "invoices" && invoices.map((inv) => (
+            <div key={inv.id} className="px-4 py-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] font-medium" style={{ color: feyTokens.colors.text.primary }}>{inv.invoiceNumber}</span>
+                <StatusBadge status={inv.status} />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[12px]" style={{ color: feyTokens.colors.text.muted }}>{inv.campaign}</span>
+                <span className="text-[13px] font-medium tabular-nums" style={{ color: feyTokens.colors.text.primary }}>AED {inv.amount.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px]" style={{ color: feyTokens.colors.text.muted }}>Due {inv.dueDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => handleDownloadInvoice(inv)} className="p-1 rounded" style={{ color: feyTokens.colors.text.muted }}><Download size={13} /></button>
+                  <button onClick={() => router.push(`/dashboard/pay?invoice=${inv.id}`)} className="p-1 rounded" style={{ color: feyTokens.colors.text.muted }}><ArrowUpRight size={13} /></button>
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
-        {activeTab === "payouts" && payouts.length === 0 && (
-          <EmptyState icon="💸" title="No payouts scheduled" subtitle="Payout schedules appear once a campaign is active" />
-        )}
-        {activeTab === "payouts" && payouts.map((po) => (
-          <div
-            key={po.id}
-            className="grid px-5 py-3.5 transition-colors hover:bg-white/[0.03]"
-            style={{
-              borderBottom: "1px solid rgba(255,255,255,0.04)",
-              gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr",
-              alignItems: "center",
-            }}
-          >
-            <span className="text-[13px] font-medium" style={{ color: feyTokens.colors.text.primary }}>{po.creator}</span>
-            <span className="text-[13px] font-medium tabular-nums" style={{ color: feyTokens.colors.text.primary }}>AED {po.amount.toLocaleString()}</span>
-            <StatusBadge status={po.status} />
-            <span className="text-[13px]" style={{ color: feyTokens.colors.text.muted }}>
-              {po.scheduledDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-            </span>
-            <span className="text-[13px]" style={{ color: feyTokens.colors.text.muted }}>{po.method}</span>
-          </div>
-        ))}
-        {activeTab === "transactions" && (
-          <EmptyState icon="🔄" title="No transactions yet" subtitle="Funding and releases will appear here" />
-        )}
-        </div>{/* end minWidth wrapper */}
+          ))}
+          {activeTab === "payouts" && payouts.length === 0 && (
+            <EmptyState icon="💸" title="No payouts scheduled" subtitle="Payout schedules appear once a campaign is active" />
+          )}
+          {activeTab === "payouts" && payouts.map((po) => (
+            <div key={po.id} className="px-4 py-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] font-medium" style={{ color: feyTokens.colors.text.primary }}>{po.creator}</span>
+                <StatusBadge status={po.status} />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[12px]" style={{ color: feyTokens.colors.text.muted }}>{po.method}</span>
+                <span className="text-[13px] font-medium tabular-nums" style={{ color: feyTokens.colors.text.primary }}>AED {po.amount.toLocaleString()}</span>
+              </div>
+              <span className="text-[11px]" style={{ color: feyTokens.colors.text.muted }}>
+                Scheduled {po.scheduledDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              </span>
+            </div>
+          ))}
+          {activeTab === "transactions" && (
+            <EmptyState icon="🔄" title="No transactions yet" subtitle="Funding and releases will appear here" />
+          )}
+        </div>
       </div>
     </DashboardShell>
     </>

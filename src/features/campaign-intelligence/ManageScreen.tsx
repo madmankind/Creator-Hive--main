@@ -78,11 +78,9 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
       if (!res.ok) throw new Error(`Failed to load talent (${res.status})`);
       const data = await res.json();
       const realCards: TalentCampaignCard[] = data.cards ?? [];
-      // Fall back to campaign-context talent, then demo cards
-      setCards(realCards.length > 0 ? realCards : buildCardsFromCampaign());
+      setCards(realCards);
     } catch {
-      // Use campaign-context talent if API is unavailable
-      setCards(buildCardsFromCampaign());
+      setCards([]);
     } finally {
       setCardsLoading(false);
     }

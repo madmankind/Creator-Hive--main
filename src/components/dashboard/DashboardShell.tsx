@@ -58,6 +58,18 @@ export function DashboardShell({
 
       {/* ── Content ── */}
       <div className="relative z-10 flex flex-col" style={{ minHeight: "100dvh" }}>
+        {/* Mobile desktop nudge — hidden on lg+ */}
+        <div
+          className="lg:hidden flex items-center justify-center gap-2 px-4 py-2.5 flex-shrink-0"
+          style={{
+            background: "rgba(124,92,255,0.10)",
+            borderBottom: "1px solid rgba(124,92,255,0.18)",
+          }}
+        >
+          <span style={{ fontSize: "11px", color: "rgba(167,139,250,0.75)", textAlign: "center", lineHeight: 1.4 }}>
+            Creator Hive is best experienced on desktop — some views may appear limited on mobile.
+          </span>
+        </div>
         {/* Header */}
         {(headerLeft || headerRight) && (
           <header
