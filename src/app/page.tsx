@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useRef, Suspense, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, Suspense, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HeroBar } from "@/components/HeroBar";
 import { TalentCarousel } from "@/components/marketing/TalentCarousel";
@@ -148,6 +148,8 @@ function HomePageContent() {
   const [heroOtpVerifying, setHeroOtpVerifying] = useState(false);
   const [heroOtpCode, setHeroOtpCode] = useState("");
   const [heroSignInNotice, setHeroSignInNotice] = useState<string | null>(null);
+  const [authProviders, setAuthProviders] = useState<Record<string, unknown> | null>(null);
+  const googleEnabled = Boolean(authProviders && "google" in authProviders);
 
   const packageRef = useRef<HTMLElement>(null);
   const galleryRef = useRef<HTMLElement>(null);
@@ -160,6 +162,21 @@ function HomePageContent() {
   const role = (session?.user as { role?: string | null } | undefined)?.role ?? null;
   const isClient = role === "AGENCY";
   const [creatorOnboardingComplete, setCreatorOnboardingComplete] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/providers")
+      .then((r) => r.json())
+      .then((p) => {
+        if (!cancelled) setAuthProviders(p && typeof p === "object" ? (p as Record<string, unknown>) : null);
+      })
+      .catch(() => {
+        if (!cancelled) setAuthProviders(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (role !== "CREATOR" || !session?.user) {
@@ -205,6 +222,12 @@ function HomePageContent() {
   // Logged-out talent: one surface — email / OTP (no extra "Apply to join" stub)
   useLayoutEffect(() => {
     if (mode !== "talent" || session?.user || sessionPending) return;
+    setHeroAuthStep((s) => (s === "idle" ? "email" : s));
+  }, [mode, session?.user, sessionPending]);
+
+  // Logged-out client: sign in first, then hero intake / advisor (same as talent)
+  useLayoutEffect(() => {
+    if (mode !== "client" || session?.user || sessionPending) return;
     setHeroAuthStep((s) => (s === "idle" ? "email" : s));
   }, [mode, session?.user, sessionPending]);
 
@@ -649,6 +672,11 @@ function HomePageContent() {
     setTimeout(() => scrollToRef(galleryRef), 200);
   };
 
+  /** Open client sign-in only (no post-auth jump to gallery) — e.g. brief upload */
+  const requireClientSignIn = useCallback(() => {
+    setClientAuthOpen(true);
+  }, []);
+
   const handlePackageSelect = (pkg: PackageConfig) => {
     setSelectedPackage(pkg);
     setSelectedRoles(pkg.roles.filter((v, i, a) => a.indexOf(v) === i));
@@ -749,9 +777,9 @@ function HomePageContent() {
 
           <div className="flex flex-col justify-start">
             <AnimatePresence mode="wait">
-              {sessionPending && mode === "talent" ? (
+              {sessionPending && (mode === "talent" || mode === "client") ? (
                 <motion.div
-                  key="talent-session-pending"
+                  key="hero-session-pending"
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
@@ -801,21 +829,23 @@ function HomePageContent() {
                       )}
                       {/* Social options — stack on narrow screens */}
                       <div className="flex flex-col sm:flex-row flex-wrap justify-center items-center gap-2 sm:gap-3">
-                        <button
-                          type="button"
-                          onClick={handleHeroGoogleClick}
-                          disabled={heroAuthGoogleLoading}
-                          className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 sm:py-2 rounded-full text-[13px] transition-all min-h-[44px]"
-                          style={{ border: "1px solid rgba(255,255,255,0.12)", color: heroAuthGoogleLoading ? "rgba(255,255,255,0.30)" : "rgba(255,255,255,0.60)" }}
-                          onMouseEnter={e => { if (!heroAuthGoogleLoading) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                        >
-                          {heroAuthGoogleLoading
-                            ? <span className="block w-4 h-4 rounded-full border-2 border-white/20 border-t-white/60 animate-spin" />
-                            : <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908C16.658 14.082 17.64 11.836 17.64 9.2z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
-                          }
-                          {heroAuthGoogleLoading ? "Connecting…" : "Continue with Google"}
-                        </button>
+                        {googleEnabled ? (
+                          <button
+                            type="button"
+                            onClick={handleHeroGoogleClick}
+                            disabled={heroAuthGoogleLoading}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 sm:py-2 rounded-full text-[13px] transition-all min-h-[44px]"
+                            style={{ border: "1px solid rgba(255,255,255,0.12)", color: heroAuthGoogleLoading ? "rgba(255,255,255,0.30)" : "rgba(255,255,255,0.60)" }}
+                            onMouseEnter={e => { if (!heroAuthGoogleLoading) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                          >
+                            {heroAuthGoogleLoading
+                              ? <span className="block w-4 h-4 rounded-full border-2 border-white/20 border-t-white/60 animate-spin" />
+                              : <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908C16.658 14.082 17.64 11.836 17.64 9.2z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+                            }
+                            {heroAuthGoogleLoading ? "Connecting…" : "Continue with Google"}
+                          </button>
+                        ) : null}
                         {mode === "talent" && (
                           <button
                             type="button"
@@ -923,6 +953,7 @@ function HomePageContent() {
                     onQueryChange={(q) => { setSearchQuery(q); }}
                     onRolesChange={(roles) => { setSelectedRoles(roles); }}
                     onDiscover={openGallery}
+                    onRequireSignIn={requireClientSignIn}
                     onAIResults={(ids, _summary) => { setAiHighlightIds(ids); }}
                     showClear={showTalentGallery}
                     onClear={() => {

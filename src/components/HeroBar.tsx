@@ -25,6 +25,7 @@ import { HeroTalentIntakeBar } from "@/components/talent/HeroTalentIntakeBar";
 import {
   ARCHETYPE_CELEBRATION_ICON,
   ARCHETYPE_PUBLIC_BLURB,
+  formatYoureArchetypeSentence,
   normalizePrismArchetypeLabel,
   type CreatorHiveArchetypeLabel,
 } from "@/lib/talent-onboarding/prismPlaybook";
@@ -35,6 +36,8 @@ interface HeroBarProps {
   onQueryChange?: (q: string) => void;
   onRolesChange?: (roles: string[]) => void;
   onDiscover?: () => void;
+  /** Client only: open sign-in without jumping to talent gallery (e.g. brief upload while logged out) */
+  onRequireSignIn?: () => void;
   showClear?: boolean;
   onClear?: () => void;
   onAIResults?: (ids: string[], summary: string) => void;
@@ -533,18 +536,21 @@ function AdvisorChat({
   systemPrompt,
   welcomeMsg,
   onAIResults,
-  onDiscover,
   onReset,
   autoQuery,
   onBriefFile,
+  skipAutoAiSearch,
+  autoFocusInput,
 }: {
   systemPrompt: string;
   welcomeMsg: string;
   onAIResults?: (ids: string[], summary: string) => void;
-  onDiscover?: () => void;
   onReset?: () => void;
   autoQuery?: string;
   onBriefFile?: (file: File) => void;
+  /** When true, do not auto-run /api/ai-search on mount (parent already ran search) */
+  skipAutoAiSearch?: boolean;
+  autoFocusInput?: boolean;
 }) {
   const [messages, setMessages] = useState<Message[]>([
     { id: "welcome", role: "assistant", content: welcomeMsg },
@@ -566,7 +572,6 @@ function AdvisorChat({
   }, [input]);
 
   const triggerSearch = useCallback(async (query: string, summary: string) => {
-    onDiscover?.();
     try {
       const res = await fetch("/api/ai-search", {
         method: "POST",
@@ -590,34 +595,46 @@ function AdvisorChat({
         ]);
         return;
       }
-      if (res.ok && data.talentIds?.length) {
+      if (res.ok && Array.isArray(data.talentIds)) {
         if (data.rateLimit?.remaining !== undefined) setRemaining(data.rateLimit.remaining);
         onAIResults?.(data.talentIds, data.teamSummary ?? summary);
-        setMessages(p => [...p, {
-          id: Date.now().toString(), role: "assistant",
-          content: `Matched ${data.talentIds.length} creators to your brief ↓\n\n${data.teamSummary ?? summary}`,
-          talentIds: data.talentIds,
-        }]);
-      } else if (res.ok) {
-        setMessages((p) => [
-          ...p,
-          {
-            id: Date.now().toString(),
-            role: "assistant",
-            content:
-              "No matches returned for that query — try broader roles or ask for alternatives. Search covers showcase talent and creators who finished onboarding.",
-          },
-        ]);
+        if (data.talentIds.length > 0) {
+          setMessages((p) => [
+            ...p,
+            {
+              id: Date.now().toString(),
+              role: "assistant",
+              content: `Matched ${data.talentIds.length} creators to your brief ↓\n\n${data.teamSummary ?? summary}`,
+              talentIds: data.talentIds,
+            },
+          ]);
+        } else {
+          setMessages((p) => [
+            ...p,
+            {
+              id: Date.now().toString(),
+              role: "assistant",
+              content:
+                "No matches returned for that query — try broader roles or ask for alternatives. Search covers showcase talent and creators who finished onboarding.",
+            },
+          ]);
+        }
       }
     } catch { /* silent */ }
-  }, [onDiscover, onAIResults]);
+  }, [onAIResults]);
+
+  useEffect(() => {
+    if (!autoFocusInput) return;
+    const id = window.setTimeout(() => inputRef.current?.focus(), 160);
+    return () => window.clearTimeout(id);
+  }, [autoFocusInput, welcomeMsg]);
 
   // Auto-trigger search on load if we have enough context
   useEffect(() => {
-    if (!autoQuery || didAutoSearch.current) return;
+    if (skipAutoAiSearch || !autoQuery || didAutoSearch.current) return;
     didAutoSearch.current = true;
     setTimeout(() => triggerSearch(autoQuery, ""), 900);
-  }, [autoQuery, triggerSearch]);
+  }, [autoQuery, triggerSearch, skipAutoAiSearch]);
 
   const send = useCallback(async () => {
     const text = input.trim();
@@ -827,6 +844,8 @@ function TalentCoachChat({
   } | null>(null);
   const [postArchNotes, setPostArchNotes] = useState("");
   const [notesSaveBusy, setNotesSaveBusy] = useState(false);
+  const [submitProgress, setSubmitProgress] = useState(0);
+  const progressTickerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const flowComplete = steps.length === 0 ? phase >= 1 : phase >= steps.length;
@@ -834,7 +853,9 @@ function TalentCoachChat({
 
   useEffect(() => {
     const fn = draft.firstName?.trim() || userName.split(/\s+/)[0] || "there";
-    setWelcomeText(`Hi ${fn}. Tap Continue to save your profile and reveal your PRISM fit.`);
+    setWelcomeText(
+      `Hi ${fn}. Tap Submit below to save your profile and reveal your "Hive Archetype" using our PRISM™ intelligence.`,
+    );
     setWelcomeReady(true);
   }, [draft.firstName, userName]);
 
@@ -844,6 +865,28 @@ function TalentCoachChat({
       setUploadHint("");
     }
   }, [phase, currentStep?.id]);
+
+  useEffect(() => {
+    if (!finalizing) {
+      if (progressTickerRef.current) {
+        clearInterval(progressTickerRef.current);
+        progressTickerRef.current = null;
+      }
+      return;
+    }
+    setSubmitProgress(0);
+    const t0 = Date.now();
+    progressTickerRef.current = setInterval(() => {
+      const elapsed = Date.now() - t0;
+      setSubmitProgress((prev) => Math.max(prev, Math.min(100, Math.floor((elapsed / 10_000) * 100))));
+    }, 80);
+    return () => {
+      if (progressTickerRef.current) {
+        clearInterval(progressTickerRef.current);
+        progressTickerRef.current = null;
+      }
+    };
+  }, [finalizing]);
 
   const promptText =
     phase === -1
@@ -880,7 +923,7 @@ function TalentCoachChat({
 
   const chips: string[] =
     phase === -1
-      ? ["Continue"]
+      ? []
       : flowComplete || !currentStep
         ? []
         : [
@@ -902,10 +945,6 @@ function TalentCoachChat({
       const isSkip = raw.startsWith("Skip");
 
       if (phase === -1) {
-        if (raw === "Continue" && welcomeReady) {
-          setPhase(steps.length === 0 ? 1 : 0);
-          setInputVal("");
-        }
         return;
       }
 
@@ -943,7 +982,7 @@ function TalentCoachChat({
       setStepAnswers((a) => ({ ...a, [currentStep.id]: trimmed }));
       goNext();
     },
-    [phase, welcomeReady, flowComplete, currentStep, uploadedAssetUrl, goNext, linkCandidate],
+    [phase, flowComplete, currentStep, uploadedAssetUrl, goNext, linkCandidate],
   );
 
   const handleKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -1065,6 +1104,7 @@ function TalentCoachChat({
         }).catch(() => {});
       }
 
+      setSubmitProgress(100);
       setPostArchNotes("");
       setCelebration({
         primary,
@@ -1110,12 +1150,11 @@ function TalentCoachChat({
           return;
         }
         const summaryBlurb = blurb ? blurb.slice(0, 220) : "";
+        const head = formatYoureArchetypeSentence(celebration.primary);
         onDone({
           prismArchetype: celebration.primary,
           prismArchetypeSecondary: celebration.secondary,
-          celebrationLine: summaryBlurb
-            ? `You're a ${celebration.primary}. ${summaryBlurb}`
-            : `You're a ${celebration.primary}.`,
+          celebrationLine: summaryBlurb ? `${head} ${summaryBlurb}` : head,
         });
       } catch {
         setErr("Something went wrong — try again.");
@@ -1149,7 +1188,7 @@ function TalentCoachChat({
                 {iconChar}
               </div>
               <p className="text-[15px] font-semibold text-white/92 leading-snug">
-                You&apos;re an {celebration.primary}.
+                {formatYoureArchetypeSentence(celebration.primary)}
               </p>
               {blurb ? (
                 <p className="text-[12px] text-white/58 leading-relaxed">{blurb}</p>
@@ -1186,16 +1225,52 @@ function TalentCoachChat({
     );
   }
 
+  const footerSubmitDisabled =
+    finalizing || !welcomeReady || (phase >= 0 && !flowComplete);
+
+  const handleFooterSubmit = () => {
+    if (footerSubmitDisabled) return;
+    if (phase === -1 && steps.length > 0) {
+      setPhase(0);
+      setInputVal("");
+      return;
+    }
+    if (phase === -1 && steps.length === 0) {
+      void finalize();
+      return;
+    }
+    if (flowComplete) void finalize();
+  };
+
   return (
     <div className="w-full flex flex-col">
       <div
-        className="w-full rounded-2xl transition-all duration-300 overflow-hidden"
+        className="relative w-full rounded-2xl transition-all duration-300 overflow-hidden"
         style={{
           background: "rgba(10,10,18,0.92)",
           border: "1px solid rgba(124,92,255,0.30)",
           boxShadow: "0 0 40px rgba(124,92,255,0.12), 0 0 0 1px rgba(124,92,255,0.08)",
         }}
       >
+        {finalizing ? (
+          <div
+            className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 px-6"
+            style={{ background: "rgba(7,7,11,0.88)", backdropFilter: "blur(8px)" }}
+          >
+            <Loader2 size={28} className="animate-spin text-purple-300/90" />
+            <p className="text-[12px] text-white/55 text-center">Saving your profile and Hive Archetype…</p>
+            <div className="w-full max-w-[220px] h-1.5 rounded-full overflow-hidden bg-white/[0.08]">
+              <div
+                className="h-full rounded-full transition-all duration-150"
+                style={{
+                  width: `${submitProgress}%`,
+                  background: "linear-gradient(90deg, rgba(124,92,255,0.95), rgba(93,208,255,0.85))",
+                }}
+              />
+            </div>
+            <p className="text-[11px] tabular-nums text-white/35">{submitProgress}%</p>
+          </div>
+        ) : null}
         <div className="h-[2px] w-full" style={{ background: "rgba(255,255,255,0.05)" }}>
           <motion.div
             className="h-full rounded-full"
@@ -1384,16 +1459,16 @@ function TalentCoachChat({
         </button>
         <button
           type="button"
-          onClick={() => void finalize()}
-          disabled={finalizing || !flowComplete || !welcomeReady}
+          onClick={handleFooterSubmit}
+          disabled={footerSubmitDisabled}
           className={cn(
             "rounded-full px-4 py-1.5 text-[11px] font-semibold transition",
-            finalizing || !flowComplete || !welcomeReady
+            footerSubmitDisabled
               ? "bg-white/10 text-white/25 cursor-not-allowed"
               : "bg-white text-black hover:bg-white/90",
           )}
         >
-          {finalizing ? "Saving…" : "Finish & save profile"}
+          Submit
         </button>
       </div>
       {err ? <p className="text-[11px] text-rose-300/90 mt-1.5 px-1">{err}</p> : null}
@@ -1406,6 +1481,7 @@ export function HeroBar({
   mode,
   onQueryChange,
   onDiscover,
+  onRequireSignIn,
   showClear,
   onClear,
   onAIResults,
@@ -1415,6 +1491,10 @@ export function HeroBar({
   const { data: session, status: sessionStatus } = useSession();
   const store = useDiscoveryStore();
   const hydrate = useDiscoveryStore((s) => s.hydrate);
+  const resetDiscovery = useDiscoveryStore((s) => s.reset);
+
+  const [skipAdvisorAutoSearch, setSkipAdvisorAutoSearch] = useState(false);
+  const [focusAdvisorChatInput, setFocusAdvisorChatInput] = useState(false);
 
   // track: "intake" | "returning-new" | "returning-resume" | "intake_searching" | "activated"
   type Track = "intake" | "returning-new" | "returning-resume" | "intake_searching" | "activated";
@@ -1465,8 +1545,8 @@ export function HeroBar({
 
   const runAiSearchThenOpenAdvisor = useCallback(
     async (searchQuery: string, welcomeIntro: string | null) => {
+      setSkipAdvisorAutoSearch(true);
       try {
-        onDiscover?.();
         const res = await fetch("/api/ai-search", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1477,16 +1557,23 @@ export function HeroBar({
           teamSummary?: string;
           message?: string;
         };
-        if (res.ok && Array.isArray(data.talentIds) && data.talentIds.length > 0) {
+        if (res.ok && Array.isArray(data.talentIds)) {
           onAIResults?.(data.talentIds, data.teamSummary ?? "");
-          const sum = data.teamSummary?.trim();
-          const intro = welcomeIntro?.trim();
-          const parts = [intro, sum].filter((x): x is string => Boolean(x && x.length > 0));
-          setWelcomeOverride(
-            parts.length > 0
-              ? parts.join(" ")
-              : "Your matches are highlighted in the gallery — ask for more in chat.",
-          );
+          const sum = (data.teamSummary ?? "").trim();
+          const intro = (welcomeIntro ?? "").trim();
+          if (data.talentIds.length > 0) {
+            const head = [intro, sum].filter((x) => x.length > 0).join(intro && sum ? "\n\n" : "\n");
+            const tail = `Matched ${data.talentIds.length} creator${data.talentIds.length === 1 ? "" : "s"} for your brief.\n\nWhen you open the gallery (pre-vetted teams button below), your matches are highlighted there.`;
+            setWelcomeOverride(
+              [head, tail].filter((x) => x.length > 0).join("\n\n") ||
+                "Your matches are ready — open the gallery from the button below when you want to browse cards.",
+            );
+          } else {
+            setWelcomeOverride(
+              intro ||
+                "Brief saved — describe roles or style in chat and I'll search the full roster.",
+            );
+          }
         } else if (res.status === 429) {
           setWelcomeOverride(String(data.message ?? "Daily AI search limit reached — use chat to refine."));
         } else {
@@ -1501,29 +1588,34 @@ export function HeroBar({
             "Tell me what you're looking for and I'll run a fresh search across showcase + onboarded talent.",
         );
       } finally {
-        setAutoQueryOverride("");
+        setAutoQueryOverride(null);
         setAdvisorChatKey((k) => k + 1);
         setTrack("activated");
       }
     },
-    [onDiscover, onAIResults],
+    [onAIResults],
   );
 
   const skipToTalentSearch = useCallback(() => {
+    resetDiscovery();
+    onAIResults?.([], "");
+    onQueryChange?.("");
+    setSkipAdvisorAutoSearch(false);
     setWelcomeOverride(
-      "Search with AI below — or use role tags in the gallery. Ask anytime for more matches without redoing onboarding.",
+      "Skipping the briefing — describe the talent or campaign you need below and I'll run a fresh search. Open the gallery only when you want to browse cards.",
     );
-    setAutoQueryOverride("");
+    setAutoQueryOverride(null);
     setProfile({});
-    onDiscover?.();
+    setFocusAdvisorChatInput(true);
+    window.setTimeout(() => setFocusAdvisorChatInput(false), 500);
     setAdvisorChatKey((k) => k + 1);
     setTrack("activated");
-  }, [onDiscover]);
+  }, [resetDiscovery, onAIResults, onQueryChange]);
 
   const handleBriefFile = useCallback(
     async (file: File) => {
       if (!session?.user) {
-        onDiscover?.();
+        onRequireSignIn?.();
         setBriefUploadErr("Sign in to upload your brief");
         return;
       }
@@ -1553,7 +1645,7 @@ export function HeroBar({
           setBriefUploadErr(data.error ?? "Could not read this brief");
           if (data.assistantFallback) {
             setWelcomeOverride(data.assistantFallback);
-            setAutoQueryOverride("");
+            setAutoQueryOverride(null);
             setProfile({
               businessType: "",
               objective: "",
@@ -1630,7 +1722,7 @@ export function HeroBar({
         setBriefUploadBusy(false);
       }
     },
-    [session?.user, onDiscover, hydrate, runAiSearchThenOpenAdvisor],
+    [session?.user, onRequireSignIn, hydrate, runAiSearchThenOpenAdvisor],
   );
 
   const handleIntakeComplete = useCallback(
@@ -1687,6 +1779,7 @@ export function HeroBar({
     setWelcomeOverride(null);
     setAutoQueryOverride(null);
     setBriefUploadErr(null);
+    setSkipAdvisorAutoSearch(false);
     setAdvisorChatKey((k) => k + 1);
     setTrack("intake");
     setProfile({});
@@ -1855,22 +1948,13 @@ export function HeroBar({
           <div className="flex flex-wrap gap-2 pt-1">
             <button
               type="button"
-              onClick={() => setTalentGate("done")}
+              onClick={() => {
+                onTalentProfileSaved?.();
+                router.push("/dashboard/creator");
+              }}
               className="rounded-full bg-white px-5 py-2 text-xs font-semibold text-black hover:bg-white/90 transition"
             >
-              Got it
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push("/dashboard/creator")}
-              className="rounded-full px-5 py-2 text-xs font-medium transition"
-              style={{
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                color: "rgba(255,255,255,0.55)",
-              }}
-            >
-              Open dashboard
+              Continue to dashboard
             </button>
           </div>
         </motion.div>
@@ -1895,7 +1979,6 @@ export function HeroBar({
             }}
             onDone={(assessment) => {
               setTalentArchetype(assessment);
-              onTalentProfileSaved?.();
               setTalentGate("pending_review");
             }}
           />
@@ -1967,6 +2050,7 @@ export function HeroBar({
             onSkipToGrok={() => {
               setWelcomeOverride(null);
               setAutoQueryOverride(null);
+              setSkipAdvisorAutoSearch(false);
               setProfile(buildReturningProfile());
               setTrack("activated");
             }}
@@ -2000,6 +2084,7 @@ export function HeroBar({
                 onClick={() => {
                   setWelcomeOverride(null);
                   setAutoQueryOverride(null);
+                  setSkipAdvisorAutoSearch(false);
                   setProfile(buildReturningProfile());
                   setTrack("activated");
                 }}
@@ -2058,8 +2143,9 @@ export function HeroBar({
             autoQuery={advisorAutoQuery}
             onBriefFile={handleBriefFile}
             onAIResults={onAIResults}
-            onDiscover={onDiscover}
             onReset={handleReset}
+            skipAutoAiSearch={skipAdvisorAutoSearch}
+            autoFocusInput={focusAdvisorChatInput}
           />
         </motion.div>
       )}

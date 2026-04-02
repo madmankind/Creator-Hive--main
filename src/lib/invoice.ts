@@ -1,6 +1,11 @@
 // src/lib/invoice.ts
 // Creator Hive invoice number generation and formatting
 // Format: CH{YYYYMMDD}{SEQ} — matches existing CH20260107 format
+//
+// PDF layout / branding: align generated documents with the Creator Hive invoice template
+// (e.g. Prosper Innovations retainer sample: CH20260107_*). For full visual parity, provide
+// vector/logo assets (SVG/PNG), exact typography, and optional HTML→PDF or React-PDF template
+// — then wire buildInvoiceData() + line items from Campaign / Booking / Contract APIs.
 
 export interface InvoiceData {
   invoiceNumber: string;

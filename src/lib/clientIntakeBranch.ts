@@ -125,7 +125,7 @@ export function getClientBranchSteps(bizType: string): ClientBranchStep[] {
         { id: "brand_industry", prompt: "What industry are you in?", chips: [...BRAND_INDUSTRY_CHIPS] },
         {
           id: "brand_social",
-          prompt: "Your social handle (optional)",
+          prompt: "Your social handle",
           chips: ["Skip"],
           optional: true,
         },
@@ -157,7 +157,7 @@ export function getClientBranchSteps(bizType: string): ClientBranchStep[] {
         { id: "startup_industry", prompt: "What industry are you building in?", chips: [...BRAND_INDUSTRY_CHIPS] },
         {
           id: "startup_social",
-          prompt: "Your social handle (optional)",
+          prompt: "Your social handle",
           chips: ["Skip"],
           optional: true,
         },
@@ -172,7 +172,7 @@ export function getClientBranchSteps(bizType: string): ClientBranchStep[] {
         },
         {
           id: "media_handle",
-          prompt: "Your main social or publication handle (optional)",
+          prompt: "Your main social or publication handle",
           chips: ["Skip"],
           optional: true,
         },

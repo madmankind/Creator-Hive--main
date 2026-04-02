@@ -4,6 +4,12 @@ import { auth } from "@/auth";
 import { db } from "@/server/db";
 import { formatClientFitForMatching } from "@/lib/matchingFitContext";
 import { getCombinedAiRoster } from "@/server/aiRoster";
+import {
+  coerceTalentIdList,
+  extractFirstJsonObject,
+  fallbackShowcaseIdsFromQuery,
+  resolveTalentIds,
+} from "@/lib/aiSearchMatch";
 
 function buildSearchSystemPrompt(rosterSection: string): string {
   return `You are Creator Hive's AI talent scout. Creator Hive is a UAE-based premium creative talent marketplace.
@@ -46,7 +52,8 @@ interface AIProvider {
 function getProvider(): AIProvider | null {
   const grokKey = process.env.GROK_API_KEY;
   if (grokKey) {
-    return { endpoint: GROK_ENDPOINT, apiKey: grokKey, model: "grok-4-1-fast" };
+    const model = process.env.GROK_AI_SEARCH_MODEL?.trim() || "grok-3-mini";
+    return { endpoint: GROK_ENDPOINT, apiKey: grokKey, model };
   }
   const thauraKey = process.env.THAURA_API_KEY;
   if (thauraKey) {
@@ -100,7 +107,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "AI search not configured" }, { status: 503 });
     }
 
-    const { rosterSystemSection, validTalentIds } = await getCombinedAiRoster();
+    const { rosterSystemSection, validTalentIds } = await getCombinedAiRoster({ compact: true });
     const systemPrompt = buildSearchSystemPrompt(rosterSystemSection);
 
     let workflowBlock = "";
@@ -136,7 +143,7 @@ export async function POST(req: NextRequest) {
         ],
         stream: false,
         temperature: 0.2,
-        max_tokens: 720,
+        max_tokens: 520,
       }),
     });
 
@@ -152,24 +159,52 @@ export async function POST(req: NextRequest) {
 
     const data = await response.json();
     const raw = data?.choices?.[0]?.message?.content ?? "";
+    const stripped = raw.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
 
-    // Parse the JSON the model returns
-    let parsed: { talentIds?: string[]; teamSummary?: string; roles?: Record<string, string> };
-    try {
-      const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      parsed = JSON.parse(clean);
-    } catch {
-      console.error("Failed to parse AI response:", raw);
-      return NextResponse.json({ error: "Could not parse AI response", raw }, { status: 500 });
+    const tryParse = (s: string): Record<string, unknown> | null => {
+      try {
+        const v = JSON.parse(s) as unknown;
+        return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+      } catch {
+        return null;
+      }
+    };
+
+    let obj = tryParse(stripped);
+    if (!obj) {
+      const inner = extractFirstJsonObject(stripped);
+      if (inner) obj = tryParse(inner);
     }
 
-    // Validate IDs against roster — never trust the model to invent IDs
-    const safeIds = (parsed.talentIds ?? []).filter((id) => validTalentIds.has(id));
+    let safeIds: string[] = [];
+    let teamSummary = "";
+    let roles: Record<string, string> = {};
+
+    if (obj) {
+      const rawIds = coerceTalentIdList(obj);
+      safeIds = resolveTalentIds(rawIds, validTalentIds);
+      teamSummary = typeof obj.teamSummary === "string" ? obj.teamSummary : "";
+      const r = obj.roles;
+      if (r && typeof r === "object" && !Array.isArray(r)) {
+        roles = Object.fromEntries(
+          Object.entries(r as Record<string, unknown>).map(([k, v]) => [k, String(v ?? "")]),
+        );
+      }
+    } else {
+      console.error("AI search: could not parse JSON from model:", raw.slice(0, 800));
+    }
+
+    const queryTrim = query.trim();
+    if (safeIds.length === 0) {
+      safeIds = fallbackShowcaseIdsFromQuery(queryTrim, validTalentIds, 6);
+    }
 
     return NextResponse.json({
       talentIds: safeIds,
-      teamSummary: parsed.teamSummary ?? "",
-      roles: parsed.roles ?? {},
+      teamSummary:
+        teamSummary.trim() ||
+        (safeIds.length > 0 ? "Here's a shortlist from the roster based on your brief." : ""),
+      roles,
       rateLimit: { remaining: rl.remaining - 1, limit: rl.limit, resetAt: rl.resetAt },
     });
   } catch (err) {

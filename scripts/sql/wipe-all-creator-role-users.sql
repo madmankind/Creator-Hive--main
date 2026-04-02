@@ -10,6 +10,8 @@ BEGIN;
 DELETE FROM verification_tokens
 WHERE identifier IN (SELECT email FROM users WHERE role = 'CREATOR');
 
+DELETE FROM signup_applications WHERE role = 'CREATOR';
+
 DELETE FROM users WHERE role = 'CREATOR';
 
 COMMIT;

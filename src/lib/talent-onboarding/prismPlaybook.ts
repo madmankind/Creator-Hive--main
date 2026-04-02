@@ -49,6 +49,14 @@ export const ARCHETYPE_PUBLIC_BLURB: Record<CreatorHiveArchetypeLabel, string> =
     "You scale ideas for the feed — performance, reach, and momentum are your playground.",
 };
 
+/** Archetype labels include a leading "The " (proper noun) — avoid "You're an The Conductor." */
+export function formatYoureArchetypeSentence(primary: string): string {
+  const t = primary.trim();
+  if (!t) return "You're all set.";
+  if (/^the\s+/i.test(t)) return `You're ${t}.`;
+  return `You're a ${t}.`;
+}
+
 /** Rich mapping reference for Grok final assessment (source of truth for classification). */
 export const ARCHETYPE_ASSESSMENT_PLAYBOOK_FOR_LLM = `
 CREATOR HIVE — PRISM ARCHETYPE ASSESSMENT (internal; classify from full draft + transcript)

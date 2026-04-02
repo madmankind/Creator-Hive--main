@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { type CampaignObjective } from "@/lib/campaignObjectives";
 import { type KPIData } from "./KPIPlanner";
-import { feyTokens } from "@/lib/fey-design-tokens";
 import { useCampaign } from "@/contexts/CampaignContext";
 import { CampaignStatusBadge } from "@/components/campaigns/CampaignStatusBadge";
+import { TimeRangeSelector } from "@/features/campaign-intelligence/TimeRangeSelector";
+import type { WeekTimeRange } from "@/components/campaigns/TrackChart";
 
 interface TrackInsightsPanelProps {
   objective: CampaignObjective;
@@ -24,6 +25,9 @@ interface TrackInsightsPanelProps {
   creatorsCount?: number;
   deliverablesCount?: number;
   static?: boolean;
+  /** Chart period — shown inside Filter panel (replaces header week tabs on Track) */
+  timeRange?: WeekTimeRange;
+  onTimeRangeChange?: (range: WeekTimeRange) => void;
 }
 
 type TabType = "overview" | "weekly" | "summary";
@@ -353,6 +357,8 @@ export function TrackInsightsPanel({
   creatorsCount,
   deliverablesCount,
   static: staticMode = false,
+  timeRange,
+  onTimeRangeChange,
 }: TrackInsightsPanelProps) {
   const { activeCampaign } = useCampaign();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
@@ -389,6 +395,16 @@ export function TrackInsightsPanel({
         {campaignName && (
           <p className="text-[11px] truncate mb-1.5" style={{ color: "rgba(255,255,255,0.35)" }}>{campaignName}</p>
         )}
+        {timeRange !== undefined && onTimeRangeChange ? (
+          <div className="mb-3">
+            <p className="text-[10px] font-medium uppercase tracking-wider mb-2" style={{ color: "rgba(255,255,255,0.28)" }}>
+              Chart period
+            </p>
+            <div className="overflow-x-auto pb-1">
+              <TimeRangeSelector value={timeRange} onChange={onTimeRangeChange} />
+            </div>
+          </div>
+        ) : null}
         {/* Tab strip */}
         <div className="flex gap-1">
           {TABS.map((t) => (

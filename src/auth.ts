@@ -26,6 +26,9 @@ function isCompanyEmail(email: string) {
 }
 
 const isDev = process.env.NODE_ENV !== "production";
+const authBaseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || "";
+const shouldUseSecureCookies =
+  authBaseUrl.startsWith("https://") ? true : authBaseUrl.startsWith("http://") ? false : !isDev;
 
 // Validate AUTH_SECRET is set
 const authSecret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
@@ -81,12 +84,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   cookies: {
     sessionToken: {
-      name: isDev ? `next-auth.session-token` : `__Secure-next-auth.session-token`,
+      name: shouldUseSecureCookies ? `__Secure-next-auth.session-token` : `next-auth.session-token`,
       options: {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: !isDev,
+        secure: shouldUseSecureCookies,
         maxAge: 30 * 24 * 60 * 60,
       },
     },

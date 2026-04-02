@@ -5,10 +5,12 @@ import { auth } from "@/auth";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { query, campaignData, mode } = body as {
+    const { query, campaignData, mode, imageBase64 } = body as {
       query?: string;
       campaignData?: Record<string, unknown>;
       mode?: "analyze" | "brief-parse" | "recommend";
+      /** Raw base64 or full data URL — social / campaign screenshots for KPI extraction */
+      imageBase64?: string | null;
     };
 
     // ── Rate limiting ──────────────────────────────────────────────────────
@@ -68,9 +70,34 @@ Rules:
     const effectiveMode = mode ?? "analyze";
     const systemPrompt = systemPrompts[effectiveMode] ?? systemPrompts.analyze;
 
-    const userContent = campaignData
+    const textContent = campaignData
       ? `${query ?? "Analyze this campaign"}\n\nCampaign data:\n${JSON.stringify(campaignData, null, 2)}`
       : query ?? "No query provided";
+
+    const hasImage = typeof imageBase64 === "string" && imageBase64.length > 80;
+
+    const visionHint =
+      "\n\nThe user attached a screenshot (social or campaign analytics). Read visible metrics, charts, and labels; extract KPIs where possible; relate findings to the campaign data.";
+
+    const userMessage = hasImage
+      ? {
+          role: "user" as const,
+          content: [
+            { type: "text" as const, text: textContent + visionHint },
+            {
+              type: "image_url" as const,
+              image_url: {
+                url: imageBase64!.startsWith("data:") ? imageBase64! : `data:image/png;base64,${imageBase64}`,
+              },
+            },
+          ],
+        }
+      : { role: "user" as const, content: textContent };
+
+    const model =
+      hasImage
+        ? (process.env.GROK_VISION_MODEL?.trim() || "grok-2-vision-1212")
+        : (process.env.GROK_ANALYZE_MODEL?.trim() || "grok-3-mini");
 
     // Try xAI Grok first, fall back to basic response
     try {
@@ -81,12 +108,12 @@ Rules:
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "grok-3-mini",
+          model,
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: userContent },
+            userMessage,
           ],
-          max_tokens: 800,
+          max_tokens: hasImage ? 1000 : 800,
           temperature: 0.4,
         }),
       });

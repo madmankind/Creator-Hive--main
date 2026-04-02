@@ -12,7 +12,7 @@ import { EventTimeline } from "@/components/campaigns/EventTimeline";
 import { useCampaign } from "@/contexts/CampaignContext";
 import { CAMPAIGN_OBJECTIVES, type CampaignObjective } from "@/lib/campaignObjectives";
 import { type KPIData } from "@/components/campaigns/KPIPlanner";
-import { SlidersHorizontal, Sparkles, Paperclip, Send, Loader2, Phone } from "lucide-react";
+import { SlidersHorizontal, Sparkles, Paperclip, Send, Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { DiscoverySummaryCard } from "@/components/discovery/DiscoverySummaryCard";
 import { useDiscoveryStore } from "@/store/useDiscoveryStore";
@@ -70,14 +70,6 @@ interface TrackScreenProps {
   onCampaignChange?: (ids: string[]) => void;
 }
 
-const TIME_RANGES: { id: WeekTimeRange; label: string }[] = [
-  { id: "week1", label: "Week 1" },
-  { id: "week2", label: "Week 2" },
-  { id: "week3", label: "Week 3" },
-  { id: "week4", label: "Week 4" },
-  { id: "total", label: "Total" },
-  { id: "custom", label: "Custom" },
-];
 export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScreenProps) {
   const { activeCampaign } = useCampaign();
   const ds = useDiscoveryStore();
@@ -92,10 +84,11 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
   const [actualData, setActualData] = useState<KPIData | null>(null);
 
   // AI analysis chat state
-  const [aiChatOpen, setAiChatOpen] = useState(false);
   const [aiQuery, setAiQuery] = useState("");
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  /** Full data URL or raw base64 for Grok vision — set when user attaches a screenshot */
+  const [trackScreenshotDataUrl, setTrackScreenshotDataUrl] = useState<string | null>(null);
 
   // Weekly inputs lifted from TrackInsightsPanel so AI can read them
   type WeekNumber = 1 | 2 | 3 | 4;
@@ -177,15 +170,21 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
 
   const handleAiAnalyze = useCallback(async () => {
     const q = aiQuery.trim();
-    if (!q || aiLoading) return;
+    if ((!q && !trackScreenshotDataUrl) || aiLoading) return;
     setAiLoading(true);
     setAiResponse(null);
     try {
+      const imagePayload = trackScreenshotDataUrl?.startsWith("data:")
+        ? trackScreenshotDataUrl
+        : trackScreenshotDataUrl
+          ? `data:image/png;base64,${trackScreenshotDataUrl}`
+          : null;
       const res = await fetch("/api/ai-analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          query: q,
+          query: q || "Analyze the attached screenshot and relate it to this campaign.",
+          imageBase64: imagePayload,
           campaignData: {
             name: activeCampaign?.name,
             objective: activeCampaign?.objective,
@@ -222,35 +221,16 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
       } else {
         setAiResponse(data.analysis ?? data.detail ?? "Analysis complete. Try a more specific question.");
       }
+      setTrackScreenshotDataUrl(null);
     } catch {
       setAiResponse("AI analysis unavailable. Try again later.");
     } finally {
       setAiLoading(false);
     }
-  }, [aiQuery, aiLoading, activeCampaign, kpis]);
+  }, [aiQuery, aiLoading, activeCampaign, kpis, trackScreenshotDataUrl, weeklyInputs]);
 
-  // Header slots
-  const headerLeft = (
-    <>
-      <CampaignSwitcher />
-      <div className="hidden sm:block h-4 w-px flex-shrink-0" style={{ background: "rgba(255,255,255,0.08)" }} />
-      <div className="hidden sm:flex items-center gap-3">
-        {TIME_RANGES.map((r) => (
-          <button
-            key={r.id}
-            onClick={() => setTimeRange(r.id)}
-            className="text-[12px] transition-colors"
-            style={{
-              color: timeRange === r.id ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.38)",
-              fontWeight: timeRange === r.id ? 500 : 400,
-            }}
-          >
-            {r.label}
-          </button>
-        ))}
-      </div>
-    </>
-  );
+  // Header: campaign only — week / total range lives under Filter (insights panel)
+  const headerLeft = <CampaignSwitcher />;
 
   const headerRight = (
     <button
@@ -273,23 +253,6 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
         <EmptyDashboard />
       ) : (
       <div className="space-y-6">
-        {/* Mobile time range strip */}
-        <div className="flex sm:hidden items-center gap-3 overflow-x-auto scrollbar-hide pb-1">
-          {TIME_RANGES.map((r) => (
-            <button
-              key={r.id}
-              onClick={() => setTimeRange(r.id)}
-              className="flex-shrink-0 text-[12px] transition-colors py-1"
-              style={{
-                color: timeRange === r.id ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.38)",
-                fontWeight: timeRange === r.id ? 500 : 400,
-              }}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
-
         <div className={showInsights ? "grid gap-6 lg:grid-cols-[1fr_300px]" : "grid gap-6"}>
         {/* Main column */}
         <div className="space-y-6 min-w-0">
@@ -364,21 +327,39 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
                 value={aiQuery}
                 onChange={(e) => setAiQuery(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleAiAnalyze(); }}
-                placeholder="Ask AI — e.g. How is my CPM vs benchmark? Am I pacing on budget?"
+                placeholder="Ask AI or attach a screenshot — metrics, insights, pacing…"
                 className="flex-1 bg-transparent outline-none text-[12px] text-white/80 placeholder:text-white/25"
               />
-              <label className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-white/25 hover:text-white/50 hover:bg-white/[0.05] transition cursor-pointer">
+              <label className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-white/25 hover:text-white/50 hover:bg-white/[0.05] transition cursor-pointer relative" title="Upload social or campaign screenshot">
                 <Paperclip className="w-3.5 h-3.5" />
-                <input type="file" className="hidden" accept="image/*,.pdf,.pptx,.xlsx,.csv" onChange={(e) => {
+                <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,image/gif" onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) setAiQuery((prev) => prev ? `${prev} [attached: ${file.name}]` : `Analyze this file: ${file.name}`);
+                  e.target.value = "";
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    const dataUrl = reader.result as string;
+                    setTrackScreenshotDataUrl(dataUrl);
+                    setAiQuery((prev) =>
+                      prev.trim()
+                        ? prev
+                        : "Read this screenshot — extract KPIs and assess performance vs the campaign context.",
+                    );
+                  };
+                  reader.readAsDataURL(file);
                 }} />
+                {trackScreenshotDataUrl ? (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400/90" />
+                ) : null}
               </label>
               <button
                 onClick={handleAiAnalyze}
-                disabled={aiLoading || !aiQuery.trim()}
+                disabled={aiLoading || (!aiQuery.trim() && !trackScreenshotDataUrl)}
                 className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition"
-                style={{ background: aiQuery.trim() ? "rgba(124,92,255,0.25)" : "transparent", color: aiQuery.trim() ? "rgba(124,92,255,0.9)" : "rgba(255,255,255,0.20)" }}
+                style={{
+                  background: aiQuery.trim() || trackScreenshotDataUrl ? "rgba(124,92,255,0.25)" : "transparent",
+                  color: aiQuery.trim() || trackScreenshotDataUrl ? "rgba(124,92,255,0.9)" : "rgba(255,255,255,0.20)",
+                }}
               >
                 {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
               </button>
@@ -448,6 +429,8 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
               creatorsCount={activeCampaign?.talentNames?.length ?? 0}
               deliverablesCount={activeCampaign?.talentNames ? activeCampaign.talentNames.length * 2 : 0}
               static={true}
+              timeRange={timeRange}
+              onTimeRangeChange={setTimeRange}
             />
           </div>
         )}
