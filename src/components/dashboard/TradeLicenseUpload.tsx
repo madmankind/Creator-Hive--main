@@ -1,7 +1,6 @@
 /**
  * TRADE LICENSE UPLOAD COMPONENT
- * Dashboard component for uploading trade license
- * Moved from initial request flow (as specified in requirements)
+ * Uploads to Supabase via /api/agency/trade-license and persists on AgencyAccount.
  */
 
 "use client";
@@ -20,72 +19,46 @@ type TradeLicenseUploadProps = {
   onUploadComplete?: () => void;
 };
 
-export function TradeLicenseUpload({ requestId, existingLicense, onUploadComplete }: TradeLicenseUploadProps) {
+export function TradeLicenseUpload({ existingLicense, onUploadComplete }: TradeLicenseUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [uploadedFile, setUploadedFile] = useState(existingLicense);
   const [error, setError] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
-
-    // Validate file size (10MB max)
-    if (selectedFile.size > 10 * 1024 * 1024) {
-      setError("File size must be under 10MB");
-      return;
-    }
-
-    // Validate file type (PDF, JPG, PNG)
-    const validTypes = ["application/pdf", "image/jpeg", "image/png"];
-    if (!validTypes.includes(selectedFile.type)) {
-      setError("File must be PDF, JPG, or PNG");
-      return;
-    }
-
-    setFile(selectedFile);
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+    if (selected.size > 10 * 1024 * 1024) { setError("File size must be under 10 MB"); return; }
+    const valid = ["application/pdf", "image/jpeg", "image/png"];
+    if (!valid.includes(selected.type)) { setError("File must be PDF, JPG, or PNG"); return; }
+    setFile(selected);
     setError(null);
   };
 
   const handleUpload = async () => {
     if (!file) return;
-
     setUploading(true);
     setError(null);
-
     try {
-      // Create form data
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("ownerType", "REQUEST");
-      formData.append("ownerId", requestId);
-      formData.append("type", "TRADE_LICENSE");
-
-      // TODO: Implement actual upload to storage + DB
-      // const res = await fetch("/api/attachments/upload", {
-      //   method: "POST",
-      //   body: formData,
-      // });
-
-      // Mock success for now
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      setUploadedFile({
-        url: URL.createObjectURL(file),
-        filename: file.name,
-        uploadedAt: new Date(),
-      });
+      const res = await fetch("/api/agency/trade-license", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Upload failed"); return; }
+      setUploadedFile({ url: data.url, filename: data.filename, uploadedAt: new Date() });
       setFile(null);
       onUploadComplete?.();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+    } catch {
+      setError("Network error. Try again.");
     } finally {
       setUploading(false);
     }
   };
 
   const handleRemove = async () => {
-    // TODO: Implement actual deletion
+    try {
+      await fetch("/api/agency/trade-license", { method: "DELETE" });
+    } catch { /* non-blocking */ }
     setUploadedFile(null);
     setFile(null);
   };
@@ -95,7 +68,7 @@ export function TradeLicenseUpload({ requestId, existingLicense, onUploadComplet
       <div>
         <h3 className="text-sm font-medium text-white/90 mb-2">Trade License</h3>
         <p className="text-xs text-white/60 mb-4">
-          Upload your company's trade license. Required before contract signing and payment.
+          Upload your company&apos;s trade license. Required before contract signing and payment.
         </p>
       </div>
 
@@ -137,7 +110,6 @@ export function TradeLicenseUpload({ requestId, existingLicense, onUploadComplet
               <X className="w-4 h-4" />
             </button>
           </div>
-
           <button
             onClick={handleUpload}
             disabled={uploading}
@@ -148,24 +120,19 @@ export function TradeLicenseUpload({ requestId, existingLicense, onUploadComplet
                 : "bg-white/10 text-white/90 hover:bg-white/15 ring-1 ring-white/20"
             )}
           >
-            {uploading ? "Uploading..." : "Upload License"}
+            {uploading ? "Uploading…" : "Upload License"}
           </button>
         </div>
       ) : (
         <label className="block rounded-lg border-2 border-dashed border-white/10 hover:border-white/20 p-8 text-center cursor-pointer transition">
-          <input
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            onChange={handleFileChange}
-            className="hidden"
-          />
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleFileChange} className="hidden" />
           <div className="flex flex-col items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center">
               <Upload className="w-6 h-6 text-white/60" />
             </div>
             <div>
               <p className="text-sm font-medium text-white/90 mb-1">Upload trade license</p>
-              <p className="text-xs text-white/60">PDF, JPG, or PNG (max 10MB)</p>
+              <p className="text-xs text-white/60">PDF, JPG, or PNG (max 10 MB)</p>
             </div>
           </div>
         </label>

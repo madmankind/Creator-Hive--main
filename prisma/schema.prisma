@@ -147,6 +147,9 @@ model AgencyAccount {
   preferredLanguage   String?
   companySize         String?
   instagramHandle     String?
+  tradeLicenseUrl     String?
+  tradeLicenseFilename String?
+  tradeLicenseUploadedAt DateTime?
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
