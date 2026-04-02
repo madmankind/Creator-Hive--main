@@ -139,9 +139,21 @@ export function ManageLayoutV2({
       />
 
       {/* Centered Workspace Container */}
-      <div className="relative z-10 w-full flex-1 min-h-0 flex justify-center overflow-visible">
+      <div className="relative z-10 w-full flex-1 min-h-0 flex flex-col justify-start overflow-visible">
+        {/* Mobile desktop nudge — hidden on lg+ */}
         <div
-          className="w-full flex flex-col min-h-0"
+          className="lg:hidden flex items-center justify-center px-4 py-2.5 flex-shrink-0"
+          style={{
+            background: "rgba(124,92,255,0.10)",
+            borderBottom: "1px solid rgba(124,92,255,0.18)",
+          }}
+        >
+          <span style={{ fontSize: "11px", color: "rgba(167,139,250,0.75)", textAlign: "center", lineHeight: 1.4 }}>
+            Creator Hive is best experienced on desktop — some views may appear limited on mobile.
+          </span>
+        </div>
+        <div
+          className="w-full flex flex-col min-h-0 flex-1"
           style={{
             maxWidth: "1240px",
             paddingLeft: "clamp(16px, 4vw, 32px)",

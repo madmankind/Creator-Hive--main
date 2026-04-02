@@ -243,7 +243,7 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
       }}
     >
       <SlidersHorizontal size={13} />
-      <span>Filter</span>
+      <span className="hidden sm:inline">Filter</span>
     </button>
   );
 
@@ -257,9 +257,9 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
         {/* Main column */}
         <div className="space-y-6 min-w-0">
 
-          {/* Campaign brief summary bar */}
+          {/* Campaign brief summary bar — desktop only */}
           {activeCampaign && (activeCampaign.talentNames?.length || activeCampaign.startDate || activeCampaign.objectives?.length) && (
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 rounded-xl"
+            <div className="hidden sm:flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 rounded-xl"
               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
               <CampaignStatusBadge status={activeCampaign.status} />
               {/* Company / industry from discovery onboarding */}
@@ -278,7 +278,8 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
               {activeCampaign.startDate && (
                 <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.45)" }}>
                   <span style={{ color: "rgba(255,255,255,0.25)" }}>Dates </span>
-                  {String(activeCampaign.startDate)}{activeCampaign.endDate ? ` → ${String(activeCampaign.endDate)}` : ""}
+                  {new Date(activeCampaign.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  {activeCampaign.endDate ? ` → ${new Date(activeCampaign.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : ""}
                 </span>
               )}
               {activeCampaign.talentNames && activeCampaign.talentNames.length > 0 && (
@@ -383,6 +384,7 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
           </div>
 
           {/* Chart */}
+          <div className="overflow-hidden rounded-xl">
           <TrackChart
             timeRange={timeRange}
             campaignIds={activeCampaign ? [activeCampaign.id] : []}
@@ -395,6 +397,7 @@ export function TrackScreen({ selectedCampaignIds, onCampaignChange }: TrackScre
             onPlannedChange={setPlannedData}
             onActualChange={setActualData}
           />
+          </div>
 
           {/* 4-tile KPI strip */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

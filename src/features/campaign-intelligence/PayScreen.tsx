@@ -353,12 +353,11 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
 
   // Header
   const headerLeft = (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 min-w-0">
       <CampaignSwitcher />
-      <div className="h-4 w-px flex-shrink-0" style={{ background: "rgba(255,255,255,0.08)" }} />
-      {/* Face toggle */}
+      {/* Face toggle — desktop only, mobile moves below total */}
       <div
-        className="flex rounded-lg overflow-hidden"
+        className="hidden sm:flex rounded-lg overflow-hidden flex-shrink-0"
         style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}
       >
         {(["client", "talent"] as PayFace[]).map((face) => (
@@ -379,7 +378,7 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
   );
 
   const headerRight = (
-    <div className="flex items-center gap-2">
+    <div className="hidden sm:flex items-center gap-2">
       {payFace === "client" && (
         <>
           <button
@@ -606,6 +605,32 @@ export function PayScreen({ selectedCampaignIds }: PayScreenProps) {
           <p className="text-[13px] mb-2" style={{ color: feyTokens.colors.text.muted }}>
             total campaign value
           </p>
+        </div>
+
+        {/* Mobile-only controls row */}
+        <div className="sm:hidden flex items-center gap-2 mb-4 flex-wrap">
+          {/* Face toggle */}
+          <div className="flex rounded-lg overflow-hidden flex-shrink-0"
+            style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
+            {(["client", "talent"] as PayFace[]).map((face) => (
+              <button key={face} onClick={() => setPayFace(face)}
+                className="px-3 py-1.5 text-[11px] font-medium transition-colors"
+                style={{
+                  background: payFace === face ? "rgba(255,255,255,0.10)" : "transparent",
+                  color: payFace === face ? feyTokens.colors.text.primary : feyTokens.colors.text.muted,
+                }}>
+                {face === "client" ? "Clients" : "Talent"}
+              </button>
+            ))}
+          </div>
+          {payFace === "client" && (
+            <button onClick={openPayModal}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold"
+              style={{ background: "rgba(255,255,255,0.95)", color: "#07070B" }}>
+              <CreditCard size={12} />
+              Pay
+            </button>
+          )}
         </div>
         {/* Spend bar */}
         <div className="flex items-center gap-3 mb-6">
