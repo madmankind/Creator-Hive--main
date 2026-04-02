@@ -1091,11 +1091,12 @@ function HomePageContent() {
                   else addToPod(talentId);
                 }}
                 onRoleRequest={(roleId, roleTitle) => {
-                  // Pre-fill search with role title and open auth / booking flow
+                  // Pre-fill search + open gallery filtered to that role
                   setSearchQuery(roleTitle);
                   setSelectedRoles([roleTitle]);
-                  if (!session) { setClientAuthOpen(true); }
-                  else { setShowTalentGallery(true); }
+                  setShowTalentGallery(true);
+                  // If not authed, gate — gallery still opens for browsing
+                  if (!session) setClientAuthOpen(true);
                 }}
               />
             </div>

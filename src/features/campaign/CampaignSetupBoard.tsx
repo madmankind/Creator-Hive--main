@@ -20,11 +20,13 @@ type Talent = { id: string; name: string; primaryRole?: string; bookedRole?: str
 type CampaignObjective = "awareness" | "engagement" | "traffic" | "conversions";
 type BookingType = "campaign" | "retainer";
 type PaymentSchedule = "milestone_50_50" | "upfront_100" | "monthly";
+type StartTiming = "asap" | "this_month" | "next_month" | "custom";
 
 interface CampaignBoardState {
   campaignName: string;
   objectives: CampaignObjective[];
   bookingType: BookingType;
+  startTiming: StartTiming;
   startDate: string;
   endDate: string;
   totalBudget: string;
@@ -95,7 +97,7 @@ function ReviewModal({
             {[
               { label: "Objective",  value: state.objectives.length > 0 ? state.objectives.map(o => o.charAt(0).toUpperCase() + o.slice(1)).join(", ") : "—" },
               { label: "Type",       value: state.bookingType === "retainer" ? "Monthly Retainer" : "Per Campaign" },
-              { label: "Dates",      value: state.startDate && state.endDate ? `${state.startDate} → ${state.endDate}` : "TBD" },
+              { label: "Starts",     value: state.startTiming === "asap" ? "ASAP" : state.startTiming === "this_month" ? "This month" : state.startTiming === "next_month" ? "Next month" : state.startDate || "Custom" },
               { label: "Budget",     value: state.totalBudget ? `AED ${parseInt(state.totalBudget.replace(/,/g, "")).toLocaleString()}` : "—" },
             ].map(({ label, value }) => (
               <div key={label} className="rounded-xl bg-white/[0.04] border border-white/[0.07] px-3 py-3">
@@ -190,6 +192,7 @@ export function CampaignSetupBoard({
       campaignName: ds.completed && ds.companyName ? `${ds.companyName} Campaign` : "",
       objectives: selectedPkg ? [selectedPkg.defaultObjective] : discoveryObj ? [discoveryObj] : [],
       bookingType: selectedPkg?.bookingType ?? (ds.completed && ds.startTiming === "exploring" ? "retainer" as BookingType : "campaign"),
+      startTiming: "asap" as StartTiming,
       startDate: "",
       endDate: "",
       totalBudget: "",
@@ -242,7 +245,7 @@ export function CampaignSetupBoard({
       budget: budgetNum,
       spend: 0,
       status: "active",
-      startDate: state.startDate || undefined,
+      startDate: state.startTiming === "custom" ? state.startDate || undefined : undefined,
       endDate: state.endDate || undefined,
       bookingType: state.bookingType,
       paymentSchedule: state.paymentSchedule,
@@ -267,8 +270,8 @@ export function CampaignSetupBoard({
       `VAT (5%): AED ${vat.toLocaleString()}`,
       `Total: AED ${(budgetNum + vat).toLocaleString()}`,
       `Payment Schedule: ${state.paymentSchedule ?? "50% upfront, 50% on completion"}`,
-      state.startDate ? `Start Date: ${state.startDate}` : "",
-      state.endDate   ? `End Date: ${state.endDate}` : "",
+      `Start: ${state.startTiming === "asap" ? "ASAP" : state.startTiming === "this_month" ? "This month" : state.startTiming === "next_month" ? "Next month" : state.startDate || "TBD"}`,
+      state.endDate ? `End Date: ${state.endDate}` : "",
       ``,
       `TALENT`,
       ...talents.map((t, i) => `${i + 1}. ${t.name} — ${t.bookedRole ?? t.roles?.[0] ?? "Creator"}`),
@@ -304,7 +307,7 @@ export function CampaignSetupBoard({
         talentRoles: talents.map((t) => t.bookedRole ?? t.roles?.[0] ?? "Creator"),
         budgetRange: state.totalBudget,
         bookingType: state.bookingType === "retainer" ? "long" : "short",
-        startDate: state.startDate || undefined,
+        startDate: state.startTiming === "custom" ? state.startDate || undefined : state.startTiming,
       }),
     });
 
@@ -418,9 +421,8 @@ export function CampaignSetupBoard({
     sectionHeader("Campaign Details");
     row("Objectives", state.objectives.map(o => o.charAt(0).toUpperCase() + o.slice(1)).join(", ") || "—");
     row("Booking Type", state.bookingType === "retainer" ? "Monthly Retainer" : "Per Campaign");
-    if (state.startDate || state.endDate) {
-      row("Campaign Dates", `${state.startDate || "TBD"} → ${state.endDate || "TBD"}`);
-    }
+    const startLabel = state.startTiming === "asap" ? "ASAP" : state.startTiming === "this_month" ? "This month" : state.startTiming === "next_month" ? "Next month" : state.startDate || "TBD";
+    row("Starts", state.endDate ? `${startLabel} → ${state.endDate}` : startLabel);
     if (state.notes) {
       y += 2;
       doc.setFontSize(9);
@@ -625,19 +627,35 @@ export function CampaignSetupBoard({
             <motion.div key="board" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
 
               {/* Header */}
-              <div className="flex items-start justify-between mb-10">
-                <div>
+              <div className="flex items-start justify-between mb-8">
+                <div className="flex-1 min-w-0">
                   {selectedPkg && (
                     <span className="inline-block text-[11px] px-2 py-0.5 rounded-full bg-white/[0.07] ring-1 ring-white/[0.10] text-white/45 mb-2">
                       {selectedPkg.emoji} {selectedPkg.name}
                     </span>
                   )}
-                  <h2 className="text-[24px] font-light tracking-[-0.03em] text-white/90 leading-none">
-                    Campaign Setup
+                  <h2 className="text-[22px] font-light tracking-[-0.03em] text-white/90 leading-none">
+                    Campaign Brief
                   </h2>
-                  <p className="text-[13px] text-white/35 mt-1.5 font-light">
-                    Configure brief, deliverables, and terms for your campaign
+                  <p className="text-[12px] text-white/30 mt-1.5 font-light">
+                    We'll confirm your team within 48 hours.
                   </p>
+                  {/* Talent chips — in header for context */}
+                  {talents.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-3">
+                      {talents.map((t) => (
+                        <div key={t.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.05] ring-1 ring-white/[0.08]">
+                          <div className="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center text-[9px] text-white/50 shrink-0">
+                            {t.name[0]}
+                          </div>
+                          <span className="text-[11px] text-white/60">{t.name}</span>
+                          {(t.primaryRole ?? t.bookedRole) && (
+                            <span className="text-[9px] text-white/25">{t.primaryRole ?? t.bookedRole}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -695,22 +713,24 @@ export function CampaignSetupBoard({
                     </div>
                   </div>
 
-                  {/* Booking type + Dates */}
+                  {/* Start timing + optional end date */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <span className={labelCls}>Booking Type</span>
-                      <div className="flex gap-2">
+                      <span className={labelCls}>When do you need to start?</span>
+                      <div className="grid grid-cols-2 gap-2">
                         {([
-                          { value: "campaign", label: "Per Campaign" },
-                          { value: "retainer", label: "Monthly Retainer" },
+                          { value: "asap",       label: "ASAP" },
+                          { value: "this_month", label: "This month" },
+                          { value: "next_month", label: "Next month" },
+                          { value: "custom",     label: "Custom date" },
                         ] as const).map(({ value, label }) => (
                           <button
                             key={value}
                             type="button"
-                            onClick={() => update("bookingType", value)}
+                            onClick={() => update("startTiming", value)}
                             className={cn(
-                              "flex-1 py-2.5 rounded-xl text-[12px] ring-1 transition-all duration-150 text-center",
-                              state.bookingType === value
+                              "py-2.5 rounded-xl text-[12px] ring-1 transition-all duration-150 text-center",
+                              state.startTiming === value
                                 ? "bg-white/[0.11] ring-white/[0.22] text-white font-medium"
                                 : "bg-transparent ring-white/[0.08] text-white/40 hover:text-white/60 hover:bg-white/[0.05]"
                             )}
@@ -719,50 +739,37 @@ export function CampaignSetupBoard({
                           </button>
                         ))}
                       </div>
+                      {state.startTiming === "custom" && (
+                        <input
+                          type="date"
+                          value={state.startDate}
+                          onChange={(e) => update("startDate", e.target.value)}
+                          className={cn(inputCls, "[color-scheme:dark] text-[12px] py-2 mt-2")}
+                        />
+                      )}
                     </div>
                     <div>
-                      <span className={labelCls}>Campaign Dates</span>
-                      <div className="grid grid-cols-2 gap-2">
-                        {(["startDate", "endDate"] as const).map((key) => (
-                          <input
-                            key={key}
-                            type="date"
-                            value={state[key]}
-                            onChange={(e) => update(key, e.target.value)}
-                            className={cn(inputCls, "[color-scheme:dark] text-[12px] py-2")}
-                          />
-                        ))}
-                      </div>
+                      <span className={labelCls}>End date <span className="text-white/20 normal-case tracking-normal font-normal">(optional)</span></span>
+                      <input
+                        type="date"
+                        value={state.endDate}
+                        onChange={(e) => update("endDate", e.target.value)}
+                        className={cn(inputCls, "[color-scheme:dark] text-[12px] py-2")}
+                      />
                     </div>
                   </div>
 
                   {/* Notes — lightweight brief */}
                   <div>
-                    <span className={labelCls}>Brief Notes <span className="text-white/20 normal-case tracking-normal font-normal">(optional — add key messages, restrictions, or goals)</span></span>
+                    <span className={labelCls}>Brief Notes <span className="text-white/20 normal-case tracking-normal font-normal">(optional — key messages, restrictions, or goals)</span></span>
                     <textarea
                       rows={3}
                       value={state.notes}
                       onChange={(e) => update("notes", e.target.value)}
-                      placeholder="e.g. Key themes, content preferences, language requirements…, Arabic-first content preferred, avoid competitor references…"
+                      placeholder="e.g. Arabic-first content, avoid competitor references, focus on product demo format…"
                       className={cn(inputCls, "resize-none text-[12px] leading-relaxed [color-scheme:dark] [appearance:none]")}
                       style={{ background: "rgba(255,255,255,0.05)" }}
                     />
-                  </div>
-
-                  {/* Talents in pod — read-only summary */}
-                  <div>
-                    <span className={labelCls}>{talents.length} Talent{talents.length !== 1 ? "s" : ""} Selected</span>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {talents.map((t) => (
-                        <div key={t.id} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.06] ring-1 ring-white/[0.09]">
-                          <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[10px] text-white/60 shrink-0">
-                            {t.name[0]}
-                          </div>
-                          <span className="text-[12px] text-white/70">{t.name}</span>
-                          {t.primaryRole && <span className="text-[10px] text-white/30">{t.primaryRole}</span>}
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 </div>
 
