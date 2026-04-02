@@ -7,6 +7,7 @@ import type { Talent } from "@/store/useCampaignPodStore";
 import type { TalentPodConfig } from "@/types/pod";
 import { TalentCardFUT } from "./TalentCardFUT";
 import { PodSlot } from "./PodSlot";
+import { calculateTalentMatchScore } from "@/lib/matchScore";
 
 interface PodRoleLaneProps {
   role: CampaignRole;
@@ -89,7 +90,11 @@ export function PodRoleLane({
                 <TalentCardFUT
                   talent={talent}
                   config={config}
-                  matchScore={85} // TODO: Calculate from campaign needs
+                  matchScore={calculateTalentMatchScore(
+                    { roles: talent.roles, platforms: talent.platforms },
+                    { requiredRoles: [role.label] },
+                    config.baseDayRate,
+                  ).score}
                   onUpdate={(updates) => onUpdateTalentConfig(talent.id, updates)}
                   onRemove={() => onRemoveTalent(talent.id)}
                   isExpanded={isExpanded}
