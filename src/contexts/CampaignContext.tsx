@@ -90,6 +90,19 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       for (const lc of local) {
         if (!merged.some((c) => c.id === lc.id)) merged.push(lc);
       }
+      // Prune local store entries that no longer exist in the API
+      const apiIds = new Set(mapped.map((c) => c.id));
+      const staleLocal = local.filter((lc) => !apiIds.has(lc.id) && mapped.length > 0);
+      if (staleLocal.length > 0) {
+        for (const stale of staleLocal) {
+          useLocalCampaignStore.getState().removeCampaign(stale.id);
+          // Also clear any per-campaign localStorage data (creators breakdown, events)
+          try {
+            localStorage.removeItem(`campaign_creators_${stale.id}`);
+            localStorage.removeItem(`campaign_events_${stale.id}`);
+          } catch { /* ignore */ }
+        }
+      }
       setCampaigns(merged);
       setActiveCampaign((prev) => {
         if (prev) {
@@ -134,6 +147,26 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetchCampaigns();
   }, [fetchCampaigns]);
+
+  // On mount: sweep localStorage for orphaned campaign_creators_* / campaign_events_* keys
+  // that no longer correspond to any known campaign in the local store.
+  useEffect(() => {
+    try {
+      const knownIds = new Set([
+        ...useLocalCampaignStore.getState().campaigns.map((c) => c.id),
+      ]);
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+        if (key.startsWith("campaign_creators_") || key.startsWith("campaign_events_")) {
+          const id = key.replace("campaign_creators_", "").replace("campaign_events_", "");
+          if (!knownIds.has(id)) keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+    } catch { /* ignore */ }
+  }, []);
 
   return (
     <CampaignContext.Provider

@@ -77,7 +77,14 @@ export function CreatorBreakdownTable({ campaignIds }: CreatorBreakdownTableProp
           status: string;
           paymentStatus?: string;
         }> = json.cards ?? [];
-        if (cards.length === 0) return false;
+
+        // API responded — treat as authoritative regardless of count.
+        // Clear any stale localStorage for this campaign so old names don't resurface.
+        if (cards.length === 0) {
+          localStorage.removeItem(storageKey);
+          applyData([]);
+          return true;
+        }
 
         const mapped: CreatorData[] = cards.map((c) => {
           const totalD = c.deliverables.length;
