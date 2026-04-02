@@ -8,7 +8,7 @@
  * - Panel cards retain their functional titles (Attention/Blockers, etc.)
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { TalentCampaignCard } from "@/components/campaigns/types";
 import { feyTokens } from "@/lib/fey-design-tokens";
 import {
@@ -36,11 +36,163 @@ interface ExecutionHubPanelProps {
   campaignId?: string; // For fetching real tasks
 }
 
-// Mock data structure - replace with real API calls
-const mockTasks: Task[] = [];
-const mockActivityLog: ActivityLog[] = [];
-const mockResources: Resource[] = [];
-const mockChecklist: ChecklistTemplate | null = null;
+function safeParseDate(d: string): Date | null {
+  const dt = new Date(d);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
+function estimateDueAt(createdAtIso: string): Date | null {
+  const createdAt = safeParseDate(createdAtIso);
+  if (!createdAt) return null;
+  const dueAt = new Date(createdAt);
+  dueAt.setDate(dueAt.getDate() + 7);
+  return dueAt;
+}
+
+function buildDerivedExecutionData(cards: TalentCampaignCard[]) {
+  const attention: Task[] = [];
+  const nextUp: Task[] = [];
+  const updates: ActivityLog[] = [];
+  const resources: Resource[] = [];
+
+  for (const card of cards) {
+    const createdAt = safeParseDate(card.createdAt) ?? new Date();
+    const dueAt = estimateDueAt(card.createdAt);
+
+    const hasNeedsRevision = card.deliverables.some((d) => d.status === "NeedsRevision");
+    const hasContract = Boolean(card.contractId);
+
+    // Booking confirmations are the earliest gating step.
+    if (card.bookingState === "PENDING") {
+      nextUp.push({
+        id: `task-${card.id}-confirm-booking`,
+        campaignId: card.campaignId,
+        deliverableId: undefined,
+        type: "contract",
+        title: "Confirm booking",
+        description: "Verify the booking invitation is acknowledged.",
+        status: "open",
+        priority: "medium",
+        dueAt: dueAt ?? null,
+        assigneeId: undefined,
+        relatedEntityId: card.contractId ?? undefined,
+        dependencies: [],
+        createdAt,
+        updatedAt: new Date(),
+      });
+    }
+
+    if (!hasContract) {
+      attention.push({
+        id: `task-${card.id}-contract-pending`,
+        campaignId: card.campaignId,
+        deliverableId: undefined,
+        type: "contract",
+        title: "Contract pending signature",
+        description: "Wait for contract signatures before billing milestones.",
+        status: "blocked",
+        priority: "urgent",
+        dueAt: dueAt ?? null,
+        assigneeId: undefined,
+        relatedEntityId: undefined,
+        dependencies: [],
+        createdAt,
+        updatedAt: new Date(),
+      });
+    }
+
+    // Deliverable review gate.
+    if (hasNeedsRevision) {
+      attention.push({
+        id: `task-${card.id}-review-deliverable`,
+        campaignId: card.campaignId,
+        deliverableId: undefined,
+        type: "review",
+        title: "Review deliverable",
+        description: "Changes requested — review and approve/resubmit.",
+        status: "blocked",
+        priority: "urgent",
+        dueAt: dueAt ?? null,
+        assigneeId: undefined,
+        relatedEntityId: card.contractId ?? undefined,
+        dependencies: [],
+        createdAt,
+        updatedAt: new Date(),
+      });
+    }
+
+    // Approval gate (even if deliverables are placeholders, the card status drives intent).
+    if (card.status === "SUBMITTED") {
+      nextUp.push({
+        id: `task-${card.id}-approve-deliverable`,
+        campaignId: card.campaignId,
+        deliverableId: undefined,
+        type: "delivery",
+        title: "Approve deliverable",
+        description: "Review submitted work and approve for release.",
+        status: "open",
+        priority: "medium",
+        dueAt: dueAt ?? null,
+        assigneeId: undefined,
+        relatedEntityId: card.contractId ?? undefined,
+        dependencies: [],
+        createdAt,
+        updatedAt: new Date(),
+      });
+    }
+
+    // Deposit / release gates based on payment status.
+    if (card.paymentStatus === "UNFUNDED" && card.status === "APPROVED") {
+      attention.push({
+        id: `task-${card.id}-secure-deposit`,
+        campaignId: card.campaignId,
+        deliverableId: undefined,
+        type: "payment",
+        title: "Secure deposit",
+        description: "Funds are required before production can progress fully.",
+        status: "blocked",
+        priority: "urgent",
+        dueAt: dueAt ?? null,
+        assigneeId: undefined,
+        relatedEntityId: card.contractId ?? undefined,
+        dependencies: [],
+        createdAt,
+        updatedAt: new Date(),
+      });
+    }
+
+    if (card.paymentStatus === "FUNDED" || card.paymentStatus === "PARTIALLY_FUNDED") {
+      nextUp.push({
+        id: `task-${card.id}-release-payment`,
+        campaignId: card.campaignId,
+        deliverableId: undefined,
+        type: "payment",
+        title: "Release payment",
+        description: "Release the next milestone to the talent.",
+        status: "open",
+        priority: "medium",
+        dueAt: dueAt ?? null,
+        assigneeId: undefined,
+        relatedEntityId: card.contractId ?? undefined,
+        dependencies: [],
+        createdAt,
+        updatedAt: new Date(),
+      });
+    }
+  }
+
+  return {
+    attention,
+    nextUp,
+    updates,
+    resources,
+    checklist: null as unknown as {
+      template: ChecklistTemplate;
+      completionPercent: number;
+      nextAction?: { title: string };
+    } | null,
+  };
+}
 
 export function ExecutionHubPanel({ cards, campaignName, campaignId }: ExecutionHubPanelProps) {
   const [isWhatsappOpen, setIsWhatsappOpen] = useState(false);
@@ -61,29 +213,22 @@ export function ExecutionHubPanel({ cards, campaignName, campaignId }: Execution
   });
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
-  // TODO: Replace with real API call
-  // const { data: executionData } = useExecutionHubData(campaignId);
-  const executionData: {
-    attention: Task[];
-    nextUp: Task[];
-    updates: ActivityLog[];
-    resources: Resource[];
-    checklist: {
-      template: ChecklistTemplate;
-      completionPercent: number;
-      nextAction?: { title: string };
-    } | null;
-  } = {
-    attention: mockTasks.filter((t) => t.status === "blocked" || t.status === "overdue"),
-    nextUp: mockTasks.filter((t) => t.status === "open" && t.dueAt && new Date(t.dueAt) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
-    updates: mockActivityLog,
-    resources: mockResources,
-    checklist: mockChecklist ? {
-      template: mockChecklist,
-      completionPercent: 0,
-      nextAction: undefined,
-    } : null,
-  };
+  const [taskOverrides, setTaskOverrides] = useState<Record<string, Task>>({});
+
+  useEffect(() => {
+    setTaskOverrides({});
+    setSelectedTask(null);
+  }, [cards, campaignId]);
+
+  const executionData = useMemo(() => {
+    const derived = buildDerivedExecutionData(cards);
+    const merge = (list: Task[]) => list.map((t) => taskOverrides[t.id] ?? t);
+    return {
+      ...derived,
+      attention: merge(derived.attention),
+      nextUp: merge(derived.nextUp),
+    };
+  }, [cards, taskOverrides]);
 
   const totalDeliverables = cards.reduce((sum, c) => sum + (c.deliverables?.length ?? 0), 0);
 
@@ -177,21 +322,28 @@ export function ExecutionHubPanel({ cards, campaignName, campaignId }: Execution
   };
 
   const handleTaskAction = (action: string, task: Task) => {
-    // TODO: Implement API calls
     switch (action) {
       case "complete":
-        // POST /api/tasks/{taskId}/complete
-        console.log("Complete task", task.id);
+        setTaskOverrides((prev) => ({
+          ...prev,
+          [task.id]: {
+            ...task,
+            status: "completed",
+            completedAt: new Date(),
+            completedBy: "ui",
+            updatedAt: new Date(),
+          },
+        }));
         break;
       case "ping":
-        // POST /api/tasks/{taskId}/ping (WhatsApp/Slack)
-        console.log("Ping task", task.id);
+        setSelectedTask(task);
+        setIsWhatsappOpen(true);
         break;
       case "assign":
-        // Open assign modal
+        setSelectedTask(task);
         break;
       case "due":
-        // Open date picker
+        setSelectedTask(task);
         break;
     }
   };

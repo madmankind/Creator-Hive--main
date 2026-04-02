@@ -374,7 +374,11 @@ export function ManageScreen({ selectedCampaignIds }: ManageScreenProps) {
             {/* Bottom row: stacks on mobile, side-by-side on lg+ */}
             <div className="grid gap-4 grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
               <SectionFrame style={{ minHeight: "260px" }}>
-                <ExecutionHubPanel cards={cards} campaignName={activeCampaign?.name} />
+                <ExecutionHubPanel
+                  cards={cards}
+                  campaignName={activeCampaign?.name}
+                  campaignId={currentCampaignId || undefined}
+                />
               </SectionFrame>
               <SectionFrame style={{ minHeight: "260px" }}>
                 <WeeklyCalendarPanel cards={cards} onSelectTalent={handleTalentSelect} />
