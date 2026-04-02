@@ -34,6 +34,20 @@ const campaignInclude = {
       },
     },
   },
+  invoices: {
+    select: {
+      id: true,
+      invoiceNumber: true,
+      amount: true,
+      status: true,
+      createdAt: true,
+      paidAt: true,
+    },
+    orderBy: { createdAt: "asc" as const },
+  },
+  campaignBrief: {
+    select: { sentAt: true },
+  },
 } as const;
 
 export async function GET(

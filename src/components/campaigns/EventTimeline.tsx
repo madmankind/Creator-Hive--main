@@ -42,7 +42,6 @@ export function EventTimeline({ campaignIds }: EventTimelineProps) {
     ];
 
     // Try to fetch real data from API
-    // TODO: wire to real data — CampaignTalent and Invoice records
     const fetchRealEvents = async (): Promise<TimelineEvent[] | null> => {
       if (!activeCampaignId) return null;
       try {
@@ -86,6 +85,26 @@ export function EventTimeline({ campaignIds }: EventTimelineProps) {
             date: new Date(campaign.campaignBrief.sentAt),
             label: "Brief sent to talent",
           });
+        }
+
+        // Real events: invoices
+        if (Array.isArray(campaign.invoices)) {
+          for (const inv of campaign.invoices) {
+            realEvents.push({
+              id: `real-inv-sent-${inv.id}`,
+              type: "invoiceSent",
+              date: new Date(inv.createdAt),
+              label: `Invoice ${inv.invoiceNumber} sent`,
+            });
+            if (inv.status === "PAID" && inv.paidAt) {
+              realEvents.push({
+                id: `real-inv-paid-${inv.id}`,
+                type: "paymentCompleted",
+                date: new Date(inv.paidAt),
+                label: `Payment received — ${inv.invoiceNumber}`,
+              });
+            }
+          }
         }
 
         return realEvents.length > 0 ? realEvents : null;

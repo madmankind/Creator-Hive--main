@@ -32,7 +32,7 @@ export async function GET(
   const denied = await assertCampaignAccess(user, campaignId);
   if (denied) return denied;
 
-  const [dbInvoices, dbPayments] = await Promise.all([
+  const [dbInvoices, dbPayments, dbCampaign] = await Promise.all([
     db.invoice.findMany({
       where: { campaignId },
       include: { talent: { select: { name: true } } },
@@ -42,13 +42,19 @@ export async function GET(
       where: { campaignId },
       orderBy: { dueDate: "desc" },
     }),
+    db.campaign.findUnique({
+      where: { id: campaignId },
+      select: { title: true },
+    }),
   ]);
+
+  const campaignName = dbCampaign?.title ?? campaignId;
 
   const invoices: Invoice[] = dbInvoices.map((inv: DbInvoice) => ({
     id: inv.id,
     campaignId: campaignId,
     invoiceNumber: inv.invoiceNumber,
-    campaign: campaignId,
+    campaign: campaignName,
     amount: inv.amount / 100,
     status: mapInvoiceStatus(inv.status),
     dueDate: inv.dueDate ?? inv.createdAt,
