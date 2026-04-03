@@ -17,7 +17,7 @@ interface HiveRoleCardProps {
 export function HiveRoleCard({ role, onBook, onAddToPod, isAdded }: HiveRoleCardProps) {
   const [hovered, setHovered] = useState(false);
   const [selectedTier, setSelectedTier] = useState<InfluencerTier | null>(null);
-  const fmt = (n: number) => `AED ${(n / 1000).toFixed(0)}K`;
+  const fmt = (n: number) => `$${(n / 1000).toFixed(0)}K`;
 
   const tierKeys = Object.keys(INFLUENCER_TIERS) as InfluencerTier[];
 

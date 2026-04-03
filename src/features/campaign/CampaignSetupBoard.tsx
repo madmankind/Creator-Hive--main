@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Check, Download, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PackageConfig } from "@/lib/packages";
-import { formatAED, getPackagePriceLabel, PACKAGES } from "@/lib/packages";
+import { formatAED, aedToUsdApprox, getPackagePriceLabel, PACKAGES } from "@/lib/packages";
 import { useSession } from "next-auth/react";
 import { useLocalCampaignStore } from "@/store/useLocalCampaignStore";
 import { useDiscoveryStore } from "@/store/useDiscoveryStore";
@@ -98,7 +98,7 @@ function ReviewModal({
               { label: "Objective",  value: state.objectives.length > 0 ? state.objectives.map(o => o.charAt(0).toUpperCase() + o.slice(1)).join(", ") : "—" },
               { label: "Type",       value: state.bookingType === "retainer" ? "Monthly Retainer" : "Per Campaign" },
               { label: "Starts",     value: state.startTiming === "asap" ? "ASAP" : state.startTiming === "this_month" ? "This month" : state.startTiming === "next_month" ? "Next month" : state.startDate || "Custom" },
-              { label: "Budget",     value: state.totalBudget ? `AED ${parseInt(state.totalBudget.replace(/,/g, "")).toLocaleString()}` : "—" },
+              { label: "Budget",     value: state.totalBudget ? `$${Math.round(parseInt(state.totalBudget.replace(/,/g, "")) / 3.6725).toLocaleString()}` : "—" },
             ].map(({ label, value }) => (
               <div key={label} className="rounded-xl bg-white/[0.04] border border-white/[0.07] px-3 py-3">
                 <p className="text-[10px] text-white/28 tracking-wide uppercase mb-1">{label}</p>
@@ -290,9 +290,9 @@ export function CampaignSetupBoard({
       `Booking Type: ${state.bookingType === "retainer" ? "Monthly Retainer" : "Campaign"}`,
       ``,
       `BUDGET`,
-      `Subtotal: AED ${budgetNum.toLocaleString()}`,
-      `VAT (5%): AED ${vat.toLocaleString()}`,
-      `Total: AED ${(budgetNum + vat).toLocaleString()}`,
+      `Subtotal: USD ${Math.round(budgetNum / 3.6725).toLocaleString()}`,
+      `VAT (5%): USD ${Math.round(vat / 3.6725).toLocaleString()}`,
+      `Total: USD ${Math.round((budgetNum + vat) / 3.6725).toLocaleString()}`,
       `Payment Schedule: ${state.paymentSchedule ?? "50% upfront, 50% on completion"}`,
       `Start: ${state.startTiming === "asap" ? "ASAP" : state.startTiming === "this_month" ? "This month" : state.startTiming === "next_month" ? "Next month" : state.startDate || "TBD"}`,
       state.endDate ? `End Date: ${state.endDate}` : "",
@@ -352,7 +352,7 @@ export function CampaignSetupBoard({
                   title: `${state.campaignName || "Campaign"} — ${talent.name} (${talent.bookedRole ?? talent.roles?.[0] ?? "Creator"})`,
                   content: contentLines,
                   totalAmount: Math.round(perTalent * 100), // store in cents
-                  currency: "AED",
+                  currency: "USD",
                   milestones,
                 }),
               });
@@ -474,8 +474,8 @@ export function CampaignSetupBoard({
     // ── Financials ────────────────────────────────────────────────────────
     if (budget > 0) {
       sectionHeader("Financials");
-      row("Campaign Budget", `AED ${budget.toLocaleString()}`);
-      row("VAT (5%)", `AED ${vat.toLocaleString()}`);
+      row("Campaign Budget", `$${Math.round(budget / 3.6725).toLocaleString()}`);
+      row("VAT (5%)", `$${Math.round(vat / 3.6725).toLocaleString()}`);
       // Total row with highlight
       y += 1;
       doc.setFillColor(11, 15, 20);
@@ -484,7 +484,7 @@ export function CampaignSetupBoard({
       doc.setFont("helvetica", "bold");
       doc.setTextColor(255, 255, 255);
       doc.text("Total (incl. VAT)", 18, y + 1.5);
-      doc.text(`AED ${total.toLocaleString()}`, W - 30, y + 1.5, { align: "right" });
+      doc.text(`$${Math.round(total / 3.6725).toLocaleString()}`, W - 30, y + 1.5, { align: "right" });
       y += 12;
       row("Payment Schedule", `${payOpt?.label} — ${payOpt?.description}`);
     }
@@ -570,7 +570,7 @@ export function CampaignSetupBoard({
                     { label: "Campaign", value: state.campaignName || "Untitled" },
                     { label: "Talent", value: `${talents.length} creator${talents.length !== 1 ? "s" : ""}` },
                     { label: "Objectives", value: state.objectives.map(o => o.charAt(0).toUpperCase() + o.slice(1)).join(", ") || "—" },
-                    { label: "Budget",     value: budget ? `AED ${budget.toLocaleString()}` : "—" },
+                    { label: "Budget",     value: budget ? `$${Math.round(budget / 3.6725).toLocaleString()}` : "—" },
                   ].map(({ label, value }) => (
                     <div key={label} className="rounded-xl bg-white/[0.035] border border-white/[0.06] px-3 py-2.5">
                       <p className="text-[9px] uppercase tracking-[0.10em] text-white/28 mb-1">{label}</p>
@@ -581,7 +581,7 @@ export function CampaignSetupBoard({
                 {budget > 0 && (
                   <div className="rounded-xl bg-white/[0.025] border border-white/[0.05] px-4 py-3 flex items-center justify-between">
                     <span className="text-[11px] text-white/40">Total (incl. VAT 5%)</span>
-                    <span className="text-[13px] text-white/80 font-medium">AED {totalDue.toLocaleString()}</span>
+                    <span className="text-[13px] text-white/80 font-medium">${Math.round(totalDue / 3.6725).toLocaleString()}</span>
                   </div>
                 )}
               </div>
@@ -800,14 +800,14 @@ export function CampaignSetupBoard({
                 {/* Right: budget + payment */}
                 <div className="space-y-6">
                   <div>
-                    <span className={labelCls}>Total Campaign Budget</span>
+                    <span className={labelCls}>Total Campaign Budget <span className="text-white/20 normal-case tracking-normal font-normal">(USD)</span></span>
                     <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[12px] text-white/30 pointer-events-none">AED</span>
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[12px] text-white/30 pointer-events-none">$</span>
                       <input
                         type="text"
                         value={state.totalBudget}
                         onChange={(e) => update("totalBudget", e.target.value)}
-                        placeholder="e.g. 25,000"
+                        placeholder="e.g. 7,000"
                         className={cn(inputCls, "pl-12")}
                       />
                     </div>
@@ -824,16 +824,16 @@ export function CampaignSetupBoard({
                       <p className="text-[10px] font-medium tracking-[0.10em] uppercase text-white/30 mb-3">Summary</p>
                       <div className="flex justify-between">
                         <span className="text-[11px] text-white/35">Your budget</span>
-                        <span className="text-[11px] text-white/60">{formatAED(totalBudgetNum)}</span>
+                        <span className="text-[11px] text-white/60">{`$${aedToUsdApprox(totalBudgetNum).toLocaleString()}`}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-[11px] text-white/35">VAT (5%)</span>
-                        <span className="text-[11px] text-white/60">{formatAED(Math.round(totalBudgetNum * 0.05))}</span>
+                        <span className="text-[11px] text-white/60">{`$${aedToUsdApprox(Math.round(totalBudgetNum * 0.05)).toLocaleString()}`}</span>
                       </div>
                       <div className="flex justify-between pt-2 border-t border-white/[0.06]">
                         <span className="text-[12px] text-white/55 font-medium">Total</span>
                         <span className="text-[13px] text-white/85 font-medium">
-                          {formatAED(Math.round(totalBudgetNum * 1.05))}
+                          {`$${aedToUsdApprox(Math.round(totalBudgetNum * 1.05)).toLocaleString()}`}
                         </span>
                       </div>
                     </div>

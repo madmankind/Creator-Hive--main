@@ -16,8 +16,8 @@ import { createHash } from "crypto";
 export type AiFeature = "ai_search" | "ai_analyze" | "talent_onboarding";
 
 const DAILY_LIMITS: Record<AiFeature, { authed: number; anon: number }> = {
-  ai_search:          { authed: 5,  anon: 3 },
-  ai_analyze:         { authed: 10, anon: 0 },
+  ai_search:          { authed: 30, anon: 5 },
+  ai_analyze:         { authed: 20, anon: 0 },
   talent_onboarding: { authed: 45, anon: 0 },
 };
 
