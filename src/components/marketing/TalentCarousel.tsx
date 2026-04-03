@@ -139,8 +139,16 @@ export function TalentCarousel({
   }, [searchOpen])
 
   const filtered = useMemo(() => {
-    // Signature talent visibility toggle — flip SHOW_SIGNATURE_TALENT in curatedTalent.ts to restore
-    let list = SHOW_SIGNATURE_TALENT ? talents : []
+    // When SHOW_SIGNATURE_TALENT is off, hide named talent from unprompted browsing.
+    // BUT: if AI has returned match IDs from the brief, always show those specific creators.
+    const hasAiMatches = aiHighlightIds.length > 0;
+    let list = (SHOW_SIGNATURE_TALENT || hasAiMatches) ? talents : []
+
+    // When AI matches exist and signature is hidden, only show the matched IDs
+    if (!SHOW_SIGNATURE_TALENT && hasAiMatches) {
+      const aiSet = new Set(aiHighlightIds)
+      list = talents.filter(t => aiSet.has(t.id))
+    }
 
     // Tier filter
     if (tierFilter === 'signature') list = list.filter(t => getTier(t) === 'signature')
@@ -253,7 +261,11 @@ export function TalentCarousel({
         {/* Count */}
         <div className="flex items-baseline gap-2 mr-1">
           <h2 className="text-[15px] font-medium text-white/80 tracking-tight">Creative talent</h2>
-          <span className="text-[12px] text-white/30">{SHOW_SIGNATURE_TALENT ? `${flat.length} signature · ` : ''}{hiveRoles.length} Hive Select roles</span>
+          <span className="text-[12px] text-white/30">
+            {aiHighlightIds.length > 0
+              ? `${flat.length} matched creator${flat.length !== 1 ? "s" : ""} · ${hiveRoles.length} Hive Select roles`
+              : `${hiveRoles.length} Hive Select roles`}
+          </span>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap ml-auto">

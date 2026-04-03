@@ -604,7 +604,7 @@ function AdvisorChat({
             {
               id: Date.now().toString(),
               role: "assistant",
-              content: `Matched ${data.talentIds.length} creators to your brief ↓\n\n${data.teamSummary ?? summary}`,
+              content: `Hive brief received. We'll build your team from ${data.talentIds.length} matched creator${data.talentIds.length === 1 ? "" : "s"} — profiles, personas and fit scores shown below.\n\n${data.teamSummary ?? summary}`,
               talentIds: data.talentIds,
             },
           ]);
@@ -710,7 +710,7 @@ function AdvisorChat({
                   } : {}}>
                   {msg.role === "assistant" && <Sparkles size={10} className="inline mr-1.5 text-purple-400/60 mb-0.5" />}
                   {msg.content}
-                  {msg.talentIds && <p className="mt-1 text-[10px] text-purple-300/45">{msg.talentIds.length} creators matched ↓</p>}
+                  {msg.talentIds && <p className="mt-1 text-[10px] text-purple-300/45">{msg.talentIds.length} creator{msg.talentIds.length === 1 ? "" : "s"} matched to your brief — see below ↓</p>}
                 </div>
               )}
             </div>
@@ -1563,10 +1563,10 @@ export function HeroBar({
           const intro = (welcomeIntro ?? "").trim();
           if (data.talentIds.length > 0) {
             const head = [intro, sum].filter((x) => x.length > 0).join(intro && sum ? "\n\n" : "\n");
-            const tail = `Matched ${data.talentIds.length} creator${data.talentIds.length === 1 ? "" : "s"} for your brief.\n\nWhen you open the gallery (pre-vetted teams button below), your matches are highlighted there.`;
+            const tail = `Hive brief submitted. We'll set you up with a team of ${data.talentIds.length} creator${data.talentIds.length === 1 ? "" : "s"} whose personas, experience, and working style fit your brief. Browse their profiles below and add anyone to your pod to kick things off.`;
             setWelcomeOverride(
               [head, tail].filter((x) => x.length > 0).join("\n\n") ||
-                "Your matches are ready — open the gallery from the button below when you want to browse cards.",
+                "Brief submitted — your matched team is below. Add creators to your pod to get started.",
             );
           } else {
             setWelcomeOverride(
@@ -1770,7 +1770,7 @@ export function HeroBar({
         notes: mapped.notes,
         clientFitProfile: mapped.clientFitProfile,
       });
-      await runAiSearchThenOpenAdvisor(searchQuery, "Matched from your brief —");
+      await runAiSearchThenOpenAdvisor(searchQuery, "Hive brief submitted —");
     },
     [hydrate, runAiSearchThenOpenAdvisor],
   );

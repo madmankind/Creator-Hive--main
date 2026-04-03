@@ -265,6 +265,15 @@ export function CampaignSetupBoard({
     const vat = Math.round(budgetNum * 0.05);
     const perTalent = talents.length > 0 ? Math.round(budgetNum / talents.length) : budgetNum;
 
+    // Fire Google Ads conversion on booking submit
+    if (typeof window !== "undefined" && (window as unknown as Record<string, unknown>).gtag) {
+      ((window as unknown as Record<string, unknown>).gtag as Function)("event", "conversion", {
+        send_to: "AW-18060432585/azxqCKuV_pQcEMmp8aND",
+        value: budgetNum > 0 ? Math.round(budgetNum / 3.6725) : 1.0,
+        currency: currency === "AED" ? "AED" : "USD",
+      });
+    }
+
     // Persist locally for immediate dashboard visibility
     useLocalCampaignStore.getState().addCampaign({
       id: localId,
