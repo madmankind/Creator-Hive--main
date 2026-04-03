@@ -51,3 +51,5 @@ next-env.d.ts
 /generated/prisma
 
 # local development artifacts
+.env*.local
+.env.vercel.local
