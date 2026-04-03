@@ -954,7 +954,13 @@ function HomePageContent() {
                     onRolesChange={(roles) => { setSelectedRoles(roles); }}
                     onDiscover={openGallery}
                     onRequireSignIn={requireClientSignIn}
-                    onAIResults={(ids, _summary) => { setAiHighlightIds(ids); }}
+                    onAIResults={(ids, _summary) => {
+                      setAiHighlightIds(ids);
+                      if (ids.length > 0) {
+                        setShowTalentGallery(true);
+                        setTimeout(() => scrollToRef(galleryRef), 250);
+                      }
+                    }}
                     showClear={showTalentGallery}
                     onClear={() => {
                       setShowTalentGallery(false);
@@ -1095,7 +1101,15 @@ function HomePageContent() {
                   setSearchQuery(roleTitle);
                   setSelectedRoles([roleTitle]);
                   setShowTalentGallery(true);
-                  // If not authed, gate — gallery still opens for browsing
+                  // If pod already has talent (from "Book now" adding to pod), open brief directly
+                  if (selectedPodIds.length > 0) {
+                    setTimeout(() => {
+                      setShowCampaignBoard(true);
+                      scrollToRef(campaignRef);
+                    }, 100);
+                  } else {
+                    setTimeout(() => scrollToRef(galleryRef), 200);
+                  }
                   if (!session) setClientAuthOpen(true);
                 }}
               />

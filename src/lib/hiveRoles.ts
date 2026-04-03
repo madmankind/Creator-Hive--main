@@ -6,30 +6,37 @@
 
 import type { TalentCategoryTag, PlatformTag } from "@/lib/curatedTalent";
 
+export type InfluencerTier = "micro" | "macro" | "mega" | "celebrity";
+
+export const INFLUENCER_TIERS: Record<InfluencerTier, {
+  label: string;
+  followerRange: string;
+  minEr: number;
+  description: string;
+}> = {
+  micro:    { label: "Micro",    followerRange: "10K – 100K",  minEr: 3, description: "High trust, niche audiences. Best for product seeding and authentic endorsements." },
+  macro:    { label: "Macro",    followerRange: "100K – 500K", minEr: 3, description: "Broad reach with credible authority. Ideal for brand awareness campaigns." },
+  mega:     { label: "Mega",     followerRange: "500K – 1M",   minEr: 3, description: "Mass reach. Works best for product launches and campaign amplification." },
+  celebrity:{ label: "Celebrity",followerRange: "1M+",         minEr: 3, description: "Maximum visibility. Custom scope and rates. Managed end-to-end by Creator Hive." },
+};
+
 export interface HiveRole {
   id: string;
-  /** Internal role category — matches TalentCategoryTag for filtering */
   primaryRole: TalentCategoryTag;
-  /** Card headline — the role title clients see */
   title: string;
-  /** One-line pitch */
   tagline: string;
-  /** 2–3 sentence capability description. No names. */
   description: string;
-  /** What clients get */
   deliverables: string[];
-  /** Typical platforms this role covers */
   platforms: PlatformTag[];
-  /** AED monthly rate range (internal pricing guidance) */
   rateRange: { min: number; max: number; unit: "monthly" | "project" };
-  /** Typical engagement type */
   availability: ("Hourly" | "Monthly")[];
-  /** Visual accent colour for the card */
   accent: string;
-  /** Icon character or emoji — used as avatar placeholder */
   icon: string;
-  /** UAE-based talent available for this role */
   uaeAvailable: boolean;
+  /** If true, show "Custom Quote" instead of rate and show tier selector */
+  isInfluencer?: boolean;
+  /** If true, allow adding multiple instances of this card to the pod */
+  multiAdd?: boolean;
 }
 
 export const hiveRoles: HiveRole[] = [
@@ -164,13 +171,113 @@ export const hiveRoles: HiveRole[] = [
     primaryRole: "Influencer",
     title: "Influencer",
     tagline: "Reach. Trust. Conversion.",
-    description: "UAE-based influencers across lifestyle, fashion, food, tech, and wellness verticals. Matched to your brief by niche, audience size, and engagement profile.",
+    description: "UAE-based influencers across lifestyle, fashion, food, tech, and wellness verticals. Select your tier below — all have a minimum 3% engagement rate. Custom quote provided after brief review.",
     deliverables: ["Sponsored feed posts", "Story takeovers", "Reel collaborations", "Product seeding", "Long-term ambassador work"],
     platforms: ["Instagram", "TikTok", "YouTube"],
-    rateRange: { min: 5000, max: 40000, unit: "project" },
+    rateRange: { min: 0, max: 0, unit: "project" },
     availability: ["Hourly", "Monthly"],
     accent: "#FBBF24",
     icon: "★",
+    uaeAvailable: true,
+    isInfluencer: true,
+    multiAdd: true,
+  },
+  {
+    id: "role-fullstack-dev",
+    primaryRole: "Other",
+    title: "Full Stack Developer",
+    tagline: "Web products built end to end.",
+    description: "Full stack web development for brand websites, landing pages, campaign microsites, and e-commerce. React, Next.js, Node — delivered to production with CI/CD.",
+    deliverables: ["Brand website build", "Landing page development", "Campaign microsite", "E-commerce setup", "Web app development"],
+    platforms: ["LinkedIn"],
+    rateRange: { min: 18000, max: 40000, unit: "monthly" },
+    availability: ["Monthly", "Hourly"],
+    accent: "#22D3EE",
+    icon: "⌨",
+    uaeAvailable: true,
+  },
+  {
+    id: "role-ai-specialist",
+    primaryRole: "Other",
+    title: "AI Specialist",
+    tagline: "AI-powered workflows for modern brands.",
+    description: "Builds AI-powered tools, automations, and content pipelines for marketing and brand teams. Covers prompt engineering, LLM integrations, AI-generated content systems, and chatbot deployment.",
+    deliverables: ["AI content pipeline", "Chatbot setup", "Automation workflows", "LLM integration", "AI strategy workshop"],
+    platforms: ["LinkedIn"],
+    rateRange: { min: 20000, max: 50000, unit: "monthly" },
+    availability: ["Monthly", "Hourly"],
+    accent: "#818CF8",
+    icon: "◈",
+    uaeAvailable: true,
+  },
+  {
+    id: "role-events-specialist",
+    primaryRole: "Producer",
+    title: "Events Specialist",
+    tagline: "Brand experiences people remember.",
+    description: "End-to-end event production for brand activations, launches, pop-ups, and experiential campaigns across the UAE. Handles venue, vendor, logistics, talent, and on-ground execution.",
+    deliverables: ["Brand activation", "Product launch event", "Pop-up concept", "Event content capture", "Post-event report"],
+    platforms: ["Instagram"],
+    rateRange: { min: 15000, max: 50000, unit: "project" },
+    availability: ["Hourly", "Monthly"],
+    accent: "#F472B6",
+    icon: "◎",
+    uaeAvailable: true,
+  },
+  {
+    id: "role-media-buyer",
+    primaryRole: "Strategist",
+    title: "Paid Media Buyer",
+    tagline: "Ad spend that works.",
+    description: "Performance media buying across Meta, TikTok, Google, and Snapchat. Manages campaign setup, creative testing, audience targeting, and weekly spend optimisation for UAE and GCC markets.",
+    deliverables: ["Campaign setup", "Audience targeting", "Creative A/B testing", "Weekly optimisation", "Monthly performance report"],
+    platforms: ["Instagram", "TikTok"],
+    rateRange: { min: 8000, max: 20000, unit: "monthly" },
+    availability: ["Monthly"],
+    accent: "#FB923C",
+    icon: "◆",
+    uaeAvailable: true,
+  },
+  {
+    id: "role-pr-specialist",
+    primaryRole: "Strategist",
+    title: "PR Specialist",
+    tagline: "Coverage that builds credibility.",
+    description: "Public relations and media placement for brands — press release writing, media outreach, journalist relationships, and earned coverage strategy for UAE and GCC publications.",
+    deliverables: ["Press release", "Media outreach list", "Publication placement", "Brand narrative", "Coverage report"],
+    platforms: ["LinkedIn"],
+    rateRange: { min: 10000, max: 25000, unit: "monthly" },
+    availability: ["Monthly", "Hourly"],
+    accent: "#A78BFA",
+    icon: "✦",
+    uaeAvailable: true,
+  },
+  {
+    id: "role-email-specialist",
+    primaryRole: "Copywriter",
+    title: "Email Marketing Specialist",
+    tagline: "Inboxes opened. Revenue driven.",
+    description: "Full-service email marketing — strategy, copy, design, automation flows, and list management. Klaviyo, Mailchimp, HubSpot. UAE e-commerce and brand experience.",
+    deliverables: ["Campaign copy", "Automation flows", "List segmentation", "A/B test setup", "Monthly performance review"],
+    platforms: ["LinkedIn"],
+    rateRange: { min: 8000, max: 18000, unit: "monthly" },
+    availability: ["Monthly"],
+    accent: "#34D399",
+    icon: "✉",
+    uaeAvailable: true,
+  },
+  {
+    id: "role-account-manager",
+    primaryRole: "Account Manager",
+    title: "Account Manager",
+    tagline: "Brands managed. Relationships built.",
+    description: "Dedicated account management for agencies and in-house teams — client communication, project tracking, briefing workflows, and reporting. Keeps campaigns on time and clients informed.",
+    deliverables: ["Client comms", "Project tracking", "Status reports", "Brief management", "Stakeholder updates"],
+    platforms: ["LinkedIn"],
+    rateRange: { min: 12000, max: 22000, unit: "monthly" },
+    availability: ["Monthly"],
+    accent: "#60A5FA",
+    icon: "⬡",
     uaeAvailable: true,
   },
   {

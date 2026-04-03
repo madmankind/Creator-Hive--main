@@ -6,6 +6,7 @@ import { getTalentDisplayName } from '@/lib/curatedTalent'
 import { LandingTalentCard } from '@/components/marketing/LandingTalentCard'
 import { HiveRoleCard } from '@/components/marketing/HiveRoleCard'
 import { hiveRoles } from '@/lib/hiveRoles'
+import type { InfluencerTier } from '@/lib/hiveRoles'
 import { useCampaignPodStore, type Talent as PodTalent } from '@/store/useCampaignPodStore'
 import { ChevronLeft, ChevronRight, Search, X, Sparkles, SlidersHorizontal, Globe, MapPin } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -98,6 +99,8 @@ export function TalentCarousel({
   const scrollRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const [showArrows, setShowArrows] = useState(false)
+  // Multi-add: track how many times each role has been added (for influencer multi-add)
+  const [roleAddCounts, setRoleAddCounts] = useState<Record<string, number>>({})
   const [canLeft, setCanLeft] = useState(false)
   const [canRight, setCanRight] = useState(true)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -466,7 +469,7 @@ export function TalentCarousel({
                 )
               })}
 
-              {/* ── Hive Role Cards — shown when not filtering to Signature only ── */}
+              {/* ── Hive Role Cards — Hive Select: unnamed vetted talent matched within 48h ── */}
               {tierFilter !== 'signature' && !internalQuery.trim() && (
                 <>
                   {/* Divider with label */}
@@ -477,24 +480,56 @@ export function TalentCarousel({
                       writingMode: "vertical-rl", textOrientation: "mixed",
                       fontSize: "9px", letterSpacing: "0.12em", textTransform: "uppercase",
                       color: "rgba(255,255,255,0.18)", margin: "8px 0",
-                    }}>Hive Roles</span>
+                    }}>Hive Select</span>
                     <div style={{ width: "1px", height: "60%", background: "rgba(255,255,255,0.06)" }} />
                   </div>
 
                   {hiveRoles
                     .filter(r => !roleFilter || r.primaryRole === roleFilter)
-                    .map((role, idx) => (
-                      <motion.div key={role.id}
-                        className="flex-shrink-0 snap-start py-2 w-[calc(100vw-32px)] sm:w-auto"
-                        initial={{ opacity: 0, y: 16 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: (flat.length + idx) * 0.018, duration: 0.28 }}>
-                        <HiveRoleCard
-                          role={role}
-                          onRequest={(r) => onRoleRequest?.(r.id, r.title)}
-                        />
-                      </motion.div>
-                    ))
+                    .map((role, idx) => {
+                      const count = roleAddCounts[role.id] ?? 0;
+                      return (
+                        <motion.div key={`${role.id}-${count}`}
+                          className="flex-shrink-0 snap-start py-2 w-[calc(100vw-32px)] sm:w-auto"
+                          initial={{ opacity: 0, y: 16 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: (flat.length + idx) * 0.018, duration: 0.28 }}>
+                          <HiveRoleCard
+                            role={role}
+                            isAdded={count > 0}
+                            onAddToPod={(r, tier) => {
+                              // Add a synthetic pod talent for this role slot
+                              const slotIdx = (roleAddCounts[r.id] ?? 0) + 1;
+                              const tierLabel = tier ? ` (${tier})` : "";
+                              addToPod({
+                                id: `${r.id}::${slotIdx}`,
+                                name: `${r.title}${tierLabel}`,
+                                headline: r.tagline,
+                                roles: [r.primaryRole],
+                                platforms: r.platforms,
+                                bookedRole: r.primaryRole,
+                              }, r.primaryRole);
+                              setRoleAddCounts(prev => ({ ...prev, [r.id]: slotIdx }));
+                            }}
+                            onBook={(r, tier) => {
+                              // Book now = add to pod + open campaign brief
+                              const slotIdx = (roleAddCounts[r.id] ?? 0) + 1;
+                              const tierLabel = tier ? ` (${tier})` : "";
+                              addToPod({
+                                id: `${r.id}::${slotIdx}`,
+                                name: `${r.title}${tierLabel}`,
+                                headline: r.tagline,
+                                roles: [r.primaryRole],
+                                platforms: r.platforms,
+                                bookedRole: r.primaryRole,
+                              }, r.primaryRole);
+                              setRoleAddCounts(prev => ({ ...prev, [r.id]: slotIdx }));
+                              onRoleRequest?.(r.id, r.title);
+                            }}
+                          />
+                        </motion.div>
+                      );
+                    })
                   }
                 </>
               )}

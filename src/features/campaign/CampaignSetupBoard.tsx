@@ -188,14 +188,38 @@ export function CampaignSetupBoard({
     const discoveryObj = ds.completed && ds.primaryObjective
       ? mapObjectiveToCampaign(ds.primaryObjective) as CampaignObjective | null
       : null;
+
+    // Map discovery budget range to a numeric string
+    const budgetFromDiscovery = (() => {
+      if (!ds.budgetRange) return "";
+      const raw = ds.budgetRange.toLowerCase();
+      if (raw.includes("5k") || raw.includes("5,000") || raw.includes("under")) return "5000";
+      if (raw.includes("8k") || raw.includes("8,000")) return "8000";
+      if (raw.includes("12k") || raw.includes("12,000")) return "12000";
+      if (raw.includes("15k") || raw.includes("15,000")) return "15000";
+      if (raw.includes("25k") || raw.includes("25,000")) return "25000";
+      if (raw.includes("45k") || raw.includes("45,000")) return "45000";
+      const parsed = parseInt(raw.replace(/[^\d]/g, ""));
+      return parsed > 0 ? String(parsed) : "";
+    })();
+
+    // Map startTiming from discovery
+    const startTimingFromDiscovery = ((): StartTiming => {
+      const t = (ds.startTiming ?? "").toLowerCase();
+      if (t.includes("asap") || t.includes("immediate")) return "asap";
+      if (t.includes("this month") || t.includes("2 weeks")) return "this_month";
+      if (t.includes("next month")) return "next_month";
+      return "asap";
+    })();
+
     return {
       campaignName: ds.completed && ds.companyName ? `${ds.companyName} Campaign` : "",
       objectives: selectedPkg ? [selectedPkg.defaultObjective] : discoveryObj ? [discoveryObj] : [],
       bookingType: selectedPkg?.bookingType ?? (ds.completed && ds.startTiming === "exploring" ? "retainer" as BookingType : "campaign"),
-      startTiming: "asap" as StartTiming,
+      startTiming: startTimingFromDiscovery,
       startDate: "",
       endDate: "",
-      totalBudget: "",
+      totalBudget: budgetFromDiscovery,
       paymentSchedule: "milestone_50_50",
       notes: ds.completed && ds.notes ? ds.notes : "",
     };
