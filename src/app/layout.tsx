@@ -1,6 +1,7 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import Script from 'next/script'
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Providers } from "@/components/Providers";
@@ -48,6 +49,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={clsx(inter.className, inter.variable)}>
       <body className="bg-[#0B0F14] text-white antialiased font-sans">
+        {/* Google Ads tag — AW-18060432585 */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=AW-18060432585"
+          strategy="afterInteractive"
+        />
+        <Script id="google-ads-config" strategy="afterInteractive">{`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'AW-18060432585');
+        `}</Script>
         <div
           aria-hidden
           className="pointer-events-none fixed inset-0 mx-auto max-w-[980px]
