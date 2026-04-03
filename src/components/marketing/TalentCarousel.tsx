@@ -2,13 +2,14 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { CuratedTalent, TalentCategoryTag } from '@/lib/curatedTalent'
-import { getTalentDisplayName, SHOW_SIGNATURE_TALENT } from '@/lib/curatedTalent'
+import { getTalentDisplayName, SHOW_SIGNATURE_TALENT, deriveArchetypeFromClientFit } from '@/lib/curatedTalent'
 import { LandingTalentCard } from '@/components/marketing/LandingTalentCard'
 import { HiveRoleCard } from '@/components/marketing/HiveRoleCard'
 import { hiveRoles } from '@/lib/hiveRoles'
 import type { InfluencerTier } from '@/lib/hiveRoles'
 import { CurrencyToggle } from '@/components/ui/CurrencyToggle'
 import { useCurrencyStore } from '@/store/useCurrencyStore'
+import { useDiscoveryStore } from '@/store/useDiscoveryStore'
 import { useCampaignPodStore, type Talent as PodTalent } from '@/store/useCampaignPodStore'
 import { ChevronLeft, ChevronRight, Search, X, Sparkles, SlidersHorizontal, Globe, MapPin } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -99,6 +100,11 @@ export function TalentCarousel({
 }: TalentCarouselProps) {
   const { addToPod, removeFromPod } = useCampaignPodStore()
   const { currency } = useCurrencyStore()
+  const discovery = useDiscoveryStore()
+  // Derive archetype from the client's brief persona — shown on all matched cards this session
+  const sessionArchetype = discovery.completed
+    ? deriveArchetypeFromClientFit(discovery.clientFitProfile, discovery.primaryObjective)
+    : null
   const scrollRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const [showArrows, setShowArrows] = useState(false)
@@ -503,6 +509,7 @@ export function TalentCarousel({
                           <HiveRoleCard
                             role={role}
                             currency={currency}
+                            sessionArchetype={sessionArchetype}
                             isAdded={count > 0}
                             onAddToPod={(r, tier) => {
                               // Add a synthetic pod talent for this role slot

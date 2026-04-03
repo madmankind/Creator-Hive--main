@@ -986,3 +986,40 @@ if (typeof window === 'undefined' || process.env.NODE_ENV === 'development') {
     }
   });
 }
+
+/**
+ * Derive the closest PRISM archetype from the client's briefing fit profile.
+ * Called once per search session — the result is shown as a badge on all matched cards.
+ */
+export function deriveArchetypeFromClientFit(
+  fit: Record<string, unknown> | null,
+  primaryObjective?: string
+): PrismArchetypeName | null {
+  if (!fit && !primaryObjective) return null;
+
+  const pace = String(fit?.pace ?? "").toLowerCase();
+  const feedback = String(fit?.feedbackStyle ?? "").toLowerCase();
+  const workKind = String(fit?.workKind ?? "").toLowerCase();
+  const howWork = String(fit?.howWorkRuns ?? "").toLowerCase();
+  const engagement = String(fit?.engagement ?? "").toLowerCase();
+  const objective = (primaryObjective ?? "").toLowerCase();
+
+  // Fast / iterative / performance → Maverick
+  if (pace.includes("fast") || pace.includes("sprint") || engagement.includes("hourly")) return "The Maverick";
+  // Strategy / orchestration / multi-platform → Conductor
+  if (objective.includes("strategy") || workKind.includes("strategy") || howWork.includes("team") || howWork.includes("multiple")) return "The Conductor";
+  // Exploration / brand building / new market → Pathfinder
+  if (objective.includes("awareness") || objective.includes("brand") || engagement.includes("exploring")) return "The Pathfinder";
+  // B2B / technical / complex narrative → Translator
+  if (workKind.includes("b2b") || workKind.includes("technical") || workKind.includes("linkedin")) return "The Translator";
+  // High production / structured / long-form → Architect
+  if (workKind.includes("video") || workKind.includes("production") || pace.includes("structured")) return "The Architect";
+  // Visual / design / identity → Alchemist
+  if (workKind.includes("design") || workKind.includes("visual") || workKind.includes("brand identity")) return "The Alchemist";
+  // Luxury / editorial / premium → Auteur
+  if (workKind.includes("luxury") || workKind.includes("premium") || feedback.includes("editorial")) return "The Auteur";
+  // UGC / social / performance ads → Amplifier
+  if (objective.includes("ugc") || objective.includes("conversion") || objective.includes("performance")) return "The Amplifier";
+
+  return null;
+}

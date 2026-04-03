@@ -8,21 +8,23 @@ import { INFLUENCER_TIERS, ARCHETYPE_COLORS, PRISM_ARCHETYPE_DESCRIPTIONS } from
 import { cn } from "@/lib/utils";
 import type { Currency } from "@/store/useCurrencyStore";
 import { formatPricePerUnit } from "@/store/useCurrencyStore";
+import type { PrismArchetypeName } from "@/lib/curatedTalent";
 
 interface HiveRoleCardProps {
   role: HiveRole;
   currency?: Currency;
+  sessionArchetype?: PrismArchetypeName | null;
   onBook?: (role: HiveRole, tier?: InfluencerTier) => void;
   onAddToPod?: (role: HiveRole, tier?: InfluencerTier) => void;
   isAdded?: boolean;
 }
 
-export function HiveRoleCard({ role, currency = "AED", onBook, onAddToPod, isAdded }: HiveRoleCardProps) {
+export function HiveRoleCard({ role, currency = "AED", sessionArchetype, onBook, onAddToPod, isAdded }: HiveRoleCardProps) {
   const [hovered, setHovered] = useState(false);
   const [selectedTier, setSelectedTier] = useState<InfluencerTier | null>(null);
   const tierKeys = Object.keys(INFLUENCER_TIERS) as InfluencerTier[];
-  const archetypeColor = ARCHETYPE_COLORS[role.archetype];
-  const archetypeDesc = PRISM_ARCHETYPE_DESCRIPTIONS[role.archetype];
+  const archetypeColor = sessionArchetype ? ARCHETYPE_COLORS[sessionArchetype] : null;
+  const archetypeDesc = sessionArchetype ? PRISM_ARCHETYPE_DESCRIPTIONS[sessionArchetype] : null;
 
   return (
     <motion.div
@@ -84,17 +86,22 @@ export function HiveRoleCard({ role, currency = "AED", onBook, onAddToPod, isAdd
           </div>
         </div>
 
-        {/* PRISM Archetype badge — prominent */}
-        <div className="mb-3 rounded-xl px-3 py-2.5 flex items-start gap-2.5"
-          style={{ background: `${archetypeColor}10`, border: `1px solid ${archetypeColor}28` }}>
-          <div className="flex-shrink-0 mt-0.5 rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest"
-            style={{ background: `${archetypeColor}22`, color: archetypeColor, whiteSpace: "nowrap" }}>
-            {role.archetype}
+        {/* Archetype badge — appears when brief persona has been determined */}
+        {sessionArchetype && (
+          <div className="mb-3 flex items-start gap-2 rounded-xl px-3 py-2"
+            style={{ background: `${ARCHETYPE_COLORS[sessionArchetype]}12`, border: `1px solid ${ARCHETYPE_COLORS[sessionArchetype]}28` }}>
+            <div className="flex-shrink-0 mt-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[8px]"
+              style={{ background: ARCHETYPE_COLORS[sessionArchetype], color: "#07070B", fontWeight: 800 }}>◈</div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-semibold" style={{ color: ARCHETYPE_COLORS[sessionArchetype] }}>
+                {sessionArchetype}
+              </span>
+              <p className="text-[10px] leading-relaxed mt-0.5" style={{ color: "rgba(255,255,255,0.38)" }}>
+                {PRISM_ARCHETYPE_DESCRIPTIONS[sessionArchetype]}
+              </p>
+            </div>
           </div>
-          <p className="text-[10px] leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
-            {archetypeDesc}
-          </p>
-        </div>
+        )}
 
         {/* Description */}
         <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.48)", lineHeight: 1.6, marginBottom: "12px" }}>

@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Check, Download, FileText } from "lucide-react";
+import { X, Check, Download, FileText, Calendar, Video, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PackageConfig } from "@/lib/packages";
 import { formatAED, aedToUsdApprox, getPackagePriceLabel, PACKAGES } from "@/lib/packages";
