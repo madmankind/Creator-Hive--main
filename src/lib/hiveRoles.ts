@@ -4,7 +4,8 @@
  * Kept separate from curatedTalent (named Hive Signature profiles).
  */
 
-import type { TalentCategoryTag, PlatformTag } from "@/lib/curatedTalent";
+import type { TalentCategoryTag, PlatformTag, PrismArchetypeName } from "@/lib/curatedTalent";
+import { PRISM_ARCHETYPE_DESCRIPTIONS } from "@/lib/curatedTalent";
 
 export type InfluencerTier = "micro" | "macro" | "mega" | "celebrity";
 
@@ -36,7 +37,23 @@ export interface HiveRole {
   uaeAvailable: boolean;
   isInfluencer?: boolean;
   multiAdd?: boolean;
+  /** PRISM archetype for this role */
+  archetype: PrismArchetypeName;
 }
+
+/** Map each archetype to an accent colour for the badge */
+export const ARCHETYPE_COLORS: Record<PrismArchetypeName, string> = {
+  "The Maverick":   "#F97316",
+  "The Conductor":  "#8B5CF6",
+  "The Pathfinder": "#06B6D4",
+  "The Translator": "#10B981",
+  "The Architect":  "#3B82F6",
+  "The Alchemist":  "#EC4899",
+  "The Auteur":     "#F59E0B",
+  "The Amplifier":  "#34D399",
+};
+
+export { PRISM_ARCHETYPE_DESCRIPTIONS };
 
 export const hiveRoles: HiveRole[] = [
   {
@@ -52,6 +69,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#F59E0B",
     icon: "🎬",
     uaeAvailable: true,
+    archetype: "The Amplifier",
   },
   {
     id: "role-content-creator",
@@ -66,6 +84,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#A78BFA",
     icon: "✦",
     uaeAvailable: true,
+    archetype: "The Auteur",
   },
   {
     id: "role-videographer",
@@ -80,6 +99,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#60A5FA",
     icon: "📽",
     uaeAvailable: true,
+    archetype: "The Architect",
   },
   {
     id: "role-photographer",
@@ -94,6 +114,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#34D399",
     icon: "◎",
     uaeAvailable: true,
+    archetype: "The Auteur",
   },
   {
     id: "role-smm",
@@ -108,6 +129,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#F472B6",
     icon: "◈",
     uaeAvailable: true,
+    archetype: "The Amplifier",
   },
   {
     id: "role-creative-director",
@@ -122,6 +144,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#C084FC",
     icon: "◆",
     uaeAvailable: true,
+    archetype: "The Conductor",
   },
   {
     id: "role-editor",
@@ -136,6 +159,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#FB923C",
     icon: "✂",
     uaeAvailable: true,
+    archetype: "The Architect",
   },
   {
     id: "role-designer",
@@ -150,6 +174,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#38BDF8",
     icon: "◐",
     uaeAvailable: true,
+    archetype: "The Alchemist",
   },
   {
     id: "role-copywriter",
@@ -164,6 +189,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#4ADE80",
     icon: "✎",
     uaeAvailable: true,
+    archetype: "The Translator",
   },
   {
     id: "role-influencer",
@@ -178,6 +204,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#FBBF24",
     icon: "★",
     uaeAvailable: true,
+    archetype: "The Amplifier",
     isInfluencer: true,
     multiAdd: true,
   },
@@ -194,6 +221,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#22D3EE",
     icon: "⌨",
     uaeAvailable: true,
+    archetype: "The Architect",
   },
   {
     id: "role-ai-specialist",
@@ -208,6 +236,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#818CF8",
     icon: "◈",
     uaeAvailable: true,
+    archetype: "The Maverick",
   },
   {
     id: "role-events-specialist",
@@ -222,6 +251,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#F472B6",
     icon: "◎",
     uaeAvailable: true,
+    archetype: "The Conductor",
   },
   {
     id: "role-media-buyer",
@@ -236,6 +266,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#FB923C",
     icon: "◆",
     uaeAvailable: true,
+    archetype: "The Pathfinder",
   },
   {
     id: "role-pr-specialist",
@@ -250,6 +281,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#A78BFA",
     icon: "✦",
     uaeAvailable: true,
+    archetype: "The Translator",
   },
   {
     id: "role-email-specialist",
@@ -264,6 +296,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#34D399",
     icon: "✉",
     uaeAvailable: true,
+    archetype: "The Amplifier",
   },
   {
     id: "role-account-manager",
@@ -278,6 +311,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#60A5FA",
     icon: "⬡",
     uaeAvailable: true,
+    archetype: "The Conductor",
   },
   {
     id: "role-strategist",
@@ -292,6 +326,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#818CF8",
     icon: "⬡",
     uaeAvailable: true,
+    archetype: "The Pathfinder",
   },
   {
     id: "role-producer",
@@ -306,6 +341,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#2DD4BF",
     icon: "⬢",
     uaeAvailable: true,
+    archetype: "The Pathfinder",
   },
   {
     id: "role-arabic-smm",
@@ -320,6 +356,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#F87171",
     icon: "ع",
     uaeAvailable: true,
+    archetype: "The Translator",
   },
   {
     id: "role-podcast-strategist",
@@ -334,6 +371,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#E879F9",
     icon: "◎",
     uaeAvailable: true,
+    archetype: "The Conductor",
   },
   {
     id: "role-motion-designer",
@@ -348,6 +386,7 @@ export const hiveRoles: HiveRole[] = [
     accent: "#34D399",
     icon: "◉",
     uaeAvailable: true,
+    archetype: "The Alchemist",
   },
 ];
 

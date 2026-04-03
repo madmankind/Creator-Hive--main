@@ -1,5 +1,8 @@
 export type AvailabilityTag = "Hourly" | "Monthly";
 
+/** TOGGLE: Set to true to show named Signature talent in the carousel. Set to false to hide them. */
+export const SHOW_SIGNATURE_TALENT = false;
+
 export type TalentCategoryTag =
   | "UGC Creator"
   | "Content Creator"

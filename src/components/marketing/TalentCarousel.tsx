@@ -2,7 +2,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { CuratedTalent, TalentCategoryTag } from '@/lib/curatedTalent'
-import { getTalentDisplayName } from '@/lib/curatedTalent'
+import { getTalentDisplayName, SHOW_SIGNATURE_TALENT } from '@/lib/curatedTalent'
 import { LandingTalentCard } from '@/components/marketing/LandingTalentCard'
 import { HiveRoleCard } from '@/components/marketing/HiveRoleCard'
 import { hiveRoles } from '@/lib/hiveRoles'
@@ -133,7 +133,8 @@ export function TalentCarousel({
   }, [searchOpen])
 
   const filtered = useMemo(() => {
-    let list = talents
+    // Signature talent visibility toggle — flip SHOW_SIGNATURE_TALENT in curatedTalent.ts to restore
+    let list = SHOW_SIGNATURE_TALENT ? talents : []
 
     // Tier filter
     if (tierFilter === 'signature') list = list.filter(t => getTier(t) === 'signature')
@@ -246,7 +247,7 @@ export function TalentCarousel({
         {/* Count */}
         <div className="flex items-baseline gap-2 mr-1">
           <h2 className="text-[15px] font-medium text-white/80 tracking-tight">Creative talent</h2>
-          <span className="text-[12px] text-white/30">{flat.length} signature · {hiveRoles.length} roles</span>
+          <span className="text-[12px] text-white/30">{SHOW_SIGNATURE_TALENT ? `${flat.length} signature · ` : ''}{hiveRoles.length} Hive Select roles</span>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap ml-auto">

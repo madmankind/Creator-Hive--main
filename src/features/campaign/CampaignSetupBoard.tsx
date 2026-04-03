@@ -524,96 +524,185 @@ export function CampaignSetupBoard({
     doc.save(filename);
   };
 
-  // ── Success screen ────────────────────────────────────────────────────────
+  // ── Schedule a Call screen ──────────────────────────────────────────────
   const SuccessScreen = () => {
-    const budget = parseInt(state.totalBudget.replace(/,/g, "")) || 0;
-    const vat = Math.round(budget * 0.05);
-    const totalDue = budget + vat;
+    const [preferredTime, setPreferredTime] = useState("morning");
+    const [notes, setNotes] = useState("");
+    const [callBooked, setCallBooked] = useState(false);
+
+    const ADVISOR = {
+      name: "Ajil Abdulla",
+      title: "Expert Media Strategist & Client Advisor",
+      email: "ajil@creatorhive.ae",
+      bio: "Ajil will advise you on setting up your Creator Hive team — from talent selection to campaign structure and execution.",
+      avatar: "/ch-logo.svg",
+      meetLink: "https://calendar.google.com/calendar/u/0/r/eventedit?text=Creator+Hive+Strategy+Call&details=Strategy+call+with+Ajil+Abdulla,+Creator+Hive+Client+Advisor.+We%27ll+finalise+your+team+and+campaign+structure.&location=Google+Meet&add=ajil@creatorhive.ae",
+    };
+
+    const timeSlots = [
+      { id: "morning", label: "Morning", sub: "9:00 – 12:00 GST" },
+      { id: "afternoon", label: "Afternoon", sub: "12:00 – 17:00 GST" },
+      { id: "evening", label: "Evening", sub: "17:00 – 20:00 GST" },
+    ];
+
+    const handleBook = () => {
+      // Open Google Calendar pre-filled event
+      const params = new URLSearchParams({
+        text: "Creator Hive Strategy Call",
+        details: `Creator Hive briefing call with ${ADVISOR.name}.\n\nCampaign: ${state.campaignName || "Untitled"}\nTalent selected: ${talents.length}\nPreferred time: ${timeSlots.find(t => t.id === preferredTime)?.label || ""}\n\nNotes: ${notes || "None"}`,
+        location: "Google Meet",
+        add: ADVISOR.email,
+      });
+      window.open(`https://calendar.google.com/calendar/u/0/r/eventedit?${params.toString()}`, "_blank");
+      setCallBooked(true);
+    };
 
     return (
       <div className="relative w-full min-h-[480px]">
-        <div className="relative z-10 max-w-[780px] mx-auto px-6 py-14">
+        <div className="relative z-10 max-w-[680px] mx-auto px-6 py-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1.0] }}
-            className="space-y-8"
+            className="space-y-6"
           >
-            <div className="text-center">
-              <div className="w-14 h-14 rounded-full bg-emerald-500/[0.12] ring-1 ring-emerald-400/[0.25] flex items-center justify-center mx-auto mb-4">
-                <Check className="w-6 h-6 text-emerald-400" />
+            {/* Header */}
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-emerald-500/[0.12] ring-1 ring-emerald-400/[0.25] flex items-center justify-center mx-auto mb-3">
+                <Check className="w-5 h-5 text-emerald-400" />
               </div>
-              <h3 className="text-[26px] font-light text-white/90 tracking-[-0.025em] mb-2">
-                Campaign request sent
+              <h3 className="text-[24px] font-light text-white/90 tracking-[-0.025em]">
+                {callBooked ? "Call scheduled!" : "Let\'s get started."}
               </h3>
-              <p className="text-[13px] text-white/38 max-w-[400px] mx-auto leading-relaxed">
-                Your pod has been notified. Configure deliverables, usage rights, and manage payments in your dashboard.
+              <p className="text-[13px] text-white/38 max-w-[420px] mx-auto leading-relaxed">
+                {callBooked
+                  ? "Check your calendar. Ajil will reach out to confirm and brief your team within 48 hours."
+                  : "Your brief is in. Schedule a call with your Creator Hive advisor to finalise the team and kick off your campaign."
+                }
               </p>
             </div>
 
-            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
-              <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <FileText className="w-4 h-4 text-white/45" />
+            {/* Advisor card */}
+            <div className="rounded-2xl border overflow-hidden"
+              style={{ background: "rgba(255,255,255,0.025)", borderColor: "rgba(255,255,255,0.07)" }}>
+              <div className="px-5 py-4 flex items-center gap-4">
+                {/* Avatar */}
+                <div className="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)" }}>
+                  <svg width="26" height="26" viewBox="0 0 1024 1024" fill="none">
+                    <path d="M 689 330 L 680 321 L 525 227 L 513 222 L 505 223 L 343 321 L 336 327 L 333 333 L 333 448 L 337 453 L 343 455 L 350 454 L 449 393 L 508 359 L 515 359 L 520 361 L 611 415 L 622 415 L 681 381 L 687 375 L 690 369 Z" fill="rgba(255,255,255,0.7)"/>
+                    <path d="M 430 429 L 344 480 L 334 490 L 333 655 L 341 665 L 504 765 L 514 768 L 520 767 L 684 666 L 690 656 L 690 621 L 686 613 L 680 608 L 621 573 L 612 573 L 607 575 L 549 612 L 535 617 L 528 615 L 456 571 L 449 564 L 445 554 L 445 436 L 439 429 Z" fill="rgba(255,255,255,0.7)"/>
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className="text-[14px] font-semibold text-white/90">{ADVISOR.name}</p>
+                    <span className="text-[9px] px-2 py-0.5 rounded-full font-medium"
+                      style={{ background: "rgba(139,92,246,0.18)", color: "#A78BFA", border: "1px solid rgba(139,92,246,0.25)" }}>
+                      Client Advisor
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-white/40">{ADVISOR.bio}</p>
+                </div>
+              </div>
+
+              {!callBooked && (
+                <div className="border-t px-5 py-4 space-y-4" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                  {/* Time preference */}
                   <div>
-                    <p className="text-[12px] font-medium text-white/75">Statement of Work drafted</p>
-                    <p className="text-[10px] text-white/30 mt-0.5">Auto-generated from your campaign brief</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleDownloadSOW}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/[0.07] ring-1 ring-white/[0.12] text-[11px] text-white/65 hover:bg-white/[0.12] hover:text-white/90 transition-all duration-150"
-                >
-                  <Download className="w-3 h-3" />
-                  Download SOW
-                </button>
-              </div>
-              <div className="px-6 py-5 space-y-4">
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {[
-                    { label: "Campaign", value: state.campaignName || "Untitled" },
-                    { label: "Talent", value: `${talents.length} creator${talents.length !== 1 ? "s" : ""}` },
-                    { label: "Objectives", value: state.objectives.map(o => o.charAt(0).toUpperCase() + o.slice(1)).join(", ") || "—" },
-                    { label: "Budget",     value: budget ? (currency === "AED" ? `AED ${budget.toLocaleString()}` : `$${Math.round(budget / 3.6725).toLocaleString()}`) : "—" },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="rounded-xl bg-white/[0.035] border border-white/[0.06] px-3 py-2.5">
-                      <p className="text-[9px] uppercase tracking-[0.10em] text-white/28 mb-1">{label}</p>
-                      <p className="text-[12px] text-white/75 font-light truncate">{value}</p>
+                    <p className="text-[10px] uppercase tracking-widest text-white/28 mb-2">Preferred time (GST)</p>
+                    <div className="flex gap-2">
+                      {timeSlots.map(slot => (
+                        <button key={slot.id} onClick={() => setPreferredTime(slot.id)}
+                          className="flex-1 rounded-xl px-3 py-2.5 text-left transition-all"
+                          style={{
+                            background: preferredTime === slot.id ? "rgba(139,92,246,0.15)" : "rgba(255,255,255,0.04)",
+                            border: `1px solid ${preferredTime === slot.id ? "rgba(139,92,246,0.40)" : "rgba(255,255,255,0.08)"}`,
+                          }}>
+                          <p className="text-[11px] font-semibold" style={{ color: preferredTime === slot.id ? "#A78BFA" : "rgba(255,255,255,0.70)" }}>
+                            {slot.label}
+                          </p>
+                          <p className="text-[9px] mt-0.5" style={{ color: "rgba(255,255,255,0.30)" }}>{slot.sub}</p>
+                        </button>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                {budget > 0 && (
-                  <div className="rounded-xl bg-white/[0.025] border border-white/[0.05] px-4 py-3 flex items-center justify-between">
-                    <span className="text-[11px] text-white/40">Total (incl. VAT 5%)</span>
-                    <span className="text-[13px] text-white/80 font-medium">{currency === "AED" ? `AED ${totalDue.toLocaleString()}` : `$${Math.round(totalDue / 3.6725).toLocaleString()}`}</span>
                   </div>
-                )}
-              </div>
+
+                  {/* Notes */}
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-white/28 mb-1.5">Any notes for the call? <span className="normal-case">(optional)</span></p>
+                    <textarea
+                      value={notes}
+                      onChange={e => setNotes(e.target.value)}
+                      placeholder="e.g. Specific questions, timeline constraints, existing assets..."
+                      rows={2}
+                      className="w-full rounded-xl px-3.5 py-2.5 text-[12px] text-white/70 placeholder:text-white/22 outline-none resize-none transition-all"
+                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="flex items-center justify-center gap-3">
-              <button type="button" onClick={handleDownloadSOW} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/[0.07] ring-1 ring-white/[0.10] text-[13px] text-white/60 hover:bg-white/[0.12] hover:text-white/85 transition-all">
-                <Download className="w-3.5 h-3.5" />Download SOW
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (session?.user) {
-                    // Use Next.js router to preserve React state and zustand stores
-                    // Land on Manage — pass the new campaign ID so dashboard selects it
+            {/* Brief summary strip */}
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: "Campaign", value: state.campaignName || "Untitled" },
+                { label: "Talent", value: `${talents.length} creator${talents.length !== 1 ? "s" : ""}` },
+                { label: "Budget", value: state.totalBudget ? (currency === "AED" ? `AED ${parseInt(state.totalBudget.replace(/,/g,"")).toLocaleString()}` : `$${Math.round(parseInt(state.totalBudget.replace(/,/g,"")) / 3.6725).toLocaleString()}`) : "TBD" },
+              ].map(({ label, value }) => (
+                <div key={label} className="rounded-xl px-3 py-2.5 text-center"
+                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <p className="text-[9px] uppercase tracking-widest text-white/25 mb-1">{label}</p>
+                  <p className="text-[12px] text-white/70 font-light truncate">{value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* CTAs */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              {!callBooked ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleBook}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[13px] font-semibold transition-all"
+                    style={{
+                      background: "rgba(139,92,246,0.18)",
+                      border: "1px solid rgba(139,92,246,0.40)",
+                      color: "#C4B5FD",
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    Schedule call with Google Calendar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const latestCampaign = useLocalCampaignStore.getState().campaigns;
+                      const latestId = latestCampaign[latestCampaign.length - 1]?.id;
+                      router.push(`/dashboard/campaigns?mode=manage${latestId ? `&campaignId=${latestId}` : ""}`);
+                    }}
+                    className="px-5 py-3 rounded-2xl text-[13px] transition-all"
+                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.45)" }}
+                  >
+                    Skip to dashboard
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
                     const latestCampaign = useLocalCampaignStore.getState().campaigns;
                     const latestId = latestCampaign[latestCampaign.length - 1]?.id;
                     router.push(`/dashboard/campaigns?mode=manage${latestId ? `&campaignId=${latestId}` : ""}`);
-                  } else {
-                    sessionStorage.setItem("ch_post_auth_redirect", "/dashboard/campaigns?mode=manage");
-                    onRequestAuth?.();
-                  }
-                }}
-                className="px-6 py-2.5 rounded-xl bg-white text-[#0B0F14] text-[13px] font-semibold hover:bg-white/90 transition-colors shadow-[0_4px_28px_rgba(255,255,255,0.12)]"
-              >
-                Go to dashboard →
-              </button>
+                  }}
+                  className="flex-1 py-3 rounded-2xl text-[13px] font-semibold transition-all"
+                  style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.80)" }}
+                >
+                  Go to dashboard →
+                </button>
+              )}
             </div>
           </motion.div>
         </div>
