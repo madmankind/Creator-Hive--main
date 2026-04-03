@@ -7,12 +7,15 @@ import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useCurrencyStore } from "@/store/useCurrencyStore";
 import {
   PACKAGES,
   PACKAGE_CATEGORY_META,
   PackageConfig,
   PackageCategory,
   getPackagePriceLabel,
+  formatAED,
+  aedToUsdApprox,
 } from "@/lib/packages";
 
 // ── Seasonal surfacing logic ─────────────────────────────────────────────────
@@ -170,6 +173,7 @@ export function QuickBookPanel() {
 // ── Package Card ──────────────────────────────────────────────────────────────
 
 function QuickBookCard({ pkg, onSelect }: { pkg: PackageConfig; onSelect: (p: PackageConfig) => void }) {
+  const { currency } = useCurrencyStore();
   const isElite = pkg.tier === "elite";
   const isBuild = pkg.bookingModel === "build";
   const tint = CATEGORY_TINT[pkg.category] ?? "rgba(255,255,255,0.025)";
@@ -222,7 +226,11 @@ function QuickBookCard({ pkg, onSelect }: { pkg: PackageConfig; onSelect: (p: Pa
         <div className="flex items-center justify-between pt-2.5">
           <div>
             <p className="text-[11px] font-medium text-white/60">
-              {pkg.priceAED > 0 ? getPackagePriceLabel(pkg) : "Custom"}
+              {pkg.priceAED > 0
+                ? currency === "AED"
+                  ? formatAED(pkg.priceAED)
+                  : `~$${aedToUsdApprox(pkg.priceAED).toLocaleString()}`
+                : "Custom"}
             </p>
             <p className="text-[9px] text-white/22 mt-0.5">{pkg.priceNote}</p>
           </div>

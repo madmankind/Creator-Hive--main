@@ -271,7 +271,8 @@ export function TalentCarousel({
         <div className="flex items-center gap-2 flex-wrap ml-auto">
           {/* Currency toggle */}
           <CurrencyToggle compact />
-          {/* Tier filter — Signature glow */}
+          {/* Tier filter — only shown when signature talent is active */}
+          {SHOW_SIGNATURE_TALENT && (
           <div className="flex items-center gap-1 rounded-full p-0.5"
             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
             <button
@@ -310,6 +311,7 @@ export function TalentCarousel({
               <span className="text-[10px]">🟣</span> Select
             </button>
           </div>
+          )}
 
           {/* Location filter — Global / UAE */}
           <div className="flex items-center gap-1 rounded-full p-0.5"
@@ -435,7 +437,12 @@ export function TalentCarousel({
       )}
 
       {/* ── Carousel ── */}
-      {flat.length === 0 ? (
+      {flat.length === 0 && !internalQuery.trim() && roleFilter === null && !aiHighlightIds.length ? (
+        <div className="text-center py-14 space-y-2">
+          <p className="text-[14px] text-white/30">Submit your brief above to match your team.</p>
+          <p className="text-[11px] text-white/18">Hive Select roles are shown once your brief has been matched.</p>
+        </div>
+      ) : flat.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-[14px] text-white/35">No matches. Try adjusting your filters.</p>
           {activeFilters && (
@@ -496,17 +503,19 @@ export function TalentCarousel({
               {/* ── Hive Role Cards — Hive Select: unnamed vetted talent matched within 48h ── */}
               {tierFilter !== 'signature' && !internalQuery.trim() && (
                 <>
-                  {/* Divider with label */}
-                  <div className="flex-shrink-0 snap-start flex flex-col items-center justify-center py-2"
-                    style={{ width: "60px" }}>
-                    <div style={{ width: "1px", height: "60%", background: "rgba(255,255,255,0.06)" }} />
-                    <span style={{
-                      writingMode: "vertical-rl", textOrientation: "mixed",
-                      fontSize: "9px", letterSpacing: "0.12em", textTransform: "uppercase",
-                      color: "rgba(255,255,255,0.18)", margin: "8px 0",
-                    }}>Hive Select</span>
-                    <div style={{ width: "1px", height: "60%", background: "rgba(255,255,255,0.06)" }} />
-                  </div>
+                  {/* Divider — only shown when there's named talent alongside */}
+                  {flat.length > 0 && (
+                    <div className="flex-shrink-0 snap-start flex flex-col items-center justify-center py-2"
+                      style={{ width: "60px" }}>
+                      <div style={{ width: "1px", height: "60%", background: "rgba(255,255,255,0.06)" }} />
+                      <span style={{
+                        writingMode: "vertical-rl", textOrientation: "mixed",
+                        fontSize: "9px", letterSpacing: "0.12em", textTransform: "uppercase",
+                        color: "rgba(255,255,255,0.18)", margin: "8px 0",
+                      }}>Hive Select</span>
+                      <div style={{ width: "1px", height: "60%", background: "rgba(255,255,255,0.06)" }} />
+                    </div>
+                  )}
 
                   {hiveRoles
                     .filter(r => !roleFilter || r.primaryRole === roleFilter)
