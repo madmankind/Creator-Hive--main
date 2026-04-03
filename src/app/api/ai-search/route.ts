@@ -220,7 +220,8 @@ export async function POST(req: NextRequest) {
       rateLimit: { remaining: rl.remaining - 1, limit: rl.limit, resetAt: rl.resetAt },
     });
   } catch (err) {
-    console.error("AI search error:", err);
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("AI search error:", msg);
+    return NextResponse.json({ error: "Internal error", detail: msg.slice(0, 200) }, { status: 500 });
   }
 }
