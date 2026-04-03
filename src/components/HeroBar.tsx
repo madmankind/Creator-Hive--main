@@ -590,7 +590,7 @@ function AdvisorChat({
           {
             id: Date.now().toString(),
             role: "assistant",
-            content: "Search didn't complete — try again in a moment.",
+            content: "Search didn't return results — try describing the role or campaign in more detail below.",
           },
         ]);
         return;

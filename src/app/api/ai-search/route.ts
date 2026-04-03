@@ -29,7 +29,9 @@ TALENT SELECTION PHILOSOPHY:
 - For brand awareness: prioritise creators with strong aesthetic identity and editorial polish
 - For retainer/ongoing briefs: weight availability and collaboration style heavily
 
-RESPONSE FORMAT — return ONLY this JSON, no markdown, no explanation:
+RESPONSE FORMAT — CRITICAL:
+You MUST return ONLY a single valid JSON object. No markdown. No explanation. No text before or after. No code blocks. Start your response with { and end with }.
+The JSON must have exactly this shape:
 {
   "talentIds": ["talent-xxx", "db:yyyy"],
   "teamSummary": "2–3 sentence strategic rationale: why this team, what each person brings, how they work together for this specific brief.",
@@ -61,8 +63,8 @@ interface AIProvider {
 function getProvider(): AIProvider | null {
   const grokKey = process.env.GROK_API_KEY;
   if (grokKey) {
-    // Use the best available model — grok-4-1-fast for production quality
-    const model = process.env.GROK_AI_SEARCH_MODEL?.trim() || "grok-4-1-fast-non-reasoning";
+    // grok-3-mini reliably returns strict JSON; grok-4+ models interpret the prompt more freely
+    const model = process.env.GROK_AI_SEARCH_MODEL?.trim() || "grok-3-mini";
     return { endpoint: GROK_ENDPOINT, apiKey: grokKey, model };
   }
   const thauraKey = process.env.THAURA_API_KEY;
