@@ -80,7 +80,7 @@ function HeroPhoneStep({ onSubmit, onBack }: { onSubmit: (phone: string) => void
           type="button"
           onClick={() => canSubmit && onSubmit(countryCode + phone)}
           disabled={!canSubmit}
-          className="shrink-0 rounded-full bg-white px-4 sm:px-5 py-2 text-xs font-semibold text-black hover:bg-white/90 transition min-h-[44px] disabled:opacity-40"
+          className="shrink-0 rounded-full bg-white px-4 sm:px-5 py-2 text-xs font-semibold text-black hover:bg-white/90 transition min-h-[44px] flex items-center justify-center"
         >
           Send code
         </button>
@@ -819,9 +819,14 @@ function HomePageContent() {
                           type="button"
                           onClick={handleHeroEmailSubmit}
                           disabled={!heroAuthEmail.trim() || heroAuthSubmitting}
-                          className="shrink-0 rounded-full bg-white px-4 sm:px-5 py-2 text-xs font-semibold text-black hover:bg-white/90 transition min-h-[44px]"
+                          className="shrink-0 rounded-full bg-white px-4 sm:px-5 py-2 text-xs font-semibold text-black hover:bg-white/90 transition min-h-[44px] flex items-center justify-center gap-2"
                         >
-                          {heroAuthSubmitting ? "…" : "Continue"}
+                          {heroAuthSubmitting ? (
+                            <svg width="18" height="18" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" className="animate-pulse">
+                              <path d="M 689 330 L 680 321 L 525 227 L 513 222 L 505 223 L 343 321 L 336 327 L 333 333 L 333 448 L 337 453 L 343 455 L 350 454 L 449 393 L 508 359 L 515 359 L 520 361 L 611 415 L 622 415 L 681 381 L 687 375 L 690 369 Z" fill="black"/>
+                              <path d="M 430 429 L 344 480 L 334 490 L 333 655 L 341 665 L 504 765 L 514 768 L 520 767 L 684 666 L 690 656 L 690 621 L 686 613 L 680 608 L 621 573 L 612 573 L 607 575 L 549 612 L 535 617 L 528 615 L 456 571 L 449 564 L 445 554 L 445 436 L 439 429 Z" fill="black"/>
+                            </svg>
+                          ) : "Continue"}
                         </button>
                       </div>
                       {heroAuthError && (
