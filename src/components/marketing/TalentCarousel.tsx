@@ -7,6 +7,8 @@ import { LandingTalentCard } from '@/components/marketing/LandingTalentCard'
 import { HiveRoleCard } from '@/components/marketing/HiveRoleCard'
 import { hiveRoles } from '@/lib/hiveRoles'
 import type { InfluencerTier } from '@/lib/hiveRoles'
+import { CurrencyToggle } from '@/components/ui/CurrencyToggle'
+import { useCurrencyStore } from '@/store/useCurrencyStore'
 import { useCampaignPodStore, type Talent as PodTalent } from '@/store/useCampaignPodStore'
 import { ChevronLeft, ChevronRight, Search, X, Sparkles, SlidersHorizontal, Globe, MapPin } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -96,6 +98,7 @@ export function TalentCarousel({
   onRoleRequest,
 }: TalentCarouselProps) {
   const { addToPod, removeFromPod } = useCampaignPodStore()
+  const { currency } = useCurrencyStore()
   const scrollRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const [showArrows, setShowArrows] = useState(false)
@@ -247,6 +250,8 @@ export function TalentCarousel({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap ml-auto">
+          {/* Currency toggle */}
+          <CurrencyToggle compact />
           {/* Tier filter — Signature glow */}
           <div className="flex items-center gap-1 rounded-full p-0.5"
             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -496,6 +501,7 @@ export function TalentCarousel({
                           transition={{ delay: (flat.length + idx) * 0.018, duration: 0.28 }}>
                           <HiveRoleCard
                             role={role}
+                            currency={currency}
                             isAdded={count > 0}
                             onAddToPod={(r, tier) => {
                               // Add a synthetic pod talent for this role slot

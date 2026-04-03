@@ -8,8 +8,12 @@ import {
   PACKAGES,
   PackageConfig,
   getPackagePriceLabel,
+  formatAED,
+  aedToUsdApprox,
 } from "@/lib/packages";
 import type { TalentCategoryTag } from "@/lib/curatedTalent";
+import { CurrencyToggle } from "@/components/ui/CurrencyToggle";
+import { useCurrencyStore } from "@/store/useCurrencyStore";
 
 const CARD_WIDTH = 340;
 const CARD_GAP = 16;
@@ -31,6 +35,7 @@ export function PackageSelector({ onSelect, onSkip, selectedPackageId }: Package
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
+  const { currency } = useCurrencyStore();
 
   const updateScrollState = () => {
     const el = scrollRef.current;
@@ -54,12 +59,12 @@ export function PackageSelector({ onSelect, onSkip, selectedPackageId }: Package
             Campaign Packages
           </p>
           <p className="text-[13px] font-light text-white/40 leading-relaxed max-w-xl">
-            Pre-configured teams and deliverables — all prices shown in USD per month (approximate, ~3.67 AED/USD).
-            Build Stack is priced per sprint; others are monthly retainers unless noted.
+            Pre-configured teams and deliverables — monthly retainers unless noted.
           </p>
         </div>
-        {/* Nav arrows */}
-        <div className="flex items-center gap-1.5 shrink-0 ml-4">
+        <div className="flex items-center gap-2 shrink-0 ml-4">
+          <CurrencyToggle compact />
+          {/* Nav arrows */}
           <button
             type="button"
             onClick={() => scroll("left")}
@@ -140,6 +145,7 @@ function PackageCard({
   const isSeasonal = pkg.category === "seasonal";
   const [roleOverrides, setRoleOverrides] = useState<Record<number, TalentCategoryTag>>({});
   const [swapOpenIndex, setSwapOpenIndex] = useState<number | null>(null);
+  const { currency } = useCurrencyStore();
 
   const uniqueRoles = [...new Set(pkg.roles)] as TalentCategoryTag[];
   const hasOverrides = Object.keys(roleOverrides).length > 0;
@@ -228,7 +234,10 @@ function PackageCard({
         <div className="mt-3 pt-3 flex items-end justify-between" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
           <div>
             <p className="text-[14px] font-semibold text-white/80 tabular-nums">
-              {getPackagePriceLabel(pkg)}
+              {currency === "AED"
+                ? formatAED(pkg.priceAED)
+                : `~$${aedToUsdApprox(pkg.priceAED).toLocaleString()}`}
+              {pkg.bookingModel !== "build" && <span className="text-[13px] font-light opacity-60"> /mo</span>}
             </p>
             <p className="text-[11px] text-white/35 mt-0.5">{pkg.priceNote}</p>
           </div>

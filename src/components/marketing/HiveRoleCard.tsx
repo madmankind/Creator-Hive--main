@@ -6,18 +6,20 @@ import { ArrowRight, MapPin, Plus, Check } from "lucide-react";
 import type { HiveRole, InfluencerTier } from "@/lib/hiveRoles";
 import { INFLUENCER_TIERS } from "@/lib/hiveRoles";
 import { cn } from "@/lib/utils";
+import type { Currency } from "@/store/useCurrencyStore";
+import { formatPricePerUnit } from "@/store/useCurrencyStore";
 
 interface HiveRoleCardProps {
   role: HiveRole;
+  currency?: Currency;
   onBook?: (role: HiveRole, tier?: InfluencerTier) => void;
   onAddToPod?: (role: HiveRole, tier?: InfluencerTier) => void;
   isAdded?: boolean;
 }
 
-export function HiveRoleCard({ role, onBook, onAddToPod, isAdded }: HiveRoleCardProps) {
+export function HiveRoleCard({ role, currency = "AED", onBook, onAddToPod, isAdded }: HiveRoleCardProps) {
   const [hovered, setHovered] = useState(false);
   const [selectedTier, setSelectedTier] = useState<InfluencerTier | null>(null);
-  const fmt = (n: number) => `$${(n / 1000).toFixed(0)}K`;
 
   const tierKeys = Object.keys(INFLUENCER_TIERS) as InfluencerTier[];
 
@@ -162,7 +164,7 @@ export function HiveRoleCard({ role, onBook, onAddToPod, isAdded }: HiveRoleCard
                   Starting from
                 </p>
                 <p style={{ fontSize: "14px", fontWeight: 700, color: "rgba(255,255,255,0.85)" }}>
-                  {fmt(role.rateRange.min)}
+                  {formatPricePerUnit(role.rateRange.min, role.rateRange.unit, currency).split('/')[0]}
                   <span style={{ fontSize: "10px", fontWeight: 400, color: "rgba(255,255,255,0.35)", marginLeft: "2px" }}>
                     /{role.rateRange.unit === "monthly" ? "mo" : "project"}
                   </span>
