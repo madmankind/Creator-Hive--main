@@ -920,7 +920,7 @@ export function CampaignSetupBoard({
                     </div>
                     {selectedPkg && (
                       <p className="text-[10px] text-white/25 mt-1.5">
-                        Suggested: {getPackagePriceLabel(selectedPkg)}
+                        Suggested: {currency === "AED" ? formatAED(selectedPkg.priceAED) : `~$${aedToUsdApprox(selectedPkg.priceAED).toLocaleString()}`}{selectedPkg.bookingModel !== "build" ? "/mo" : ""}
                       </p>
                     )}
                   </div>
