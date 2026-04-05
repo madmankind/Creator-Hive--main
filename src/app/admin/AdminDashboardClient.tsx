@@ -1028,6 +1028,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "talent",     label: "Talent",     icon: <UserCheck size={14} /> },
   { id: "users",      label: "Users",      icon: <Users size={14} /> },
   { id: "integrations", label: "Integrations", icon: <Plug size={14} /> },
+  { id: "integrations-metrics", label: "Metrics", icon: <TrendingUp size={14} /> },
 ];
 
 export default function AdminDashboardClient({ creators }: { creators: Creator[] }) {
@@ -1097,6 +1098,7 @@ export default function AdminDashboardClient({ creators }: { creators: Creator[]
         {tab === "talent"     && <TalentTab initialCreators={creators} />}
         {tab === "users"      && <UsersTab />}
         {tab === "integrations" && <IntegrationsTab />}
+        {tab === "integrations-metrics" && <IntegrationsMetricsTab />}
       </div>
     </div>
   );
