@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   LayoutDashboard, BookOpen, Megaphone, Users, UserCheck,
   CheckCircle2, XCircle, ArrowRight, RefreshCw,
@@ -1010,6 +1010,194 @@ function FinanceTab() {
   );
 }
 
+// ── Add Talent Tab ─────────────────────────────────────────────────────────
+const PRISM_ARCHETYPES = ["The Maverick","The Conductor","The Pathfinder","The Translator","The Architect","The Alchemist","The Auteur","The Amplifier"];
+const TALENT_ROLES = ["UGC Creator","Content Creator","Photographer","Videographer","Copywriter","Designer","Strategist","Editor","Social Media Manager","Influencer","Producer","Creative Director","Account Manager","Other"];
+
+type PortfolioUpload = { id: string; url: string; mediaType: string; title: string; platform: string };
+
+function AddTalentTab() {
+  const [form, setForm] = useState({
+    name: "", displayName: "", instagram: "", tiktok: "", youtube: "",
+    bio: "", location: "", avatarUrl: "", portfolioUrl: "",
+    hourlyRate: "", dayRate: "", primaryRole: "", prismArchetype: "",
+    skills: "", niches: "", talentStatus: "active",
+  });
+  const [saving, setSaving] = useState(false);
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [uploads, setUploads] = useState<PortfolioUpload[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMeta, setUploadMeta] = useState({ title: "", platform: "", caption: "" });
+  const fileRef = React.useRef<HTMLInputElement>(null);
+
+  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
+
+  const save = async () => {
+    if (!form.name.trim()) return setError("Name is required");
+    setSaving(true); setError(null);
+    const res = await fetch("/api/admin/talent/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...form,
+        skills: form.skills.split(",").map(s => s.trim()).filter(Boolean),
+        niches: form.niches.split(",").map(s => s.trim()).filter(Boolean),
+        hourlyRate: form.hourlyRate || null,
+        dayRate: form.dayRate || null,
+        isActive: form.talentStatus === "active",
+      }),
+    });
+    const d = await res.json();
+    if (!res.ok) { setError(d.error ?? "Save failed"); setSaving(false); return; }
+    setSavedId(d.profile.id);
+    setSaving(false);
+  };
+
+  const uploadFile = async (file: File) => {
+    if (!savedId) return alert("Save the talent profile first, then upload portfolio items.");
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("creatorProfileId", savedId);
+    fd.append("title", uploadMeta.title);
+    fd.append("caption", uploadMeta.caption);
+    fd.append("platform", uploadMeta.platform);
+    const res = await fetch("/api/admin/talent/portfolio-upload", { method: "POST", body: fd });
+    const d = await res.json();
+    if (res.ok) {
+      setUploads(p => [...p, { id: d.item.id, url: d.url, mediaType: d.item.mediaType, title: uploadMeta.title, platform: uploadMeta.platform }]);
+      setUploadMeta({ title: "", platform: "", caption: "" });
+    } else alert(d.error ?? "Upload failed");
+    setUploading(false);
+  };
+
+  const labelCls = "text-[10px] font-medium uppercase tracking-widest text-white/30 mb-1.5 block";
+  const inputCls = "w-full rounded-xl px-3.5 py-2.5 text-[13px] bg-white/[0.04] border border-white/[0.08] text-white/80 outline-none placeholder:text-white/20 focus:border-purple-500/40 transition-colors";
+
+  return (
+    <div className="max-w-3xl space-y-8">
+      {error && <div className="rounded-xl px-4 py-3 bg-red-500/15 border border-red-500/25 text-red-300 text-sm">{error}</div>}
+      {savedId && <div className="rounded-xl px-4 py-3 bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 text-sm">✓ Profile saved — ID: <span className="font-mono text-xs">{savedId}</span>. You can now upload portfolio items below.</div>}
+
+      {/* Core identity */}
+      <div>
+        <p className="text-[11px] uppercase tracking-widest text-white/20 mb-4 font-semibold">Identity</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div><label className={labelCls}>Full Name *</label><input className={inputCls} value={form.name} onChange={e => set("name", e.target.value)} placeholder="Hala Al Mansouri" /></div>
+          <div><label className={labelCls}>Display Name</label><input className={inputCls} value={form.displayName} onChange={e => set("displayName", e.target.value)} placeholder="Hala" /></div>
+          <div><label className={labelCls}>Location</label><input className={inputCls} value={form.location} onChange={e => set("location", e.target.value)} placeholder="Dubai, UAE" /></div>
+          <div>
+            <label className={labelCls}>Status</label>
+            <select className={inputCls} value={form.talentStatus} onChange={e => set("talentStatus", e.target.value)}>
+              <option value="active">Active</option>
+              <option value="pending">Pending</option>
+              <option value="paused">Paused</option>
+            </select>
+          </div>
+        </div>
+        <div className="mt-4"><label className={labelCls}>Bio</label><textarea className={inputCls} rows={3} value={form.bio} onChange={e => set("bio", e.target.value)} placeholder="Short bio about the creator…" /></div>
+        <div className="mt-4"><label className={labelCls}>Avatar URL</label><input className={inputCls} value={form.avatarUrl} onChange={e => set("avatarUrl", e.target.value)} placeholder="https://…" /></div>
+      </div>
+
+      {/* Socials */}
+      <div>
+        <p className="text-[11px] uppercase tracking-widest text-white/20 mb-4 font-semibold">Social handles</p>
+        <div className="grid grid-cols-3 gap-4">
+          <div><label className={labelCls}>Instagram</label><input className={inputCls} value={form.instagram} onChange={e => set("instagram", e.target.value)} placeholder="@handle" /></div>
+          <div><label className={labelCls}>TikTok</label><input className={inputCls} value={form.tiktok} onChange={e => set("tiktok", e.target.value)} placeholder="@handle" /></div>
+          <div><label className={labelCls}>YouTube</label><input className={inputCls} value={form.youtube} onChange={e => set("youtube", e.target.value)} placeholder="channel URL" /></div>
+        </div>
+      </div>
+
+      {/* Role & archetype */}
+      <div>
+        <p className="text-[11px] uppercase tracking-widest text-white/20 mb-4 font-semibold">Role & persona</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelCls}>Primary Role</label>
+            <select className={inputCls} value={form.primaryRole} onChange={e => set("primaryRole", e.target.value)}>
+              <option value="">Select role…</option>
+              {TALENT_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>PRISM Archetype</label>
+            <select className={inputCls} value={form.prismArchetype} onChange={e => set("prismArchetype", e.target.value)}>
+              <option value="">Select archetype…</option>
+              {PRISM_ARCHETYPES.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <div><label className={labelCls}>Skills (comma separated)</label><input className={inputCls} value={form.skills} onChange={e => set("skills", e.target.value)} placeholder="UGC, Reels, Photography" /></div>
+          <div><label className={labelCls}>Niches (comma separated)</label><input className={inputCls} value={form.niches} onChange={e => set("niches", e.target.value)} placeholder="Fashion, Lifestyle, Food" /></div>
+        </div>
+      </div>
+
+      {/* Rates */}
+      <div>
+        <p className="text-[11px] uppercase tracking-widest text-white/20 mb-4 font-semibold">Rates (AED)</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div><label className={labelCls}>Hourly Rate</label><input type="number" className={inputCls} value={form.hourlyRate} onChange={e => set("hourlyRate", e.target.value)} placeholder="350" /></div>
+          <div><label className={labelCls}>Day Rate</label><input type="number" className={inputCls} value={form.dayRate} onChange={e => set("dayRate", e.target.value)} placeholder="2500" /></div>
+        </div>
+        <div className="mt-4"><label className={labelCls}>Portfolio URL (external link)</label><input className={inputCls} value={form.portfolioUrl} onChange={e => set("portfolioUrl", e.target.value)} placeholder="https://behance.net/…" /></div>
+      </div>
+
+      {/* Save button */}
+      <button onClick={save} disabled={saving || !form.name.trim()}
+        className="px-8 py-3 rounded-2xl bg-purple-500/20 text-purple-300 border border-purple-500/30 font-medium hover:bg-purple-500/30 transition-colors disabled:opacity-40">
+        {saving ? "Saving…" : savedId ? "✓ Saved — update" : "Save talent profile"}
+      </button>
+
+      {/* Portfolio upload — only after profile saved */}
+      <div className={savedId ? "" : "opacity-30 pointer-events-none"}>
+        <div className="border-t border-white/[0.06] pt-8">
+          <p className="text-[11px] uppercase tracking-widest text-white/20 mb-4 font-semibold">Portfolio items</p>
+          {!savedId && <p className="text-[12px] text-white/30 mb-4">Save the profile first to enable portfolio uploads.</p>}
+
+          {/* Existing uploads */}
+          {uploads.length > 0 && (
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              {uploads.map(u => (
+                <div key={u.id} className="rounded-xl overflow-hidden border border-white/[0.07] relative group">
+                  {u.mediaType === "video"
+                    ? <video src={u.url} className="w-full aspect-square object-cover" />
+                    : <img src={u.url} className="w-full aspect-square object-cover" alt={u.title} />}
+                  <div className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1.5">
+                    <p className="text-[10px] text-white/70 truncate">{u.title || u.mediaType}</p>
+                    {u.platform && <p className="text-[9px] text-white/40">{u.platform}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upload form */}
+          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className={labelCls}>Item title</label><input className={inputCls} value={uploadMeta.title} onChange={e => setUploadMeta(p => ({ ...p, title: e.target.value }))} placeholder="Campaign shoot, Reel, etc." /></div>
+              <div><label className={labelCls}>Platform</label><input className={inputCls} value={uploadMeta.platform} onChange={e => setUploadMeta(p => ({ ...p, platform: e.target.value }))} placeholder="Instagram, TikTok…" /></div>
+            </div>
+            <div><label className={labelCls}>Caption (optional)</label><input className={inputCls} value={uploadMeta.caption} onChange={e => setUploadMeta(p => ({ ...p, caption: e.target.value }))} placeholder="Brief description…" /></div>
+            <div>
+              <input ref={fileRef} type="file" accept="image/*,video/mp4,video/quicktime,video/webm" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
+              <button onClick={() => fileRef.current?.click()} disabled={uploading || !savedId}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.10] text-[13px] text-white/60 hover:bg-white/[0.10] hover:text-white/85 transition-colors disabled:opacity-40">
+                {uploading ? <RefreshCw size={13} className="animate-spin" /> : <Download size={13} />}
+                {uploading ? "Uploading…" : "Choose file to upload"}
+              </button>
+              <p className="text-[10px] text-white/25 mt-2">JPEG, PNG, WebP, GIF, MP4, MOV, WebM — max 25MB per file</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Health Monitor Tab ─────────────────────────────────────────────────────
 function HealthTab() {
   const [data, setData] = useState<Record<string,unknown>|null>(null);
@@ -1612,7 +1800,7 @@ function IntegrationsTab() {
   );
 }
 
-type Tab = "overview" | "bookings" | "campaigns" | "talent" | "talent-approval" | "users" | "analytics" | "finance" | "payouts" | "booking-orders" | "broadcast" | "waitlist" | "ai-usage" | "health" | "integrations" | "integrations-metrics";
+type Tab = "overview" | "bookings" | "campaigns" | "talent" | "talent-approval" | "add-talent" | "users" | "analytics" | "finance" | "payouts" | "booking-orders" | "broadcast" | "waitlist" | "ai-usage" | "health" | "integrations" | "integrations-metrics";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "overview",        label: "Overview",        icon: <LayoutDashboard size={14} /> },
@@ -1625,6 +1813,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "campaigns",       label: "Campaigns",       icon: <Megaphone size={14} /> },
   { id: "talent-approval", label: "Approve Talent",  icon: <UserCheck size={14} /> },
   { id: "talent",          label: "All Talent",      icon: <UserCheck size={14} /> },
+  { id: "add-talent",      label: "+ Add Talent",    icon: <UserCheck size={14} /> },
   { id: "users",           label: "Users",           icon: <Users size={14} /> },
   { id: "waitlist",        label: "Waitlist",        icon: <Users size={14} /> },
   { id: "broadcast",       label: "Broadcast",       icon: <Megaphone size={14} /> },
@@ -1710,6 +1899,7 @@ export default function AdminDashboardClient({ creators }: { creators: Creator[]
         {tab === "campaigns"         && <CampaignsTab />}
         {tab === "talent-approval"   && <TalentApprovalTab />}
         {tab === "talent"            && <TalentTab initialCreators={creators} />}
+        {tab === "add-talent"        && <AddTalentTab />}
         {tab === "users"             && <UsersTab />}
         {tab === "waitlist"          && <WaitlistTab />}
         {tab === "broadcast"         && <BroadcastTab />}
