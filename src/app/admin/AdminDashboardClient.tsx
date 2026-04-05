@@ -7,6 +7,7 @@ import {
   ChevronDown, ChevronUp, ExternalLink, Zap,
   AlertTriangle, Activity, FileText, Download, TrendingUp, Plug,
 } from "lucide-react";
+import IntegrationsMetricsTab from "@/components/dashboard/IntegrationsMetricsTab";
 
 type Stats = {
   totalCreators: number;
@@ -1017,7 +1018,7 @@ function IntegrationsTab() {
   );
 }
 
-type Tab = "overview" | "bookings" | "campaigns" | "talent" | "users" | "analytics" | "integrations";
+type Tab = "overview" | "bookings" | "campaigns" | "talent" | "users" | "analytics" | "integrations" | "integrations-metrics";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "overview",   label: "Overview",   icon: <LayoutDashboard size={14} /> },
