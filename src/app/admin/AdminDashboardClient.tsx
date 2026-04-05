@@ -58,6 +58,7 @@ type Creator = {
 
 type AppUser = {
   id: string; name: string | null; email: string | null; role: string; createdAt: string;
+  isBlocked: boolean; isSuspended: boolean; blockedReason: string | null;
   agencyAccount: { id: string; name: string } | null;
   creatorProfile: { id: string; talentStatus: string; isActive: boolean; qualityScore: number | null } | null;
   userAgreements: { id: string; agreementRef: string; status: string; storageUrl: string | null; createdAt: string }[];
@@ -620,6 +621,9 @@ function UsersTab() {
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState("all");
   const [regenUserId, setRegenUserId] = useState<string | null>(null);
+  const [actionUserId, setActionUserId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [blockReason, setBlockReason] = useState("");
 
   const load = () => {
     setLoading(true);
@@ -628,7 +632,6 @@ function UsersTab() {
       .then((d) => setUsers(d.users ?? []))
       .finally(() => setLoading(false));
   };
-
   useEffect(() => { load(); }, []);
 
   const regenerate = async (userId: string) => {
@@ -636,15 +639,51 @@ function UsersTab() {
     try {
       const res = await fetch(`/api/admin/user-agreement/${userId}?force=true`, { method: "POST" });
       if (res.ok) load();
-    } finally {
-      setRegenUserId(null);
-    }
+    } finally { setRegenUserId(null); }
+  };
+
+  const action = async (userId: string, act: string, reason?: string) => {
+    setActionUserId(userId);
+    try {
+      await fetch(`/api/admin/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: act, reason }),
+      });
+      load();
+    } finally { setActionUserId(null); setBlockReason(""); }
+  };
+
+  const deleteUser = async (userId: string) => {
+    setConfirmDelete(null);
+    setActionUserId(userId);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, { method: "DELETE" });
+      if (res.ok) load();
+      else { const d = await res.json(); alert(d.error ?? "Delete failed"); }
+    } finally { setActionUserId(null); }
   };
 
   const filtered = roleFilter === "all" ? users : users.filter((u) => u.role === roleFilter);
 
   return (
     <div className="space-y-4">
+      {/* Delete confirm dialog */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="rounded-2xl border border-white/10 bg-[#0F1118] p-6 max-w-sm w-full mx-4 space-y-4">
+            <h3 className="text-[15px] font-semibold text-white">Delete account permanently?</h3>
+            <p className="text-[12px] text-white/45">This removes the user, all their campaigns, bookings, and data. Cannot be undone.</p>
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setConfirmDelete(null)}
+                className="flex-1 py-2 rounded-xl text-[12px] bg-white/[0.06] text-white/50 hover:bg-white/10 transition-colors">Cancel</button>
+              <button onClick={() => deleteUser(confirmDelete)}
+                className="flex-1 py-2 rounded-xl text-[12px] bg-red-500/20 text-red-300 hover:bg-red-500/30 border border-red-500/30 transition-colors">Delete permanently</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="flex gap-2">
           {["all", "AGENCY", "CREATOR", "ADMIN"].map((r) => (
@@ -656,78 +695,93 @@ function UsersTab() {
         </div>
         <span className="text-xs text-white/30">{filtered.length} users</span>
       </div>
+
       {loading ? (
         <div className="text-center py-16 text-white/30 text-sm">Loading...</div>
       ) : (
-        <div className="rounded-2xl border border-white/[0.07] overflow-hidden">
-          <table className="w-full">
+        <div className="rounded-2xl border border-white/[0.07] overflow-x-auto">
+          <table className="w-full min-w-[900px]">
             <thead>
               <tr className="border-b border-white/[0.07]">
-                {["User", "Email", "Role", "Agency / Creator", "Agreement", "Joined", "Actions"].map((h) => (
+                {["User", "Email", "Role", "Status", "Account", "Joined", "Actions"].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-wider text-white/30">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.map((u) => (
-                <tr key={u.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-white/80">{u.name ?? "—"}</td>
-                  <td className="px-4 py-3 text-sm text-white/40">{u.email ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    <span className={"inline-block px-2 py-0.5 rounded-full text-xs font-medium " + (ROLE_COLORS[u.role] ?? "bg-white/10 text-white/40")}>
-                      {u.role}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-white/40">
-                    {u.agencyAccount ? (
-                      <span className="text-blue-300/70">{u.agencyAccount.name}</span>
-                    ) : u.creatorProfile ? (
-                      <span className="text-emerald-300/70 capitalize">{u.creatorProfile.talentStatus}</span>
-                    ) : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-white/40">
-                    {u.userAgreements[0] ? (
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <StatusBadge status={u.userAgreements[0].status} map={{ SENT: "bg-blue-500/20 text-blue-300", SIGNED: "bg-emerald-500/20 text-emerald-300", GENERATED: "bg-purple-500/20 text-purple-300", DRAFT: "bg-white/10 text-white/40" }} />
-                          <span className="text-[10px] text-white/25">{u.userAgreements[0].agreementRef}</span>
-                        </div>
-                        {u.userAgreements[0].storageUrl && (
-                          <a
-                            href={u.userAgreements[0].storageUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[10px] text-blue-300/70 hover:text-blue-200"
-                          >
-                            View doc <ExternalLink size={9} />
-                          </a>
+              {filtered.map((u) => {
+                const busy = actionUserId === u.id;
+                return (
+                  <tr key={u.id} className={"border-b border-white/[0.04] transition-colors " + (u.isBlocked ? "bg-red-500/[0.04]" : u.isSuspended ? "bg-amber-500/[0.04]" : "hover:bg-white/[0.02]")}>
+                    <td className="px-4 py-3 text-sm font-medium text-white/80">{u.name ?? "—"}</td>
+                    <td className="px-4 py-3 text-xs text-white/40">{u.email ?? "—"}</td>
+                    <td className="px-4 py-3">
+                      <span className={"inline-block px-2 py-0.5 rounded-full text-xs font-medium " + (ROLE_COLORS[u.role] ?? "bg-white/10 text-white/40")}>
+                        {u.role}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {u.isBlocked ? (
+                        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/20 text-red-300">Blocked</span>
+                      ) : u.isSuspended ? (
+                        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300">Suspended</span>
+                      ) : (
+                        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300">Active</span>
+                      )}
+                      {u.blockedReason && <p className="text-[9px] text-red-300/50 mt-0.5 max-w-[120px] truncate">{u.blockedReason}</p>}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-white/40">
+                      {u.agencyAccount ? (
+                        <span className="text-blue-300/70">{u.agencyAccount.name}</span>
+                      ) : u.creatorProfile ? (
+                        <span className="text-emerald-300/70 capitalize">{u.creatorProfile.talentStatus}</span>
+                      ) : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-white/30">{new Date(u.createdAt).toLocaleDateString("en-GB")}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {/* Agreement regen */}
+                        <button onClick={() => regenerate(u.id)} disabled={busy || regenUserId === u.id}
+                          className="px-2 py-1 rounded-md text-xs bg-purple-500/15 text-purple-300 hover:bg-purple-500/25 transition-colors disabled:opacity-40">
+                          {regenUserId === u.id ? "…" : "Agreement"}
+                        </button>
+                        {/* Profile link */}
+                        {u.creatorProfile && (
+                          <a href={`/creators/${u.creatorProfile.id}`} target="_blank" rel="noopener noreferrer"
+                            className="px-2 py-1 rounded-md text-xs bg-white/[0.05] text-white/40 hover:bg-white/10 transition-colors">Profile</a>
                         )}
+                        {/* Suspend / Unsuspend */}
+                        {!u.isBlocked && (
+                          <button onClick={() => action(u.id, u.isSuspended ? "unsuspend" : "suspend")} disabled={busy}
+                            className={"px-2 py-1 rounded-md text-xs transition-colors disabled:opacity-40 " + (u.isSuspended ? "bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25" : "bg-amber-500/15 text-amber-300 hover:bg-amber-500/25")}>
+                            {busy ? "…" : u.isSuspended ? "Unsuspend" : "Suspend"}
+                          </button>
+                        )}
+                        {/* Block / Unblock */}
+                        {u.isBlocked ? (
+                          <button onClick={() => action(u.id, "unblock")} disabled={busy}
+                            className="px-2 py-1 rounded-md text-xs bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 transition-colors disabled:opacity-40">
+                            {busy ? "…" : "Unblock"}
+                          </button>
+                        ) : (
+                          <button onClick={() => {
+                            const reason = window.prompt("Block reason (optional):");
+                            if (reason !== null) action(u.id, "block", reason);
+                          }} disabled={busy}
+                            className="px-2 py-1 rounded-md text-xs bg-red-500/15 text-red-300 hover:bg-red-500/25 transition-colors disabled:opacity-40">
+                            {busy ? "…" : "Block"}
+                          </button>
+                        )}
+                        {/* Delete */}
+                        <button onClick={() => setConfirmDelete(u.id)} disabled={busy}
+                          className="px-2 py-1 rounded-md text-xs bg-red-500/20 text-red-400 hover:bg-red-500/35 border border-red-500/20 transition-colors disabled:opacity-40">
+                          Delete
+                        </button>
                       </div>
-                    ) : (
-                      <span className="text-white/25">No agreement</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-white/30">{new Date(u.createdAt).toLocaleDateString("en-GB")}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1">
-                      {u.agencyAccount && (
-                        <a href="/dashboard/campaigns" className="px-2 py-1 rounded-md text-xs bg-white/[0.05] text-white/40 hover:bg-white/10 transition-colors">Campaigns</a>
-                      )}
-                      {u.creatorProfile && (
-                        <a href={`/creators/${u.creatorProfile.id}`} target="_blank" rel="noopener noreferrer"
-                          className="px-2 py-1 rounded-md text-xs bg-white/[0.05] text-white/40 hover:bg-white/10 transition-colors">Profile</a>
-                      )}
-                      <button
-                        onClick={() => regenerate(u.id)}
-                        disabled={regenUserId === u.id}
-                        className="px-2 py-1 rounded-md text-xs bg-purple-500/15 text-purple-300 hover:bg-purple-500/25 transition-colors disabled:opacity-50"
-                      >
-                        {regenUserId === u.id ? "Generating..." : "Regenerate agreement"}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
               {filtered.length === 0 && (
                 <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-white/25">No users found.</td></tr>
               )}
@@ -778,6 +832,167 @@ function SparkLine({ data, color }: { data: number[]; color: string }) {
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible">
       <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
+  );
+}
+
+// ── Finance Tab ───────────────────────────────────────────────────────────────
+type FinanceSummary = {
+  totalInvoiced: number; paid: number; pending: number; overdue: number;
+  grossIn: number; grossOut: number; netRevenue: number;
+};
+type MonthlyRow = { label: string; gross: number; paid: number; invoiceCount: number };
+type FinanceInvoice = {
+  id: string; invoiceNumber: string; amount: number; currency: string; status: string;
+  createdAt: string; dueDate: string | null; paidAt: string | null;
+  campaign: { name: string } | null;
+  talent: { name: string };
+};
+
+function fmtAED(n: number) {
+  if (n >= 1000000) return `AED ${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `AED ${(n / 1000).toFixed(0)}K`;
+  return `AED ${n.toLocaleString()}`;
+}
+
+function FinanceStat({ label, value, accent, sub }: { label: string; value: string; accent?: string; sub?: string }) {
+  return (
+    <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] px-5 py-4">
+      <p className="text-[10px] font-medium uppercase tracking-widest text-white/30 mb-1.5">{label}</p>
+      <p className="text-[22px] font-light tabular-nums" style={{ color: accent ?? "rgba(255,255,255,0.85)" }}>{value}</p>
+      {sub && <p className="text-[10px] text-white/25 mt-1">{sub}</p>}
+    </div>
+  );
+}
+
+const INV_STATUS_COLORS: Record<string, string> = {
+  PAID: "bg-emerald-500/20 text-emerald-300",
+  PENDING: "bg-amber-500/20 text-amber-300",
+  OVERDUE: "bg-red-500/20 text-red-300",
+  CANCELLED: "bg-white/10 text-white/30",
+};
+
+function FinanceTab() {
+  const [summary, setSummary] = useState<FinanceSummary | null>(null);
+  const [monthly, setMonthly] = useState<MonthlyRow[]>([]);
+  const [invoices, setInvoices] = useState<FinanceInvoice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  useEffect(() => {
+    fetch("/api/admin/finance")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return;
+        setSummary(d.summary);
+        setMonthly(d.monthly ?? []);
+        setInvoices(d.invoices ?? []);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filteredInvoices = statusFilter === "all" ? invoices : invoices.filter(i => i.status === statusFilter);
+
+  if (loading) return <div className="text-center py-16 text-white/30 text-sm">Loading finance data…</div>;
+
+  return (
+    <div className="space-y-8">
+      {/* Top summary cards */}
+      {summary && (
+        <>
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-white/25 mb-3">Revenue</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <FinanceStat label="Gross Revenue" value={fmtAED(summary.grossIn)} accent="rgba(167,139,250,0.9)" sub="All completed credits" />
+              <FinanceStat label="Gross Expenses" value={fmtAED(summary.grossOut)} accent="rgba(251,191,36,0.8)" sub="All completed debits" />
+              <FinanceStat label="Net Revenue" value={fmtAED(summary.netRevenue)} accent={summary.netRevenue >= 0 ? "rgba(52,211,153,0.9)" : "rgba(239,68,68,0.9)"} sub="Gross in − gross out" />
+              <FinanceStat label="Total Invoiced" value={fmtAED(summary.totalInvoiced)} sub="All invoices, all statuses" />
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-white/25 mb-3">Invoice Status</p>
+            <div className="grid grid-cols-3 gap-3">
+              <FinanceStat label="Paid" value={fmtAED(summary.paid)} accent="rgba(52,211,153,0.9)" />
+              <FinanceStat label="Pending" value={fmtAED(summary.pending)} accent="rgba(251,191,36,0.8)" />
+              <FinanceStat label="Overdue" value={fmtAED(summary.overdue)} accent="rgba(239,68,68,0.9)" />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Monthly breakdown */}
+      {monthly.length > 0 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-widest text-white/25 mb-3">Monthly breakdown (last 6 months)</p>
+          <div className="rounded-2xl border border-white/[0.07] overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/[0.07]">
+                  {["Month", "Invoices", "Gross Billed", "Collected"].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-wider text-white/30">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {monthly.map(m => (
+                  <tr key={m.label} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                    <td className="px-4 py-3 text-sm text-white/70 font-medium">{m.label}</td>
+                    <td className="px-4 py-3 text-sm text-white/40">{m.invoiceCount}</td>
+                    <td className="px-4 py-3 text-sm text-white/70 tabular-nums">{fmtAED(m.gross)}</td>
+                    <td className="px-4 py-3 text-sm tabular-nums" style={{ color: m.paid > 0 ? "rgba(52,211,153,0.85)" : "rgba(255,255,255,0.25)" }}>{fmtAED(m.paid)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Invoice ledger */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[10px] uppercase tracking-widest text-white/25">Invoice ledger</p>
+          <div className="flex gap-1">
+            {["all", "PAID", "PENDING", "OVERDUE"].map(s => (
+              <button key={s} onClick={() => setStatusFilter(s)}
+                className={"px-3 py-1 rounded-lg text-[10px] font-medium transition-colors " + (statusFilter === s ? "bg-white/10 text-white" : "text-white/35 hover:text-white/60")}>
+                {s === "all" ? "All" : s.charAt(0) + s.slice(1).toLowerCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-white/[0.07] overflow-x-auto">
+          <table className="w-full min-w-[700px]">
+            <thead>
+              <tr className="border-b border-white/[0.07]">
+                {["Invoice #", "Creator", "Campaign", "Amount", "Status", "Due", "Paid", "Created"].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-wider text-white/30">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filteredInvoices.length === 0 ? (
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-white/25">No invoices found.</td></tr>
+              ) : filteredInvoices.map(inv => (
+                <tr key={inv.id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                  <td className="px-4 py-3 text-xs font-mono text-white/50">{inv.invoiceNumber}</td>
+                  <td className="px-4 py-3 text-xs text-white/70">{inv.talent.name}</td>
+                  <td className="px-4 py-3 text-xs text-white/40">{inv.campaign?.name ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs tabular-nums text-white/80 font-medium">AED {inv.amount.toLocaleString()}</td>
+                  <td className="px-4 py-3">
+                    <span className={"inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold " + (INV_STATUS_COLORS[inv.status] ?? "bg-white/10 text-white/40")}>
+                      {inv.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-white/30">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-GB") : "—"}</td>
+                  <td className="px-4 py-3 text-xs text-white/30">{inv.paidAt ? new Date(inv.paidAt).toLocaleDateString("en-GB") : "—"}</td>
+                  <td className="px-4 py-3 text-xs text-white/25">{new Date(inv.createdAt).toLocaleDateString("en-GB")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1018,11 +1233,12 @@ function IntegrationsTab() {
   );
 }
 
-type Tab = "overview" | "bookings" | "campaigns" | "talent" | "users" | "analytics" | "integrations" | "integrations-metrics";
+type Tab = "overview" | "bookings" | "campaigns" | "talent" | "users" | "analytics" | "finance" | "integrations" | "integrations-metrics";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "overview",   label: "Overview",   icon: <LayoutDashboard size={14} /> },
   { id: "analytics",  label: "Analytics",  icon: <TrendingUp size={14} /> },
+  { id: "finance",    label: "Finance",    icon: <TrendingUp size={14} /> },
   { id: "bookings",   label: "Bookings",   icon: <BookOpen size={14} /> },
   { id: "campaigns",  label: "Campaigns",  icon: <Megaphone size={14} /> },
   { id: "talent",     label: "Talent",     icon: <UserCheck size={14} /> },
@@ -1093,6 +1309,7 @@ export default function AdminDashboardClient({ creators }: { creators: Creator[]
       <div className="max-w-7xl mx-auto px-6 py-8">
         {tab === "overview"   && <OverviewTab stats={stats} loading={statsLoading} />}
         {tab === "analytics"  && <AnalyticsTab />}
+        {tab === "finance"    && <FinanceTab />}
         {tab === "bookings"   && <BookingsTab />}
         {tab === "campaigns"  && <CampaignsTab />}
         {tab === "talent"     && <TalentTab initialCreators={creators} />}
