@@ -48,6 +48,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={clsx(inter.className, inter.variable)}>
+      <head>
+        {/* Hotjar Heatmaps & Session Recording */}
+        <Script
+          src="https://t.contentsquare.net/uxa/d97ebb000b436.js"
+          strategy="afterInteractive"
+        />
+      </head>
       <body className="bg-[#0B0F14] text-white antialiased font-sans">
         {/* Google Ads tag — AW-18060432585 */}
         <Script
