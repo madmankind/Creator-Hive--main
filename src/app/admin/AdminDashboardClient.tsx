@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   LayoutDashboard, BookOpen, Megaphone, Users, UserCheck,
   CheckCircle2, XCircle, ArrowRight, RefreshCw,
@@ -53,7 +54,8 @@ type Creator = {
   id: string; name: string; displayName: string | null; instagram: string | null;
   location: string | null; skills: string[]; qualityScore: number | null;
   talentStatus: string; source: string | null; isVerified: boolean;
-  isActive: boolean; avatarUrl: string | null; bio: string | null; createdAt: Date | string;
+  isActive: boolean; avatarUrl: string | null; bio: string | null;
+  createdAt: Date | string; primaryRole?: string | null;
 };
 
 type AppUser = {
@@ -362,12 +364,272 @@ function BookingsTab() {
   );
 }
 
+// ── Campaign Manage Drawer ─────────────────────────────────────────────────
+type CampaignDetail = {
+  id: string; title: string; status: string;
+  agency: { name: string; user?: { id: string; name: string; email: string } | null };
+  talents: { id: string; talentId: string; status: string; rate: number | null; notes: string | null; talent: { id: string; name: string; instagram: string | null; avatarUrl: string | null; skills: string[]; primaryRole: string | null } }[];
+};
+type DrawerMsg = { id: string; content: string; senderId: string; createdAt: string; sender: { name: string | null; avatarUrl: string | null } };
+
+function CampaignDrawer({ campaignId, onClose, allTalent }: { campaignId: string; onClose: () => void; allTalent: Creator[] }) {
+  const [detail, setDetail] = useState<CampaignDetail | null>(null);
+  const [msgs, setMsgs] = useState<DrawerMsg[]>([]);
+  const [pane, setPane] = useState<"talent" | "messages">("talent");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msgText, setMsgText] = useState("");
+  const [replaceTarget, setReplaceTarget] = useState<string | null>(null);
+  const [replaceSearch, setReplaceSearch] = useState("");
+  const [replaceReason, setReplaceReason] = useState("");
+  const [addSearch, setAddSearch] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+  const [addRate, setAddRate] = useState("");
+
+  const loadDetail = useCallback(() => {
+    fetch(`/api/admin/campaigns/${campaignId}/talent`).then(r => r.json()).then(d => setDetail(d.campaign ?? null));
+  }, [campaignId]);
+  const loadMsgs = useCallback(() => {
+    fetch(`/api/admin/campaigns/${campaignId}/messages`).then(r => r.json()).then(d => setMsgs(d.messages ?? []));
+  }, [campaignId]);
+
+  useEffect(() => { loadDetail(); loadMsgs(); }, [loadDetail, loadMsgs]);
+
+  const doReplace = async (talentId: string) => {
+    if (!replaceTarget) return;
+    setBusy("replace-" + talentId);
+    await fetch(`/api/admin/campaigns/${campaignId}/talent/${talentId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "replace", replacementTalentId: replaceTarget, reason: replaceReason }),
+    });
+    setReplaceTarget(null); setReplaceReason(""); setBusy(null); loadDetail();
+  };
+
+  const doRemove = async (talentId: string) => {
+    if (!confirm("Remove this talent from the campaign?")) return;
+    setBusy("remove-" + talentId);
+    const reason = window.prompt("Reason (optional):") ?? "";
+    await fetch(`/api/admin/campaigns/${campaignId}/talent/${talentId}`, {
+      method: "DELETE", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+    setBusy(null); loadDetail();
+  };
+
+  const doAdd = async (talentId: string) => {
+    setBusy("add-" + talentId);
+    await fetch(`/api/admin/campaigns/${campaignId}/talent`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ talentId, rate: addRate ? parseInt(addRate) : null }),
+    });
+    setShowAdd(false); setAddSearch(""); setAddRate(""); setBusy(null); loadDetail();
+  };
+
+  const doStatus = async (talentId: string, status: string) => {
+    setBusy("status-" + talentId);
+    await fetch(`/api/admin/campaigns/${campaignId}/talent/${talentId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    setBusy(null); loadDetail();
+  };
+
+  const sendMsg = async () => {
+    if (!msgText.trim()) return;
+    const recipientUserId = detail?.agency?.user?.id ?? null;
+    await fetch(`/api/admin/campaigns/${campaignId}/messages`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: msgText, recipientUserId, targetType: "client" }),
+    });
+    setMsgText(""); loadMsgs();
+  };
+
+  const filteredTalent = allTalent.filter(t =>
+    (replaceSearch ? (t.name.toLowerCase().includes(replaceSearch.toLowerCase()) || (t.instagram ?? "").toLowerCase().includes(replaceSearch.toLowerCase())) : true) &&
+    !detail?.talents.find(dt => dt.talentId === t.id && dt.status !== "CANCELLED")
+  );
+  const addableTalent = allTalent.filter(t =>
+    (addSearch ? (t.name.toLowerCase().includes(addSearch.toLowerCase()) || (t.primaryRole ?? "").toLowerCase().includes(addSearch.toLowerCase())) : true) &&
+    !detail?.talents.find(dt => dt.talentId === t.id && dt.status !== "CANCELLED")
+  );
+
+  const TALENT_STATUS_OPS: Record<string, string[]> = {
+    ASSIGNED: ["IN_PROGRESS", "CANCELLED"],
+    IN_PROGRESS: ["COMPLETED", "CANCELLED"],
+    COMPLETED: [],
+    CANCELLED: ["ASSIGNED"],
+  };
+
+  const inputCls = "w-full rounded-xl px-3 py-2 text-[12px] bg-white/[0.04] border border-white/[0.08] text-white/80 outline-none placeholder:text-white/25 focus:border-purple-500/40 transition-colors";
+
+  return (
+    <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 30, stiffness: 280 }}
+      className="fixed top-0 right-0 h-full w-[480px] z-50 border-l border-white/[0.07] overflow-y-auto flex flex-col"
+      style={{ background: "#0A0A10" }}>
+      {/* Header */}
+      <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]" style={{ background: "#0A0A10" }}>
+        <div>
+          <p className="text-[13px] font-semibold text-white/85 truncate max-w-[300px]">{detail?.title ?? "Campaign"}</p>
+          <p className="text-[10px] text-white/30 mt-0.5">{detail?.agency?.name ?? "—"} · {detail?.talents?.length ?? 0} talent</p>
+        </div>
+        <button onClick={onClose} className="text-white/30 hover:text-white/70 transition-colors text-lg leading-none">✕</button>
+      </div>
+
+      {/* Pane toggle */}
+      <div className="flex border-b border-white/[0.06]">
+        {(["talent", "messages"] as const).map(p => (
+          <button key={p} onClick={() => setPane(p)}
+            className={"flex-1 py-2.5 text-[11px] font-medium transition-colors capitalize " + (pane === p ? "text-white border-b-2 border-purple-400" : "text-white/35 hover:text-white/60")}>
+            {p === "talent" ? "Talent" : "Messages"}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1 px-5 py-4 space-y-4">
+        {pane === "talent" && (
+          <>
+            {/* Active talent */}
+            {(detail?.talents ?? []).filter(t => t.status !== "CANCELLED").map(t => (
+              <div key={t.id} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0 text-xs text-purple-300 font-semibold">
+                    {t.talent.name.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[13px] font-medium text-white/80">{t.talent.name}</p>
+                      <span className={"text-[9px] px-1.5 py-0.5 rounded-full font-medium " + (t.status === "IN_PROGRESS" ? "bg-blue-500/20 text-blue-300" : t.status === "COMPLETED" ? "bg-emerald-500/20 text-emerald-300" : "bg-white/10 text-white/40")}>{t.status}</span>
+                    </div>
+                    <p className="text-[10px] text-white/35 mt-0.5">{t.talent.primaryRole ?? (t.talent.skills[0] ?? "Creator")}{t.talent.instagram ? ` · @${t.talent.instagram}` : ""}</p>
+                    {t.rate && <p className="text-[10px] text-purple-300/60 mt-0.5">AED {t.rate.toLocaleString()}/day</p>}
+                    {t.notes && <p className="text-[10px] text-white/25 mt-1 italic">{t.notes}</p>}
+                  </div>
+                </div>
+                {/* Actions */}
+                {replaceTarget === null ? (
+                  <div className="flex gap-1.5 mt-3 flex-wrap">
+                    {(TALENT_STATUS_OPS[t.status] ?? []).map(s => (
+                      <button key={s} onClick={() => doStatus(t.talentId, s)} disabled={busy === "status-" + t.talentId}
+                        className="px-2.5 py-1 rounded-lg text-[10px] bg-white/[0.06] text-white/50 hover:bg-white/10 hover:text-white/80 transition-colors disabled:opacity-40">
+                        → {s.replace("_", " ").toLowerCase()}
+                      </button>
+                    ))}
+                    <button onClick={() => { setReplaceTarget(""); setReplaceSearch(""); }}
+                      className="px-2.5 py-1 rounded-lg text-[10px] bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 transition-colors">
+                      Replace
+                    </button>
+                    <button onClick={() => doRemove(t.talentId)} disabled={busy === "remove-" + t.talentId}
+                      className="px-2.5 py-1 rounded-lg text-[10px] bg-red-500/15 text-red-300 hover:bg-red-500/25 transition-colors disabled:opacity-40">
+                      {busy === "remove-" + t.talentId ? "…" : "Remove"}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-[10px] text-amber-300/80 font-medium">Replacing {t.talent.name} — pick replacement:</p>
+                    <input className={inputCls} placeholder="Search talent…" value={replaceSearch} onChange={e => setReplaceSearch(e.target.value)} />
+                    <div className="max-h-[160px] overflow-y-auto space-y-1 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2">
+                      {filteredTalent.slice(0, 10).map(ft => (
+                        <button key={ft.id} onClick={() => setReplaceTarget(ft.id)}
+                          className={"w-full text-left px-3 py-2 rounded-lg text-[11px] transition-colors " + (replaceTarget === ft.id ? "bg-purple-500/20 text-purple-300" : "text-white/60 hover:bg-white/[0.05]")}>
+                          {ft.name} {ft.primaryRole ? `· ${ft.primaryRole}` : ""} {ft.instagram ? `· @${ft.instagram}` : ""}
+                        </button>
+                      ))}
+                      {filteredTalent.length === 0 && <p className="text-[10px] text-white/25 px-2 py-1">No matches</p>}
+                    </div>
+                    <input className={inputCls} placeholder="Reason (shown to client + talent)…" value={replaceReason} onChange={e => setReplaceReason(e.target.value)} />
+                    <div className="flex gap-2">
+                      <button onClick={() => doReplace(t.talentId)} disabled={!replaceTarget || busy === "replace-" + t.talentId}
+                        className="flex-1 py-2 rounded-xl text-[11px] bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 disabled:opacity-40 transition-colors">
+                        {busy === "replace-" + t.talentId ? "Replacing…" : "Confirm replacement"}
+                      </button>
+                      <button onClick={() => setReplaceTarget(null)} className="px-3 py-2 rounded-xl text-[11px] bg-white/[0.05] text-white/40 hover:bg-white/10 transition-colors">Cancel</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Cancelled/removed */}
+            {(detail?.talents ?? []).filter(t => t.status === "CANCELLED").length > 0 && (
+              <div>
+                <p className="text-[9px] uppercase tracking-widest text-white/20 mb-2">Removed / cancelled</p>
+                {(detail?.talents ?? []).filter(t => t.status === "CANCELLED").map(t => (
+                  <div key={t.id} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.015] border border-white/[0.04] opacity-50 mb-1">
+                    <p className="text-[11px] text-white/40 line-through">{t.talent.name}</p>
+                    <span className="text-[9px] text-red-300/60">cancelled</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add talent */}
+            {!showAdd ? (
+              <button onClick={() => setShowAdd(true)}
+                className="w-full py-2.5 rounded-2xl border border-dashed border-white/[0.10] text-[11px] text-white/35 hover:border-purple-500/40 hover:text-purple-300 transition-colors">
+                + Add talent to campaign
+              </button>
+            ) : (
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 space-y-3">
+                <p className="text-[11px] text-white/60 font-medium">Add talent</p>
+                <input className={inputCls} placeholder="Search by name or role…" value={addSearch} onChange={e => setAddSearch(e.target.value)} />
+                <input type="number" className={inputCls} placeholder="Day rate (AED, optional)" value={addRate} onChange={e => setAddRate(e.target.value)} />
+                <div className="max-h-[200px] overflow-y-auto space-y-1 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2">
+                  {addableTalent.slice(0, 12).map(ft => (
+                    <div key={ft.id} className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-colors">
+                      <div>
+                        <p className="text-[11px] text-white/70">{ft.name}</p>
+                        <p className="text-[9px] text-white/30">{ft.primaryRole ?? (ft.skills?.[0] ?? "Creator")}{ft.instagram ? ` · @${ft.instagram}` : ""}</p>
+                      </div>
+                      <button onClick={() => doAdd(ft.id)} disabled={busy === "add-" + ft.id}
+                        className="px-2.5 py-1 rounded-lg text-[10px] bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-40 transition-colors">
+                        {busy === "add-" + ft.id ? "…" : "Add"}
+                      </button>
+                    </div>
+                  ))}
+                  {addableTalent.length === 0 && <p className="text-[10px] text-white/25 px-2 py-1">No available talent</p>}
+                </div>
+                <button onClick={() => { setShowAdd(false); setAddSearch(""); }} className="text-[10px] text-white/30 hover:text-white/60 transition-colors">Cancel</button>
+              </div>
+            )}
+          </>
+        )}
+
+        {pane === "messages" && (
+          <div className="flex flex-col gap-3 h-full">
+            <div className="flex-1 space-y-2 max-h-[520px] overflow-y-auto">
+              {msgs.length === 0 && <p className="text-[11px] text-white/25 text-center py-8">No messages yet</p>}
+              {msgs.map(m => (
+                <div key={m.id} className="rounded-xl bg-white/[0.03] border border-white/[0.05] px-3.5 py-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-medium text-purple-300/70">{m.sender?.name ?? "Admin"}</span>
+                    <span className="text-[9px] text-white/20">{new Date(m.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                  </div>
+                  <p className="text-[12px] text-white/65 leading-relaxed">{m.content}</p>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-2 pt-2 border-t border-white/[0.06]">
+              <p className="text-[9px] uppercase tracking-widest text-white/25">Message to client</p>
+              <textarea className={inputCls + " resize-none"} rows={3} placeholder="Write a message to the client…" value={msgText} onChange={e => setMsgText(e.target.value)} />
+              <button onClick={sendMsg} disabled={!msgText.trim()}
+                className="w-full py-2.5 rounded-xl text-[12px] bg-purple-500/20 text-purple-300 border border-purple-500/25 hover:bg-purple-500/30 disabled:opacity-40 transition-colors">
+                Send message
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 function CampaignsTab() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [acting, setActing] = useState<string | null>(null);
+  const [managingId, setManagingId] = useState<string | null>(null);
+  const [allTalentForDrawer, setAllTalentForDrawer] = useState<Creator[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -385,6 +647,11 @@ function CampaignsTab() {
   }, [statusFilter]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Load all active talent for drawer pickers
+  useEffect(() => {
+    fetch("/api/admin/talent").then(r => r.ok ? r.json() : { creators: [] }).then(d => setAllTalentForDrawer(d.creators ?? []));
+  }, []);
 
   async function updateCampaignStatus(id: string, status: string) {
     setActing(id);
@@ -510,6 +777,10 @@ function CampaignsTab() {
                       className="ml-auto flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs text-white/40 hover:text-white/70 border border-white/[0.07] transition-colors">
                       Open campaign <ExternalLink size={10} />
                     </a>
+                    <button onClick={() => setManagingId(c.id)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs text-purple-300/70 hover:text-purple-300 border border-purple-500/20 hover:border-purple-500/40 transition-colors">
+                      Manage →
+                    </button>
                   </div>
                 </div>
               )}
@@ -517,6 +788,18 @@ function CampaignsTab() {
           ))}
         </div>
       )}
+
+      {/* Campaign manage drawer */}
+      <AnimatePresence>
+        {managingId && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+              onClick={() => setManagingId(null)} />
+            <CampaignDrawer campaignId={managingId} allTalent={allTalentForDrawer} onClose={() => setManagingId(null)} />
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

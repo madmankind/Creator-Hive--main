@@ -5,6 +5,7 @@ import { BarChart3, Users, CreditCard, Home } from "lucide-react";
 import { feyTokens } from "@/lib/fey-design-tokens";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
+import { NotificationBell } from "@/components/NotificationBell";
 
 function BottomDockInner() {
   const router = useRouter();
@@ -180,6 +181,12 @@ function BottomDockInner() {
           </svg>
           <span className="mt-0.5 text-[10px] font-medium">Hive</span>
         </button>
+        {/* Notification Bell */}
+        {session?.user && (
+          <div style={{ pointerEvents: "auto" }}>
+            <NotificationBell />
+          </div>
+        )}
       </div>
     </div>
   );
