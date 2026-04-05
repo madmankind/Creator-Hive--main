@@ -996,6 +996,371 @@ function FinanceTab() {
   );
 }
 
+// ── Health Monitor Tab ─────────────────────────────────────────────────────
+function HealthTab() {
+  const [data, setData] = useState<Record<string,unknown>|null>(null);
+  const [loading, setLoading] = useState(true);
+  const load = () => { setLoading(true); fetch("/api/admin/health").then(r=>r.json()).then(setData).finally(()=>setLoading(false)); };
+  useEffect(() => { load(); }, []);
+  const pill = (ok: boolean, yes: string, no: string) => (
+    <span className={"inline-block px-2 py-0.5 rounded-full text-xs font-semibold " + (ok ? "bg-emerald-500/20 text-emerald-300" : "bg-red-500/20 text-red-300")}>{ok ? yes : no}</span>
+  );
+  if (loading) return <div className="text-center py-16 text-white/30 text-sm">Checking platform health…</div>;
+  const s = data?.stats as Record<string,number> ?? {};
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] px-5 py-4">
+          <p className="text-[10px] uppercase tracking-widest text-white/30 mb-2">Database</p>
+          {pill(data?.db === "healthy", "Healthy", "Error")}
+        </div>
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] px-5 py-4">
+          <p className="text-[10px] uppercase tracking-widest text-white/30 mb-2">Email (Resend)</p>
+          {pill(data?.email === "verified", "Verified", "Unverified")}
+        </div>
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] px-5 py-4">
+          <p className="text-[10px] uppercase tracking-widest text-white/30 mb-2">AI Searches Today</p>
+          <p className="text-[22px] font-light text-white/80">{s.aiSearchesToday ?? 0}</p>
+        </div>
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] px-5 py-4">
+          <p className="text-[10px] uppercase tracking-widest text-white/30 mb-2">Pending Reviews</p>
+          <p className="text-[22px] font-light text-amber-300">{(s.pendingTalent ?? 0) + (s.pendingBookings ?? 0)}</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {([["Users", s.userCount],["Bookings", s.bookingCount],["Campaigns", s.campaignCount],["Invoices", s.invoiceCount]] as [string, number][]).map(([l,v])=>(
+          <div key={String(l)} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] px-5 py-4">
+            <p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">{l}</p>
+            <p className="text-[22px] font-light text-white/70">{v ?? 0}</p>
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-end">
+        <button onClick={load} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.06] text-xs text-white/50 hover:bg-white/10 transition-colors">
+          <RefreshCw size={11} /> Refresh
+        </button>
+      </div>
+      <p className="text-[10px] text-white/20">Last checked: {data?.timestamp ? new Date(data.timestamp as string).toLocaleTimeString() : "—"}</p>
+    </div>
+  );
+}
+
+// ── AI Usage Monitor Tab ───────────────────────────────────────────────────
+function AiUsageTab() {
+  const [data, setData] = useState<Record<string,unknown>|null>(null);
+  const [loading, setLoading] = useState(true);
+  const [days, setDays] = useState(7);
+  const load = (d=days) => { setLoading(true); fetch(`/api/admin/ai-usage?days=${d}`).then(r=>r.json()).then(setData).finally(()=>setLoading(false)); };
+  useEffect(() => { load(); }, []);
+  if (loading) return <div className="text-center py-16 text-white/30 text-sm">Loading AI usage…</div>;
+  const byDay = data?.byDay as Record<string,number> ?? {};
+  const topUsers = data?.topUsers as {id:string;name:string;email:string;total:number}[] ?? [];
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="grid grid-cols-3 gap-3 flex-1">
+          {([["Total Searches", data?.totalSearches],["Authenticated",Number(data?.totalSearches??0)-Number(data?.anonSearches??0)],["Anonymous", data?.anonSearches]] as [string, number][]).map(([l,v])=>(
+            <div key={l} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] px-5 py-4">
+              <p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">{l}</p>
+              <p className="text-[22px] font-light text-white/80">{v ?? 0}</p>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-1 ml-4">
+          {[7,14,30].map(d=>(
+            <button key={d} onClick={()=>{setDays(d);load(d);}} className={"px-3 py-1.5 rounded-lg text-xs font-medium transition-colors "+(days===d?"bg-white/10 text-white":"text-white/40 hover:text-white/70")}>{d}d</button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <p className="text-[10px] uppercase tracking-widest text-white/25 mb-3">Daily breakdown</p>
+        <div className="rounded-2xl border border-white/[0.07] overflow-hidden">
+          <table className="w-full">
+            <thead><tr className="border-b border-white/[0.07]">{["Date","Searches"].map(h=><th key={h} className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-wider text-white/30">{h}</th>)}</tr></thead>
+            <tbody>
+              {Object.entries(byDay).sort(([a],[b])=>b.localeCompare(a)).map(([day,count])=>(
+                <tr key={day} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                  <td className="px-4 py-3 text-xs text-white/60">{day}</td>
+                  <td className="px-4 py-3 text-xs text-white/80 tabular-nums font-medium">{count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {topUsers.length > 0 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-widest text-white/25 mb-3">Top users by search volume</p>
+          <div className="rounded-2xl border border-white/[0.07] overflow-hidden">
+            <table className="w-full">
+              <thead><tr className="border-b border-white/[0.07]">{["User","Email","Searches"].map(h=><th key={h} className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-wider text-white/30">{h}</th>)}</tr></thead>
+              <tbody>
+                {topUsers.map(u=>(
+                  <tr key={u.id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                    <td className="px-4 py-3 text-xs text-white/70">{u.name}</td>
+                    <td className="px-4 py-3 text-xs text-white/40">{u.email}</td>
+                    <td className="px-4 py-3 text-xs font-semibold tabular-nums" style={{color:"rgba(167,139,250,0.9)"}}>{u.total}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Broadcast Tab ─────────────────────────────────────────────────────────
+const SEGMENTS = [
+  {id:"all",label:"All users"},
+  {id:"clients",label:"Clients only"},
+  {id:"talent",label:"Talent only"},
+  {id:"pending_talent",label:"Pending talent"},
+  {id:"no_booking",label:"Clients without bookings"},
+];
+function BroadcastTab() {
+  const [segment, setSegment] = useState("clients");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{sent:number;total:number}|null>(null);
+  const send = async () => {
+    if (!subject.trim() || !message.trim()) return alert("Subject and message required");
+    if (!confirm(`Send to "${SEGMENTS.find(s=>s.id===segment)?.label}"? This cannot be undone.`)) return;
+    setSending(true); setResult(null);
+    const res = await fetch("/api/admin/broadcast",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({segment,subject,message})});
+    const d = await res.json();
+    setResult(d); setSending(false);
+    if (d.ok) { setSubject(""); setMessage(""); }
+  };
+  return (
+    <div className="max-w-2xl space-y-5">
+      <p className="text-[12px] text-white/40">Send a direct email to a segment of users. Sent via Resend from hello@creatorhive.ae.</p>
+      {result && (
+        <div className={"rounded-xl px-4 py-3 text-sm "+(result.sent>0?"bg-emerald-500/15 text-emerald-300 border border-emerald-500/25":"bg-red-500/15 text-red-300 border border-red-500/25")}>
+          {result.sent > 0 ? `✓ Sent to ${result.sent} of ${result.total} recipients` : "No recipients found in this segment"}
+        </div>
+      )}
+      <div>
+        <p className="text-[10px] uppercase tracking-widest text-white/30 mb-2">Segment</p>
+        <div className="flex flex-wrap gap-2">
+          {SEGMENTS.map(s=>(
+            <button key={s.id} onClick={()=>setSegment(s.id)} className={"px-3 py-1.5 rounded-lg text-xs font-medium transition-colors "+(segment===s.id?"bg-purple-500/20 text-purple-300 ring-1 ring-purple-500/40":"bg-white/[0.05] text-white/40 hover:text-white/70")}>{s.label}</button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <p className="text-[10px] uppercase tracking-widest text-white/30 mb-2">Subject</p>
+        <input value={subject} onChange={e=>setSubject(e.target.value)} placeholder="Email subject line…"
+          className="w-full rounded-xl px-4 py-2.5 text-sm bg-white/[0.04] border border-white/[0.08] text-white/80 outline-none placeholder:text-white/20"/>
+      </div>
+      <div>
+        <p className="text-[10px] uppercase tracking-widest text-white/30 mb-2">Message</p>
+        <textarea value={message} onChange={e=>setMessage(e.target.value)} rows={8} placeholder="Write your message…"
+          className="w-full rounded-xl px-4 py-2.5 text-sm bg-white/[0.04] border border-white/[0.08] text-white/80 outline-none placeholder:text-white/20 resize-none"/>
+      </div>
+      <button onClick={send} disabled={sending||!subject.trim()||!message.trim()}
+        className="px-6 py-2.5 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 text-sm font-medium hover:bg-purple-500/30 transition-colors disabled:opacity-40">
+        {sending ? "Sending…" : "Send broadcast"}
+      </button>
+    </div>
+  );
+}
+
+// ── Talent Approval Tab ───────────────────────────────────────────────────
+function TalentApprovalTab() {
+  const [creators, setCreators] = useState<Creator[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string|null>(null);
+  const load = () => { setLoading(true); fetch("/api/admin/talent").then(r=>r.ok?r.json():{creators:[]}).then(d=>setCreators(d.creators??[])).finally(()=>setLoading(false)); };
+  useEffect(()=>{load();},[]);
+  const approve = async (id:string) => {
+    setBusy(id);
+    await fetch(`/api/admin/talent/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({talentStatus:"active",isActive:true})});
+    setBusy(null); load();
+  };
+  const reject = async (id:string) => {
+    const reason = window.prompt("Rejection reason (sent to talent):");
+    if (reason === null) return;
+    setBusy(id);
+    await fetch(`/api/admin/talent/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({talentStatus:"rejected",isActive:false})});
+    setBusy(null); load();
+  };
+  const pending = creators.filter(c=>c.talentStatus==="pending");
+  if (loading) return <div className="text-center py-16 text-white/30 text-sm">Loading…</div>;
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-[12px] text-white/40">{pending.length} creator{pending.length!==1?"s":""} awaiting approval</p>
+        <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.05] text-xs text-white/40 hover:bg-white/10 transition-colors"><RefreshCw size={11}/>Refresh</button>
+      </div>
+      {pending.length === 0 ? <div className="text-center py-16 text-white/25 text-sm">All caught up — no pending talent.</div> : (
+        <div className="rounded-2xl border border-white/[0.07] overflow-hidden">
+          <table className="w-full">
+            <thead><tr className="border-b border-white/[0.07]">{["Creator","Instagram","Location","Skills","Score","Actions"].map(h=><th key={h} className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-wider text-white/30">{h}</th>)}</tr></thead>
+            <tbody>
+              {pending.map(c=>(
+                <tr key={c.id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                  <td className="px-4 py-3"><p className="text-sm font-medium text-white/80">{c.name}</p><p className="text-[10px] text-white/30 mt-0.5">{c.createdAt ? new Date(c.createdAt).toLocaleDateString("en-GB") : "—"}</p></td>
+                  <td className="px-4 py-3 text-xs text-white/40">{c.instagram ? `@${c.instagram}` : "—"}</td>
+                  <td className="px-4 py-3 text-xs text-white/40">{c.location ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs text-white/40">{(c.skills??[]).slice(0,3).join(", ") || "—"}</td>
+                  <td className="px-4 py-3 text-xs text-white/40">{c.qualityScore ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1.5">
+                      {c.instagram && <a href={`https://instagram.com/${c.instagram}`} target="_blank" rel="noopener noreferrer" className="px-2 py-1 rounded-md text-xs bg-white/[0.05] text-white/40 hover:bg-white/10 transition-colors">View IG</a>}
+                      <button onClick={()=>approve(c.id)} disabled={busy===c.id} className="px-2 py-1 rounded-md text-xs bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 transition-colors disabled:opacity-40">{busy===c.id?"…":"Approve"}</button>
+                      <button onClick={()=>reject(c.id)} disabled={busy===c.id} className="px-2 py-1 rounded-md text-xs bg-red-500/15 text-red-300 hover:bg-red-500/25 transition-colors disabled:opacity-40">{busy===c.id?"…":"Reject"}</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Payouts Tab ────────────────────────────────────────────────────────────
+function PayoutsTab() {
+  const [payouts, setPayouts] = useState<Record<string,unknown>[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string|null>(null);
+  const load = () => { setLoading(true); fetch("/api/admin/payouts").then(r=>r.json()).then(d=>{setPayouts(d.payouts??[]);setTotal(d.totalPending??0);}).finally(()=>setLoading(false)); };
+  useEffect(()=>{load();},[]);
+  const act = async (id:string, action:string) => {
+    setBusy(id);
+    await fetch("/api/admin/payouts",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,action})});
+    setBusy(null); load();
+  };
+  if (loading) return <div className="text-center py-16 text-white/30 text-sm">Loading payouts…</div>;
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] px-5 py-3 inline-block">
+          <p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">Total pending payouts</p>
+          <p className="text-[20px] font-light text-amber-300">AED {total.toLocaleString()}</p>
+        </div>
+        <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.05] text-xs text-white/40 hover:bg-white/10 transition-colors"><RefreshCw size={11}/>Refresh</button>
+      </div>
+      {payouts.length === 0 ? <div className="text-center py-16 text-white/25 text-sm">No pending payouts.</div> : (
+        <div className="rounded-2xl border border-white/[0.07] overflow-x-auto">
+          <table className="w-full min-w-[700px]">
+            <thead><tr className="border-b border-white/[0.07]">{["Creator","User","Amount","Type","Date","Actions"].map(h=><th key={h} className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-wider text-white/30">{h}</th>)}</tr></thead>
+            <tbody>
+              {payouts.map((p)=>{
+                const creator = p.creator as Record<string,string>|null;
+                const user = p.user as Record<string,string>|null;
+                return (
+                  <tr key={p.id as string} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                    <td className="px-4 py-3 text-xs text-white/70">{creator?.name ?? "—"}</td>
+                    <td className="px-4 py-3 text-xs text-white/40">{user?.email ?? "—"}</td>
+                    <td className="px-4 py-3 text-xs font-semibold tabular-nums text-white/80">AED {(p.amount as number).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-xs text-white/40">{p.type as string}</td>
+                    <td className="px-4 py-3 text-xs text-white/30">{new Date(p.createdAt as string).toLocaleDateString("en-GB")}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1.5">
+                        <button onClick={()=>act(p.id as string,"approve")} disabled={busy===p.id} className="px-2 py-1 rounded-md text-xs bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-40 transition-colors">{busy===p.id?"…":"Approve"}</button>
+                        <button onClick={()=>act(p.id as string,"reject")} disabled={busy===p.id} className="px-2 py-1 rounded-md text-xs bg-red-500/15 text-red-300 hover:bg-red-500/25 disabled:opacity-40 transition-colors">{busy===p.id?"…":"Reject"}</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Booking Orders Tab ─────────────────────────────────────────────────────
+function BookingOrdersTab() {
+  const [orders, setOrders] = useState<Record<string,unknown>[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ORD_STATUS: Record<string,string> = {DRAFT:"bg-white/10 text-white/40",SENT:"bg-blue-500/20 text-blue-300",CONFIRMED:"bg-emerald-500/20 text-emerald-300",CANCELLED:"bg-red-500/20 text-red-300"};
+  useEffect(()=>{ fetch("/api/admin/booking-orders").then(r=>r.json()).then(d=>setOrders(d.orders??[])).finally(()=>setLoading(false)); },[]);
+  if (loading) return <div className="text-center py-16 text-white/30 text-sm">Loading booking orders…</div>;
+  return (
+    <div className="space-y-4">
+      <p className="text-[12px] text-white/40">{orders.length} booking order{orders.length!==1?"s":""}</p>
+      {orders.length === 0 ? <div className="text-center py-16 text-white/25 text-sm">No booking orders yet.</div> : (
+        <div className="rounded-2xl border border-white/[0.07] overflow-x-auto">
+          <table className="w-full min-w-[800px]">
+            <thead><tr className="border-b border-white/[0.07]">{["Order Ref","Client","Company","Budget","Status","PDF","Created"].map(h=><th key={h} className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-wider text-white/30">{h}</th>)}</tr></thead>
+            <tbody>
+              {orders.map(o=>(
+                <tr key={o.id as string} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                  <td className="px-4 py-3 text-xs font-mono text-purple-300/70">{o.orderRef as string}</td>
+                  <td className="px-4 py-3 text-xs text-white/70">{o.clientName as string}<br/><span className="text-white/35">{o.clientEmail as string}</span></td>
+                  <td className="px-4 py-3 text-xs text-white/40">{o.clientCompany as string ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs tabular-nums text-white/70">AED {(o.totalAed as number).toLocaleString()}</td>
+                  <td className="px-4 py-3"><span className={"inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold "+(ORD_STATUS[o.status as string]??"bg-white/10 text-white/40")}>{o.status as string}</span></td>
+                  <td className="px-4 py-3">{o.pdfPublicUrl ? <a href={o.pdfPublicUrl as string} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-300/70 hover:text-blue-300 transition-colors"><FileText size={11}/>Download</a> : <span className="text-xs text-white/25">—</span>}</td>
+                  <td className="px-4 py-3 text-xs text-white/30">{new Date(o.createdAt as string).toLocaleDateString("en-GB")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Waitlist Tab ───────────────────────────────────────────────────────────
+function WaitlistTab() {
+  const [users, setUsers] = useState<Record<string,unknown>[]>([]);
+  const [count, setCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  useEffect(()=>{ fetch("/api/admin/waitlist").then(r=>r.json()).then(d=>{setUsers(d.waitlist??[]);setCount(d.count??0);}).finally(()=>setLoading(false)); },[]);
+  if (loading) return <div className="text-center py-16 text-white/30 text-sm">Loading waitlist…</div>;
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[22px] font-light text-white/80">{count} <span className="text-[14px] font-normal text-white/40">clients haven{"'"}t booked yet</span></p>
+          <p className="text-[11px] text-white/25 mt-0.5">Use Broadcast tab to re-engage this segment</p>
+        </div>
+      </div>
+      {users.length === 0 ? <div className="text-center py-16 text-white/25 text-sm">Everyone has booked! 🎉</div> : (
+        <div className="rounded-2xl border border-white/[0.07] overflow-hidden">
+          <table className="w-full">
+            <thead><tr className="border-b border-white/[0.07]">{["Name","Email","Company","Brief","Signed Up"].map(h=><th key={h} className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-wider text-white/30">{h}</th>)}</tr></thead>
+            <tbody>
+              {users.map(u=>{
+                const brief = u.discoveryBrief as Record<string,unknown>|null;
+                const agency = u.agencyAccount as Record<string,string>|null;
+                return (
+                  <tr key={u.id as string} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                    <td className="px-4 py-3 text-xs text-white/70">{u.name as string ?? "—"}</td>
+                    <td className="px-4 py-3 text-xs text-white/40">{u.email as string}</td>
+                    <td className="px-4 py-3 text-xs text-white/40">{agency?.name ?? "—"}</td>
+                    <td className="px-4 py-3 text-xs">
+                      {brief ? (
+                        <div>
+                          <span className={"inline-block px-1.5 py-0.5 rounded text-[9px] font-medium "+(brief.status==="COMPLETE"?"bg-emerald-500/20 text-emerald-300":"bg-amber-500/20 text-amber-300")}>{String(brief.status ?? "")}</span>
+                          {!!brief.primaryObjective && <p className="text-white/30 mt-0.5 text-[10px]">{String(brief.primaryObjective).slice(0,40)}</p>}
+                        </div>
+                      ) : <span className="text-white/20">No brief</span>}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-white/30">{new Date(u.createdAt as string).toLocaleDateString("en-GB")}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AnalyticsTab() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1233,18 +1598,25 @@ function IntegrationsTab() {
   );
 }
 
-type Tab = "overview" | "bookings" | "campaigns" | "talent" | "users" | "analytics" | "finance" | "integrations" | "integrations-metrics";
+type Tab = "overview" | "bookings" | "campaigns" | "talent" | "talent-approval" | "users" | "analytics" | "finance" | "payouts" | "booking-orders" | "broadcast" | "waitlist" | "ai-usage" | "health" | "integrations" | "integrations-metrics";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: "overview",   label: "Overview",   icon: <LayoutDashboard size={14} /> },
-  { id: "analytics",  label: "Analytics",  icon: <TrendingUp size={14} /> },
-  { id: "finance",    label: "Finance",    icon: <TrendingUp size={14} /> },
-  { id: "bookings",   label: "Bookings",   icon: <BookOpen size={14} /> },
-  { id: "campaigns",  label: "Campaigns",  icon: <Megaphone size={14} /> },
-  { id: "talent",     label: "Talent",     icon: <UserCheck size={14} /> },
-  { id: "users",      label: "Users",      icon: <Users size={14} /> },
-  { id: "integrations", label: "Integrations", icon: <Plug size={14} /> },
-  { id: "integrations-metrics", label: "Metrics", icon: <TrendingUp size={14} /> },
+  { id: "overview",        label: "Overview",        icon: <LayoutDashboard size={14} /> },
+  { id: "health",          label: "Health",          icon: <Activity size={14} /> },
+  { id: "analytics",       label: "Analytics",       icon: <TrendingUp size={14} /> },
+  { id: "finance",         label: "Finance",         icon: <TrendingUp size={14} /> },
+  { id: "payouts",         label: "Payouts",         icon: <TrendingUp size={14} /> },
+  { id: "bookings",        label: "Bookings",        icon: <BookOpen size={14} /> },
+  { id: "booking-orders",  label: "Orders",          icon: <FileText size={14} /> },
+  { id: "campaigns",       label: "Campaigns",       icon: <Megaphone size={14} /> },
+  { id: "talent-approval", label: "Approve Talent",  icon: <UserCheck size={14} /> },
+  { id: "talent",          label: "All Talent",      icon: <UserCheck size={14} /> },
+  { id: "users",           label: "Users",           icon: <Users size={14} /> },
+  { id: "waitlist",        label: "Waitlist",        icon: <Users size={14} /> },
+  { id: "broadcast",       label: "Broadcast",       icon: <Megaphone size={14} /> },
+  { id: "ai-usage",        label: "AI Usage",        icon: <Zap size={14} /> },
+  { id: "integrations",    label: "Integrations",    icon: <Plug size={14} /> },
+  { id: "integrations-metrics", label: "Metrics",   icon: <TrendingUp size={14} /> },
 ];
 
 export default function AdminDashboardClient({ creators }: { creators: Creator[] }) {
@@ -1292,6 +1664,11 @@ export default function AdminDashboardClient({ creators }: { creators: Creator[]
               className={"flex items-center gap-1.5 px-4 py-2.5 text-[12px] font-medium border-b-2 transition-colors " + (tab === t.id ? "border-purple-400 text-white" : "border-transparent text-white/40 hover:text-white/70")}>
               {t.icon}
               {t.label}
+              {t.id === "talent-approval" && (stats?.pendingTalent ?? 0) > 0 && (
+                <span className="ml-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-purple-500/30 text-purple-300 text-[9px] font-bold">
+                  {stats!.pendingTalent}
+                </span>
+              )}
               {t.id === "bookings" && (stats?.pendingBookings ?? 0) > 0 && (
                 <span className="ml-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500/30 text-amber-300 text-[9px] font-bold">
                   {stats!.pendingBookings}
@@ -1307,14 +1684,21 @@ export default function AdminDashboardClient({ creators }: { creators: Creator[]
         </div>
       </div>
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {tab === "overview"   && <OverviewTab stats={stats} loading={statsLoading} />}
-        {tab === "analytics"  && <AnalyticsTab />}
-        {tab === "finance"    && <FinanceTab />}
-        {tab === "bookings"   && <BookingsTab />}
-        {tab === "campaigns"  && <CampaignsTab />}
-        {tab === "talent"     && <TalentTab initialCreators={creators} />}
-        {tab === "users"      && <UsersTab />}
-        {tab === "integrations" && <IntegrationsTab />}
+        {tab === "overview"          && <OverviewTab stats={stats} loading={statsLoading} />}
+        {tab === "health"            && <HealthTab />}
+        {tab === "analytics"         && <AnalyticsTab />}
+        {tab === "finance"           && <FinanceTab />}
+        {tab === "payouts"           && <PayoutsTab />}
+        {tab === "bookings"          && <BookingsTab />}
+        {tab === "booking-orders"    && <BookingOrdersTab />}
+        {tab === "campaigns"         && <CampaignsTab />}
+        {tab === "talent-approval"   && <TalentApprovalTab />}
+        {tab === "talent"            && <TalentTab initialCreators={creators} />}
+        {tab === "users"             && <UsersTab />}
+        {tab === "waitlist"          && <WaitlistTab />}
+        {tab === "broadcast"         && <BroadcastTab />}
+        {tab === "ai-usage"          && <AiUsageTab />}
+        {tab === "integrations"      && <IntegrationsTab />}
         {tab === "integrations-metrics" && <IntegrationsMetricsTab />}
       </div>
     </div>
