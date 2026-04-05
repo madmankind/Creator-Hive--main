@@ -334,7 +334,7 @@ export function CampaignSetupBoard({
           ];
 
     // Fire-and-forget: booking API + contract creation per talent
-    analytics.bookingSubmitted(talents.length, state.totalBudget);
+    analytics.bookingSubmitted(talents.length, totalBudgetNum);
     const bookingPromise = fetch("/api/bookings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
