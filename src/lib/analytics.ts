@@ -67,6 +67,9 @@ export const ctaEvents = {
   
   heroEmailSubmitted: (mode: 'brand' | 'creator') => 
     trackEvent('hero_email_submitted', { mode }),
+  
+  heroGoogleClicked: (mode: 'client' | 'talent') =>
+    trackEvent('hero_google_clicked', { mode }),
 };
 
 // Page interaction events
@@ -142,6 +145,24 @@ export const errorEvents = {
     trackEvent('support_requested', { topic }),
 };
 
+// Auth flow breakdown events
+export const authFlowEvents = {
+  signupStarted: (mode: 'client' | 'talent') =>
+    trackEvent('signup_started', { mode }),
+  
+  signupStepCompleted: (step: string) =>
+    trackEvent('signup_step_completed', { step }),
+  
+  loginStarted: (method: string) =>
+    trackEvent('login_started', { method }),
+  
+  loginCompleted: (method: string) =>
+    trackEvent('login_completed', { method }),
+  
+  heroOtpVerified: (mode: 'client' | 'talent') =>
+    trackEvent('hero_otp_verified', { mode }),
+};
+
 // Convenience object to import everything
 export const analytics = {
   auth: authEvents,
@@ -152,4 +173,13 @@ export const analytics = {
   talent: talentEvents,
   search: searchEvents,
   error: errorEvents,
+  authFlow: authFlowEvents,
+  // Direct method shortcuts (for calls like analytics.signupStarted)
+  signupStarted: (mode: 'client' | 'talent') => authFlowEvents.signupStarted(mode),
+  signupStepCompleted: (step: string) => authFlowEvents.signupStepCompleted(step),
+  loginStarted: (method: string) => authFlowEvents.loginStarted(method),
+  loginCompleted: (method: string) => authFlowEvents.loginCompleted(method),
+  heroOtpVerified: (mode: 'client' | 'talent') => authFlowEvents.heroOtpVerified(mode),
+  heroGoogleClicked: (mode: 'client' | 'talent') => ctaEvents.heroGoogleClicked(mode),
+  heroEmailSubmitted: (mode: 'brand' | 'creator') => ctaEvents.heroEmailSubmitted(mode),
 };

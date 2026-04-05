@@ -340,7 +340,7 @@ function HomePageContent() {
     setHeroAuthError("");
     setHeroAuthSubmitting(true);
     const email = heroAuthEmail.trim().toLowerCase();
-    analytics.heroEmailSubmitted(mode);
+    analytics.cta.heroEmailSubmitted(mode === "talent" ? "creator" : "brand");
     try {
       localStorage.setItem(`ch_${mode}_email`, email);
     } catch { /* ignore */ }
