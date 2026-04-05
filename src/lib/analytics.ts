@@ -1,82 +1,152 @@
 /**
- * Creator Hive — client-side analytics event helpers.
- * All events go to PostHog via posthog-js.
- * Safe to call even if PostHog is not initialised (no-ops gracefully).
+ * Analytics event tracking for Creator Hive
+ * 
+ * PostHog is our primary analytics tool. This module provides
+ * a clean interface for tracking user actions across the app.
+ * 
+ * Usage:
+ * import { analytics } from '@/lib/analytics'
+ * analytics.authStarted('email_otp')
  */
 
-// Lazy import so we never import posthog-js on the server
-async function ph() {
-  if (typeof window === "undefined") return null;
-  try {
-    const { default: posthog } = await import("posthog-js");
-    return posthog;
-  } catch {
-    return null;
+import posthog from 'posthog-js';
+
+export function trackEvent(eventName: string, properties?: Record<string, any>) {
+  if (typeof window !== 'undefined' && posthog) {
+    posthog.capture(eventName, properties || {});
   }
 }
 
-type Props = Record<string, string | number | boolean | null | undefined>;
+// Authentication events
+export const authEvents = {
+  started: (method: 'email_otp' | 'google' | 'credentials') => 
+    trackEvent('auth_started', { method }),
+  
+  completed: (role: 'CREATOR' | 'AGENCY') => 
+    trackEvent('auth_completed', { role }),
+  
+  failed: (reason: string) => 
+    trackEvent('auth_failed', { reason }),
+  
+  otpSent: (destination: string) => 
+    trackEvent('otp_sent', { destination }),
+  
+  otpVerified: () => 
+    trackEvent('otp_verified'),
+};
 
-async function capture(event: string, props?: Props) {
-  const client = await ph();
-  client?.capture(event, props);
-}
+// Form interaction events
+export const formEvents = {
+  started: (formName: string) => 
+    trackEvent('form_started', { form: formName }),
+  
+  fieldFilled: (formName: string, fieldName: string) => 
+    trackEvent('form_field_filled', { form: formName, field: fieldName }),
+  
+  fieldError: (formName: string, fieldName: string, error: string) => 
+    trackEvent('form_field_error', { form: formName, field: fieldName, error }),
+  
+  submitted: (formName: string, fieldCount: number) => 
+    trackEvent('form_submitted', { form: formName, field_count: fieldCount }),
+  
+  abandoned: (formName: string, lastField: string, secondsSpent: number) => 
+    trackEvent('form_abandoned', { 
+      form: formName, 
+      last_field: lastField,
+      seconds_spent: secondsSpent 
+    }),
+};
 
-// ── Page / session ──────────────────────────────────────────────────────────
+// CTA (Call to Action) events
+export const ctaEvents = {
+  clicked: (ctaName: string, location?: string) => 
+    trackEvent('cta_clicked', { cta: ctaName, location }),
+  
+  hovered: (ctaName: string) => 
+    trackEvent('cta_hovered', { cta: ctaName }),
+};
+
+// Page interaction events
+export const pageEvents = {
+  scrollDepth: (percentage: number) => 
+    trackEvent('scroll_depth', { depth: percentage }),
+  
+  videoPlayed: (videoName: string) => 
+    trackEvent('video_played', { video: videoName }),
+  
+  videoCompleted: (videoName: string, secondsWatched: number) => 
+    trackEvent('video_completed', { video: videoName, seconds: secondsWatched }),
+  
+  linkClicked: (linkName: string, url: string) => 
+    trackEvent('link_clicked', { link: linkName, url }),
+  
+  imageViewed: (imageName: string) => 
+    trackEvent('image_viewed', { image: imageName }),
+};
+
+// Campaign & marketing events
+export const campaignEvents = {
+  viewed: (campaignId: string) => 
+    trackEvent('campaign_viewed', { campaign_id: campaignId }),
+  
+  booked: (campaignId: string, talentCount: number, budget: number) => 
+    trackEvent('campaign_booked', { 
+      campaign_id: campaignId, 
+      talent_count: talentCount,
+      budget,
+    }),
+  
+  briefCreated: (campaignId: string, roleCount: number) => 
+    trackEvent('campaign_brief_created', { 
+      campaign_id: campaignId, 
+      role_count: roleCount,
+    }),
+};
+
+// Talent profile events
+export const talentEvents = {
+  profileViewed: (talentId: string) => 
+    trackEvent('talent_profile_viewed', { talent_id: talentId }),
+  
+  favorited: (talentId: string) => 
+    trackEvent('talent_favorited', { talent_id: talentId }),
+  
+  inquired: (talentId: string) => 
+    trackEvent('talent_inquired', { talent_id: talentId }),
+};
+
+// Search & discovery events
+export const searchEvents = {
+  performed: (query: string, resultCount: number) => 
+    trackEvent('search_performed', { query, result_count: resultCount }),
+  
+  resultClicked: (query: string, resultIndex: number) => 
+    trackEvent('search_result_clicked', { query, result_index: resultIndex }),
+  
+  filterApplied: (filterName: string, filterValue: string) => 
+    trackEvent('search_filter_applied', { filter: filterName, value: filterValue }),
+};
+
+// Error & support events
+export const errorEvents = {
+  jsError: (errorMessage: string, errorStack?: string) => 
+    trackEvent('js_error', { message: errorMessage, stack: errorStack }),
+  
+  apiError: (endpoint: string, status: number, error: string) => 
+    trackEvent('api_error', { endpoint, status, error }),
+  
+  supportRequested: (topic: string) => 
+    trackEvent('support_requested', { topic }),
+};
+
+// Convenience object to import everything
 export const analytics = {
-  // Landing page
-  heroView:              ()               => capture("hero_view"),
-  heroEmailFocus:        ()               => capture("hero_email_focus"),
-  heroEmailSubmitted:    (mode: string)   => capture("hero_email_submitted",     { mode }),
-  heroOtpSent:           (mode: string)   => capture("hero_otp_sent",            { mode }),
-  heroOtpVerified:       (mode: string)   => capture("hero_otp_verified",        { mode }),
-  heroGoogleClicked:     (mode: string)   => capture("hero_google_clicked",      { mode }),
-
-  // Signup funnel
-  signupStarted:         (mode: string)   => capture("signup_started",           { mode }),
-  signupStepCompleted:   (step: string)   => capture("signup_step_completed",    { step }),
-  signupCompleted:       (mode: string, role?: string) =>
-                                            capture("signup_completed",          { mode, role }),
-  signupAbandoned:       (step: string)   => capture("signup_abandoned",         { step }),
-
-  // Talent Prism quiz
-  prismStarted:          ()               => capture("prism_started"),
-  prismCompleted:        (archetype: string) => capture("prism_completed",       { archetype }),
-
-  // Login
-  loginStarted:          (method: string) => capture("login_started",            { method }),
-  loginCompleted:        (method: string) => capture("login_completed",          { method }),
-
-  // Discovery
-  discoveryStarted:      ()               => capture("discovery_started"),
-  discoveryStepCompleted:(step: number)   => capture("discovery_step_completed", { step }),
-  discoveryCompleted:    ()               => capture("discovery_completed"),
-  discoveryAbandoned:    (step: number)   => capture("discovery_abandoned",      { step }),
-
-  // Talent search / gallery
-  galleryOpened:         ()               => capture("gallery_opened"),
-  searchExecuted:        (query: string, resultCount: number) =>
-                                            capture("search_executed",           { query, resultCount }),
-  aiSearchExecuted:      (query: string)  => capture("ai_search_executed",       { query }),
-  talentViewed:          (talentId: string) => capture("talent_viewed",          { talentId }),
-  talentAddedToPod:      (talentId: string) => capture("talent_added_to_pod",    { talentId }),
-
-  // Booking
-  bookingStarted:        ()               => capture("booking_started"),
-  bookingSubmitted:      (talentCount: number, budget?: string) =>
-                                            capture("booking_submitted",         { talentCount, budget }),
-  bookingConfirmed:      ()               => capture("booking_confirmed"),
-
-  // Campaign
-  campaignCreated:       ()               => capture("campaign_created"),
-  campaignPaused:        ()               => capture("campaign_paused"),
-  campaignCompleted:     ()               => capture("campaign_completed"),
-
-  // Pay
-  payModalOpened:        ()               => capture("pay_modal_opened"),
-  payMethodSelected:     (method: string) => capture("pay_method_selected",      { method }),
-
-  // Admin
-  adminAction:           (action: string, entityId?: string) =>
-                                            capture("admin_action",              { action, entityId }),
+  auth: authEvents,
+  form: formEvents,
+  cta: ctaEvents,
+  page: pageEvents,
+  campaign: campaignEvents,
+  talent: talentEvents,
+  search: searchEvents,
+  error: errorEvents,
 };
