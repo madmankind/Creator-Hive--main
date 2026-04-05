@@ -1495,6 +1495,9 @@ export function HeroBar({
 
   const [skipAdvisorAutoSearch, setSkipAdvisorAutoSearch] = useState(false);
   const [focusAdvisorChatInput, setFocusAdvisorChatInput] = useState(false);
+  // Pending intake answers stashed while user completes sign-in
+  const [pendingClientAnswers, setPendingClientAnswers] = useState<{ answers: Record<string, string>; bizType: string } | null>(null);
+  const [pendingTalentCompletion, setPendingTalentCompletion] = useState<{ draft: Record<string, string>; meta: import("@/components/talent/HeroTalentIntakeBar").TalentIntakeCompleteMeta } | null>(null);
 
   // track: "intake" | "returning-new" | "returning-resume" | "intake_searching" | "activated"
   type Track = "intake" | "returning-new" | "returning-resume" | "intake_searching" | "activated";
@@ -1727,6 +1730,12 @@ export function HeroBar({
 
   const handleIntakeComplete = useCallback(
     async (answers: Record<string, string>, bizType: string) => {
+      // Gate: if not signed in, stash answers and trigger sign-in. Resume after session appears.
+      if (!session?.user) {
+        setPendingClientAnswers({ answers, bizType });
+        onRequireSignIn?.();
+        return;
+      }
       setWelcomeOverride(null);
       setTrack("intake_searching");
       const mapped = mapClientIntakeToDiscovery(answers, bizType);
@@ -1772,8 +1781,33 @@ export function HeroBar({
       });
       await runAiSearchThenOpenAdvisor(searchQuery, "Hive brief submitted —");
     },
-    [hydrate, runAiSearchThenOpenAdvisor],
+    [hydrate, runAiSearchThenOpenAdvisor, session?.user, onRequireSignIn],
   );
+
+  // Resume pending client intake once session appears after sign-in gate
+  useEffect(() => {
+    if (!session?.user || !pendingClientAnswers) return;
+    const { answers, bizType } = pendingClientAnswers;
+    setPendingClientAnswers(null);
+    handleIntakeComplete(answers, bizType);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user, pendingClientAnswers]);
+
+  // Resume pending talent intake once session appears after sign-in gate
+  useEffect(() => {
+    if (!session?.user || !pendingTalentCompletion) return;
+    const { draft, meta } = pendingTalentCompletion;
+    setPendingTalentCompletion(null);
+    setTalentArchetype(null);
+    if (meta.kind === "individual") {
+      setTalentDraft(draft);
+      setTalentGate("coach");
+    } else {
+      onTalentProfileSaved?.();
+      setTalentGate("pending_review");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user, pendingTalentCompletion]);
 
   const handleReset = useCallback(() => {
     setWelcomeOverride(null);
@@ -1996,6 +2030,12 @@ export function HeroBar({
       >
         <HeroTalentIntakeBar
           onComplete={(draft, meta) => {
+            // Gate: if not signed in, stash completion and trigger sign-in
+            if (!session?.user) {
+              setPendingTalentCompletion({ draft, meta });
+              onRequireSignIn?.();
+              return;
+            }
             setTalentArchetype(null);
             if (meta.kind === "individual") {
               setTalentDraft(draft);

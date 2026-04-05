@@ -1012,6 +1012,7 @@ function HomePageContent() {
                     onQueryChange={(q) => setSearchQuery(q)}
                     onRolesChange={(roles) => setSelectedRoles(roles)}
                     onDiscover={() => { setHeroAuthStep("email"); setHeroAuthEmail(""); setHeroAuthError(""); setHeroAuthAuthMode("signup"); }}
+                    onRequireSignIn={() => { setHeroAuthStep("email"); setHeroAuthEmail(""); setHeroAuthError(""); setHeroAuthAuthMode("signup"); }}
                     onTalentProfileSaved={() => setCreatorOnboardingComplete(true)}
                   />
                 </motion.div>

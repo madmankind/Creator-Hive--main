@@ -541,6 +541,18 @@ function TalentTab({ initialCreators }: { initialCreators: Creator[] }) {
     }
   }
 
+  async function removeCreator(id: string) {
+    if (!window.confirm("Permanently remove this creator profile? This cannot be undone.")) return;
+    setUpdating(id);
+    try {
+      const res = await fetch(`/api/admin/talent/${id}`, { method: "DELETE" });
+      if (res.ok) setItems((prev) => prev.filter((c) => c.id !== id));
+      else { const d = await res.json(); alert(d.error ?? "Remove failed"); }
+    } finally {
+      setUpdating(null);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -602,6 +614,8 @@ function TalentTab({ initialCreators }: { initialCreators: Creator[] }) {
                       <button onClick={() => updateStatus(c.id, "rejected")} disabled={updating === c.id}
                         className="px-2 py-1 rounded-md text-xs bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors disabled:opacity-50">Reject</button>
                     )}
+                    <button onClick={() => removeCreator(c.id)} disabled={updating === c.id}
+                      className="px-2 py-1 rounded-md text-xs bg-red-500/25 text-red-300 hover:bg-red-500/40 border border-red-500/20 transition-colors disabled:opacity-50">Remove</button>
                   </div>
                 </td>
               </tr>
@@ -1658,7 +1672,8 @@ export default function AdminDashboardClient({ creators }: { creators: Creator[]
             </a>
           </div>
         </div>
-        <div className="max-w-7xl mx-auto px-6 flex gap-1">
+        <div className="max-w-7xl mx-auto px-6 overflow-x-auto scrollbar-hide">
+          <div className="flex gap-1 min-w-max">
           {TABS.map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={"flex items-center gap-1.5 px-4 py-2.5 text-[12px] font-medium border-b-2 transition-colors " + (tab === t.id ? "border-purple-400 text-white" : "border-transparent text-white/40 hover:text-white/70")}>
@@ -1681,6 +1696,7 @@ export default function AdminDashboardClient({ creators }: { creators: Creator[]
               )}
             </button>
           ))}
+          </div>
         </div>
       </div>
       <div className="max-w-7xl mx-auto px-6 py-8">

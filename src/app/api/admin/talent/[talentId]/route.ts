@@ -45,3 +45,24 @@ export async function PATCH(
     throw error;
   }
 }
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ talentId: string }> }
+) {
+  const authResult = await requireUser({ roles: ["ADMIN"] });
+  if ("error" in authResult) return authResult.error;
+  const { user } = authResult;
+  const { talentId } = await params;
+
+  try {
+    await db.creatorProfile.delete({ where: { id: talentId } });
+    trackAdminAction(user.id, "talent_removed", { talentId });
+    return NextResponse.json({ ok: true, deleted: talentId });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      return NextResponse.json({ error: "Talent not found" }, { status: 404 });
+    }
+    throw error;
+  }
+}
