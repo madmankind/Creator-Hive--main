@@ -405,7 +405,17 @@ function LoadingStep({ onDone, signInFn, onError }: { onDone: () => void; signIn
           signInFn ? signInFn() : Promise.resolve(),
           new Promise(r => setTimeout(r, 1800)),
         ]);
-        if (!cancelled) onDone();
+        if (!cancelled) {
+          // Fire Google Ads conversion event on successful sign-up
+          if (typeof window !== "undefined" && (window as unknown as Record<string, unknown>).gtag) {
+            ((window as unknown as Record<string, unknown>).gtag as Function)("event", "conversion", {
+              send_to: "AW-18060432585/azxqCKuV_pQcEMmp8aND",
+              value: 1.0,
+              currency: "AED",
+            });
+          }
+          onDone();
+        }
       } catch (err) {
         // signIn failed - call onError instead of onDone
         if (!cancelled) onError?.(err instanceof Error ? err.message : "Sign in failed");
