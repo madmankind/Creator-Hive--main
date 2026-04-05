@@ -64,6 +64,9 @@ export const ctaEvents = {
   
   hovered: (ctaName: string) => 
     trackEvent('cta_hovered', { cta: ctaName }),
+  
+  heroEmailSubmitted: (mode: 'brand' | 'creator') => 
+    trackEvent('hero_email_submitted', { mode }),
 };
 
 // Page interaction events
