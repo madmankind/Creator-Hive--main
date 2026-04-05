@@ -5,7 +5,7 @@ import {
   LayoutDashboard, BookOpen, Megaphone, Users, UserCheck,
   CheckCircle2, XCircle, ArrowRight, RefreshCw,
   ChevronDown, ChevronUp, ExternalLink, Zap,
-  AlertTriangle, Activity, FileText, Download, TrendingUp,
+  AlertTriangle, Activity, FileText, Download, TrendingUp, Plug,
 } from "lucide-react";
 
 type Stats = {
@@ -912,7 +912,112 @@ function AnalyticsTab() {
   );
 }
 
-type Tab = "overview" | "bookings" | "campaigns" | "talent" | "users" | "analytics";
+function IntegrationsTab() {
+  const integrations = [
+    {
+      name: 'Sentry',
+      status: 'pending',
+      description: 'Error tracking & performance monitoring',
+      envVars: ['NEXT_PUBLIC_SENTRY_DSN', 'SENTRY_DSN'],
+      dashboardUrl: 'https://sentry.io',
+      setupUrl: 'https://sentry.io/onboarding/',
+    },
+    {
+      name: 'Google Analytics 4',
+      status: 'pending',
+      description: 'Visitor tracking and conversion measurement',
+      envVars: ['NEXT_PUBLIC_GA_MEASUREMENT_ID'],
+      dashboardUrl: 'https://analytics.google.com',
+      setupUrl: 'https://analytics.google.com',
+    },
+    {
+      name: 'PostHog',
+      status: 'connected',
+      description: 'Product analytics and session recording',
+      envVars: ['NEXT_PUBLIC_POSTHOG_KEY'],
+      dashboardUrl: 'https://app.posthog.com',
+      setupUrl: 'https://posthog.com/signup',
+    },
+    {
+      name: 'Hotjar',
+      status: 'connected',
+      description: 'Heatmaps, scrollmaps and session replay',
+      envVars: ['NEXT_PUBLIC_HOTJAR_ID'],
+      dashboardUrl: 'https://dashboard.hotjar.com',
+      setupUrl: 'https://www.hotjar.com/sign-up',
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-sm font-semibold text-white mb-4">Integration Status</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {integrations.map((int) => (
+            <div
+              key={int.name}
+              className={`border rounded-lg p-5 transition ${
+                int.status === 'connected'
+                  ? 'bg-emerald-900/20 border-emerald-700'
+                  : 'bg-amber-900/20 border-amber-700'
+              }`}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-sm font-semibold text-white">{int.name}</h3>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      int.status === 'connected'
+                        ? 'bg-emerald-500/20 text-emerald-300'
+                        : 'bg-amber-500/20 text-amber-300'
+                    }`}>
+                      {int.status === 'connected' ? '✓ Connected' : '⏳ Pending'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-white/70">{int.description}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <a
+                  href={int.dashboardUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 text-xs py-2 px-3 rounded bg-white/10 hover:bg-white/20 transition text-center font-medium"
+                >
+                  Dashboard
+                </a>
+                <a
+                  href={int.setupUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 text-xs py-2 px-3 rounded bg-white/10 hover:bg-white/20 transition text-center font-medium"
+                >
+                  Setup
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white/[0.03] border border-white/[0.07] rounded-lg p-5">
+        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+          <AlertTriangle size={14} className="text-amber-400" />
+          Setup Checklist
+        </h3>
+        <ol className="space-y-2 text-xs text-white/70">
+          <li><strong className="text-white">✓ PostHog & Hotjar:</strong> Already installed and capturing events</li>
+          <li><strong className="text-white">◻ Sentry:</strong> Get DSN from sentry.io, add NEXT_PUBLIC_SENTRY_DSN to .env.local</li>
+          <li><strong className="text-white">◻ Google Analytics 4:</strong> Get Measurement ID, add NEXT_PUBLIC_GA_MEASUREMENT_ID to .env.local</li>
+          <li><strong className="text-white">◻ Restart dev server:</strong> npm run dev to load new environment variables</li>
+          <li><strong className="text-white">◻ Verify:</strong> Check each dashboard for incoming data</li>
+        </ol>
+      </div>
+    </div>
+  );
+}
+
+type Tab = "overview" | "bookings" | "campaigns" | "talent" | "users" | "analytics" | "integrations";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "overview",   label: "Overview",   icon: <LayoutDashboard size={14} /> },
@@ -921,6 +1026,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "campaigns",  label: "Campaigns",  icon: <Megaphone size={14} /> },
   { id: "talent",     label: "Talent",     icon: <UserCheck size={14} /> },
   { id: "users",      label: "Users",      icon: <Users size={14} /> },
+  { id: "integrations", label: "Integrations", icon: <Plug size={14} /> },
 ];
 
 export default function AdminDashboardClient({ creators }: { creators: Creator[] }) {
@@ -989,6 +1095,7 @@ export default function AdminDashboardClient({ creators }: { creators: Creator[]
         {tab === "campaigns"  && <CampaignsTab />}
         {tab === "talent"     && <TalentTab initialCreators={creators} />}
         {tab === "users"      && <UsersTab />}
+        {tab === "integrations" && <IntegrationsTab />}
       </div>
     </div>
   );
