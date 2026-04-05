@@ -107,6 +107,12 @@ export const campaignEvents = {
       campaign_id: campaignId, 
       role_count: roleCount,
     }),
+  
+  bookingSubmitted: (talentCount: number, totalBudget: number) =>
+    trackEvent('booking_submitted', {
+      talent_count: talentCount,
+      total_budget: totalBudget,
+    }),
 };
 
 // Talent profile events
@@ -182,4 +188,5 @@ export const analytics = {
   heroOtpVerified: (mode: 'client' | 'talent') => authFlowEvents.heroOtpVerified(mode),
   heroGoogleClicked: (mode: 'client' | 'talent') => ctaEvents.heroGoogleClicked(mode),
   heroEmailSubmitted: (mode: 'brand' | 'creator') => ctaEvents.heroEmailSubmitted(mode),
+  bookingSubmitted: (talentCount: number, totalBudget: number) => campaignEvents.bookingSubmitted(talentCount, totalBudget),
 };
