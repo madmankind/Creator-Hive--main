@@ -221,7 +221,10 @@ function HomePageContent() {
 
   useEffect(() => {
     if (heroAuthStep !== "waiting_session") return;
-    if (session?.user) setHeroAuthStep("idle");
+    if (session?.user) { setHeroAuthStep("idle"); return; }
+    // Hard fallback — if session never arrives in 5s, go idle anyway
+    const t = setTimeout(() => setHeroAuthStep("idle"), 5000);
+    return () => clearTimeout(t);
   }, [heroAuthStep, session?.user]);
 
   // Creators who still owe hero onboarding always see the Talent experience (not client brief / hire UI)
@@ -779,7 +782,7 @@ function HomePageContent() {
                     style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
                   />
                 </motion.div>
-              ) : !session?.user && heroAuthStep !== "idle" ? (
+              ) : (!session?.user && heroAuthStep !== "idle") || heroAuthStep === "loading" || heroAuthStep === "waiting_session" ? (
                 <motion.div
                   key="hero-auth"
                   initial={{ opacity: 0, y: 12, scale: 0.98 }}
@@ -909,8 +912,12 @@ function HomePageContent() {
 
                       {heroAuthStep === "loading" && (
                         <HeroInlineLoading onDone={() => {
-                          // Always go to waiting_session — wait for session to confirm before hiding auth UI
-                          setHeroAuthStep("waiting_session");
+                          // If session already exists, go straight to idle — avoids blank screen flash
+                          if (session?.user) {
+                            setHeroAuthStep("idle");
+                          } else {
+                            setHeroAuthStep("waiting_session");
+                          }
                         }} />
                       )}
                       {heroAuthStep === "waiting_session" && (
