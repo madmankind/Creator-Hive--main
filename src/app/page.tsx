@@ -219,18 +219,6 @@ function HomePageContent() {
     }
   }, [searchParams, router]);
 
-  // Logged-out talent: one surface — email / OTP (no extra "Apply to join" stub)
-  useLayoutEffect(() => {
-    if (mode !== "talent" || session?.user || sessionPending) return;
-    setHeroAuthStep((s) => (s === "idle" ? "email" : s));
-  }, [mode, session?.user, sessionPending]);
-
-  // Logged-out client: sign in first, then hero intake / advisor (same as talent)
-  useLayoutEffect(() => {
-    if (mode !== "client" || session?.user || sessionPending) return;
-    setHeroAuthStep((s) => (s === "idle" ? "email" : s));
-  }, [mode, session?.user, sessionPending]);
-
   useEffect(() => {
     if (heroAuthStep !== "waiting_session") return;
     if (session?.user) setHeroAuthStep("idle");
@@ -715,14 +703,8 @@ function HomePageContent() {
                   persistHeroIntent(m);
                   setHeroSignInNotice(null);
                   setMode(m);
-                  if (!session?.user) {
-                    setHeroAuthStep("email");
-                    setHeroAuthEmail("");
-                    setHeroAuthError("");
-                    setHeroAuthAuthMode("signup");
-                  } else {
-                    setHeroAuthStep("idle");
-                  }
+                  // Auth gate moved to end of intake — don't open auth on toggle
+                  if (session?.user) setHeroAuthStep("idle");
                 }}
                 className={cn(
                   "px-4 py-1.5 rounded-full text-[11px] font-medium transition-all duration-200",
