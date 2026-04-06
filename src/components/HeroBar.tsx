@@ -376,7 +376,7 @@ function IntakeBar({
         />
       </div>
 
-      <div className="px-5 pt-4 pb-3 space-y-3">
+      <div className="px-4 sm:px-5 pt-4 pb-3 space-y-3">
         <div className="flex items-center justify-between gap-2 min-h-[28px]">
           {canBack ? (
             <button
@@ -531,7 +531,7 @@ function IntakeBar({
       </div>
 
       <div
-        className="border-t px-5 py-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2"
+        className="border-t px-4 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2"
         style={{ borderColor: "rgba(255,255,255,0.06)" }}
       >
         <div className="flex flex-wrap items-center gap-2 min-w-0">

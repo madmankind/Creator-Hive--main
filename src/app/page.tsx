@@ -697,13 +697,13 @@ function HomePageContent() {
       </div>
 
       {/* SECTION 1: HERO */}
-      <section className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6">
+      <section className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 sm:px-6 pb-24 sm:pb-6">
         {/* Deep amethyst ambient — matches sign-in page */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden z-0">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[70vh] rounded-full"
             style={{ background: "radial-gradient(ellipse, #7c3aed 0%, #4c1d95 60%, transparent 100%)", filter: "blur(180px)", opacity: 0.13 }} />
         </div>
-        <div className="w-full max-w-[520px] mx-auto text-center space-y-6">
+        <div className="w-full max-w-[680px] mx-auto text-center space-y-6">
 
           {/* Client/Talent toggle — hide when auth card showing */}
           {heroAuthStep === "idle" && (
@@ -807,7 +807,7 @@ function HomePageContent() {
                   className="w-full"
                 >
                   {/* Fey-style auth — frameless, floats on the dark page */}
-                  <div className="w-full">
+                  <div className="w-full max-w-[440px] mx-auto">
                     <div className="px-2 py-6 flex flex-col items-center gap-5">
                       {heroAuthStep === "email" && (
                         <>
@@ -927,9 +927,15 @@ function HomePageContent() {
 
                       {heroAuthStep === "loading" && (
                         <HeroInlineLoading onDone={() => {
-                          if (mode === "talent") setHeroAuthStep("waiting_session");
-                          else setHeroAuthStep("idle");
+                          // Always go to waiting_session — wait for session to confirm before hiding auth UI
+                          setHeroAuthStep("waiting_session");
                         }} />
+                      )}
+                      {heroAuthStep === "waiting_session" && (
+                        <div className="flex flex-col items-center gap-3 py-4">
+                          <div className="w-6 h-6 rounded-full border-2 border-white/20 border-t-white/60 animate-spin" />
+                          <p className="text-[12px] text-white/35">Signing you in…</p>
+                        </div>
                       )}
                     </div>
                   </div>
