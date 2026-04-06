@@ -36,3 +36,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Login check failed" }, { status: 500 });
   }
 }
+
+export const maxDuration = 10;

@@ -68,3 +68,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to send code" }, { status: 500 });
   }
 }
+
+export const maxDuration = 10;
