@@ -1556,21 +1556,10 @@ export function HeroBar({
   const [advisorChatKey, setAdvisorChatKey] = useState(0);
   const [briefUploadBusy, setBriefUploadBusy] = useState(false);
   const [briefUploadErr, setBriefUploadErr] = useState<string | null>(null);
-  const [discoveryRehydrated, setDiscoveryRehydrated] = useState(false);
-
-  useEffect(() => {
-    if (discoveryRehydrated) return;
-    // Immediate check — if already hydrated or no persisted data, unblock instantly
-    if (useDiscoveryStore.persist.hasHydrated()) {
-      setDiscoveryRehydrated(true);
-      return;
-    }
-    const unsub = useDiscoveryStore.persist.onFinishHydration(() => setDiscoveryRehydrated(true));
-    // Hard fallback: max 500ms wait then unblock regardless
-    const t = setTimeout(() => setDiscoveryRehydrated(true), 500);
-    return () => { unsub(); clearTimeout(t); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Zustand persist hydrates synchronously from localStorage on first render —
+  // treat as rehydrated immediately. Returning users' data is available by the
+  // time the track useEffect runs on the first paint.
+  const [discoveryRehydrated] = useState(true);
 
   // Client hero: pick track only after persisted discovery store has rehydrated (avoids wrong "intake" before completed loads)
   useEffect(() => {
