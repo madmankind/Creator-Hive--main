@@ -777,7 +777,7 @@ function HomePageContent() {
 
           <div className="flex flex-col justify-start">
             <AnimatePresence mode="wait">
-              {sessionPending && (mode === "talent" || mode === "client") ? (
+              {false ? (
                 <motion.div
                   key="hero-session-pending"
                   initial={{ opacity: 0, y: 8 }}
