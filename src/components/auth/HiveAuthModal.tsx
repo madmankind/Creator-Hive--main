@@ -1632,9 +1632,9 @@ export function HiveAuthModal({ open, mode, onClose, onSuccess, initialStep }: H
       setStep("loading");
       return;
     }
-    // New client — collect brand type before signing in
+    // New client — skip brand-setup (already collected in AI intake), go straight to loading
     if (mode === "client") {
-      setStep("brand-setup");
+      setStep("loading");
       return;
     }
     // New talent — choose account type

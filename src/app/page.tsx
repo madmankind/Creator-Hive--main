@@ -802,6 +802,10 @@ function HomePageContent() {
                 >
                   {heroAuthStep === "email" && (
                     <>
+                      {/* Mode label */}
+                      <p className="text-[11px] font-semibold tracking-[0.12em] uppercase text-center text-white/30">
+                        {heroAuthAuthMode === "signup" ? "Create your account" : "Welcome back"}
+                      </p>
                       {/* Email pill + Continue — full width on mobile */}
                       <div className="flex items-center gap-2 sm:gap-3">
                         <div className="rounded-full bg-[#0D0D14] ring-1 ring-white/10 hover:ring-white/15 transition p-2 pl-4 sm:pl-5 flex-1 flex items-center min-h-[48px]">

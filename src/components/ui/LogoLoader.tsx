@@ -62,6 +62,19 @@ export function LogoLoader({
 
       {/* Logo container */}
       <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+        {/* Spinning orbit ring */}
+        <div style={{
+          position: "absolute",
+          inset: -6,
+          borderRadius: "50%",
+          border: "1.5px solid transparent",
+          borderTopColor: `rgba(124,92,255,${Math.min(1, fillPct / 40)})`,
+          borderRightColor: `rgba(34,211,238,${Math.min(0.6, fillPct / 60)})`,
+          animation: "spin 1.1s linear infinite",
+          opacity: fillPct < 95 ? 1 : 0,
+          transition: "opacity 0.3s ease",
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         {/* Ghost base */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
