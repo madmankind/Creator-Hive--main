@@ -1508,9 +1508,14 @@ export function HeroBar({
   const [advisorChatKey, setAdvisorChatKey] = useState(0);
   const [briefUploadBusy, setBriefUploadBusy] = useState(false);
   const [briefUploadErr, setBriefUploadErr] = useState<string | null>(null);
-  const [discoveryRehydrated, setDiscoveryRehydrated] = useState(() =>
-    Boolean(useDiscoveryStore.persist?.hasHydrated?.()),
-  );
+  const [discoveryRehydrated, setDiscoveryRehydrated] = useState(() => {
+    // If already hydrated or no persisted data exists, treat as ready immediately
+    try {
+      if (useDiscoveryStore.persist?.hasHydrated?.()) return true;
+      if (typeof window !== "undefined" && !localStorage.getItem("ch-discovery")) return true;
+    } catch { /* SSR */ }
+    return false;
+  });
 
   useEffect(() => {
     if (discoveryRehydrated) return;
@@ -1519,7 +1524,9 @@ export function HeroBar({
       return;
     }
     const unsub = useDiscoveryStore.persist.onFinishHydration(() => setDiscoveryRehydrated(true));
-    return unsub;
+    // Safety fallback: if hydration hasn't resolved in 400ms, force it
+    const t = setTimeout(() => setDiscoveryRehydrated(true), 400);
+    return () => { unsub(); clearTimeout(t); };
   }, [discoveryRehydrated]);
 
   // Client hero: pick track only after persisted discovery store has rehydrated (avoids wrong "intake" before completed loads)
