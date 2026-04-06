@@ -1508,26 +1508,21 @@ export function HeroBar({
   const [advisorChatKey, setAdvisorChatKey] = useState(0);
   const [briefUploadBusy, setBriefUploadBusy] = useState(false);
   const [briefUploadErr, setBriefUploadErr] = useState<string | null>(null);
-  const [discoveryRehydrated, setDiscoveryRehydrated] = useState(() => {
-    // If already hydrated or no persisted data exists, treat as ready immediately
-    try {
-      if (useDiscoveryStore.persist?.hasHydrated?.()) return true;
-      if (typeof window !== "undefined" && !localStorage.getItem("ch-discovery")) return true;
-    } catch { /* SSR */ }
-    return false;
-  });
+  const [discoveryRehydrated, setDiscoveryRehydrated] = useState(false);
 
   useEffect(() => {
     if (discoveryRehydrated) return;
+    // Immediate check — if already hydrated or no persisted data, unblock instantly
     if (useDiscoveryStore.persist.hasHydrated()) {
       setDiscoveryRehydrated(true);
       return;
     }
     const unsub = useDiscoveryStore.persist.onFinishHydration(() => setDiscoveryRehydrated(true));
-    // Safety fallback: if hydration hasn't resolved in 400ms, force it
-    const t = setTimeout(() => setDiscoveryRehydrated(true), 400);
+    // Hard fallback: max 500ms wait then unblock regardless
+    const t = setTimeout(() => setDiscoveryRehydrated(true), 500);
     return () => { unsub(); clearTimeout(t); };
-  }, [discoveryRehydrated]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Client hero: pick track only after persisted discovery store has rehydrated (avoids wrong "intake" before completed loads)
   useEffect(() => {
