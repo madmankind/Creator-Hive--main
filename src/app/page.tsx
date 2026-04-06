@@ -703,7 +703,7 @@ function HomePageContent() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[70vh] rounded-full"
             style={{ background: "radial-gradient(ellipse, #7c3aed 0%, #4c1d95 60%, transparent 100%)", filter: "blur(180px)", opacity: 0.13 }} />
         </div>
-        <div className="w-full max-w-[760px] mx-auto text-center space-y-6">
+        <div className="w-full max-w-[520px] mx-auto text-center space-y-6">
 
           <div className="inline-flex items-center gap-1 rounded-full bg-white/[0.05] p-1 ring-1 ring-white/[0.09]">
             {(["client", "talent"] as const).map((m) => (
@@ -794,160 +794,152 @@ function HomePageContent() {
               ) : !session?.user && heroAuthStep !== "idle" ? (
                 <motion.div
                   key="hero-auth"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
+                  initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.98 }}
                   transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1.0] }}
-                  className="w-full space-y-4"
+                  className="w-full"
                 >
-                  {heroAuthStep === "email" && (
-                    <>
-                      {/* Mode label */}
-                      <p className="text-[11px] font-semibold tracking-[0.12em] uppercase text-center text-white/30">
-                        {heroAuthAuthMode === "signup" ? "Create your account" : "Welcome back"}
-                      </p>
-                      {/* Email pill + Continue — full width on mobile */}
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="rounded-full bg-[#0D0D14] ring-1 ring-white/10 hover:ring-white/15 transition p-2 pl-4 sm:pl-5 flex-1 flex items-center min-h-[48px]">
-                          <input
-                            type="email"
-                            value={heroAuthEmail}
-                            onChange={e => setHeroAuthEmail(e.target.value)}
-                            onKeyDown={e => { if (e.key === "Enter") handleHeroEmailSubmit(); }}
-                            placeholder="account email"
-                            autoFocus
-                            className="flex-1 bg-transparent outline-none text-[15px] leading-8 text-slate-200 placeholder:text-slate-400/40 min-w-0"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleHeroEmailSubmit}
-                          disabled={!heroAuthEmail.trim() || heroAuthSubmitting}
-                          className="shrink-0 rounded-full bg-white px-4 sm:px-5 py-2 text-xs font-semibold text-black hover:bg-white/90 transition min-h-[44px] flex items-center justify-center gap-2"
-                        >
-                          {heroAuthSubmitting ? (
-                            <svg width="18" height="18" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" className="animate-pulse">
-                              <path d="M 689 330 L 680 321 L 525 227 L 513 222 L 505 223 L 343 321 L 336 327 L 333 333 L 333 448 L 337 453 L 343 455 L 350 454 L 449 393 L 508 359 L 515 359 L 520 361 L 611 415 L 622 415 L 681 381 L 687 375 L 690 369 Z" fill="black"/>
-                              <path d="M 430 429 L 344 480 L 334 490 L 333 655 L 341 665 L 504 765 L 514 768 L 520 767 L 684 666 L 690 656 L 690 621 L 686 613 L 680 608 L 621 573 L 612 573 L 607 575 L 549 612 L 535 617 L 528 615 L 456 571 L 449 564 L 445 554 L 445 436 L 439 429 Z" fill="black"/>
-                            </svg>
-                          ) : "Continue"}
-                        </button>
-                      </div>
-                      {heroAuthError && (
-                        <p className="text-[12px] text-center text-red-400/80">{heroAuthError}</p>
+                  {/* Fey-style auth card — same frame as intake bar */}
+                  <div className="w-full rounded-2xl overflow-hidden"
+                    style={{
+                      background: "rgba(10,10,18,0.96)",
+                      border: "1px solid rgba(124,92,255,0.28)",
+                      boxShadow: "0 0 48px rgba(124,92,255,0.14), 0 0 0 1px rgba(124,92,255,0.06)",
+                    }}>
+                    {/* Purple top accent line */}
+                    <div className="h-[1.5px] w-full" style={{ background: "linear-gradient(90deg, transparent, rgba(124,92,255,0.7), rgba(93,208,255,0.5), transparent)" }} />
+
+                    <div className="px-6 py-8 flex flex-col items-center gap-5">
+                      {heroAuthStep === "email" && (
+                        <>
+                          <div className="text-center space-y-1.5">
+                            <p className="text-[11px] font-semibold tracking-[0.14em] uppercase" style={{ color: "rgba(167,139,250,0.7)" }}>
+                              {heroAuthAuthMode === "signup" ? "Create your account" : "Welcome back"}
+                            </p>
+                            <p className="text-[22px] font-semibold tracking-tight text-white/90">
+                              {heroAuthAuthMode === "signup" ? "Join Creator Hive" : "Sign in to Creator Hive"}
+                            </p>
+                            <p className="text-[12px] text-white/35">
+                              {heroAuthAuthMode === "signup"
+                                ? "Your brief is ready. Create an account to submit it."
+                                : "Enter your email to continue where you left off."}
+                            </p>
+                          </div>
+
+                          {/* Email + submit row */}
+                          <div className="w-full flex items-center gap-2"
+                            style={{ background: "rgba(255,255,255,0.04)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.09)", padding: "4px 4px 4px 16px" }}>
+                            <input
+                              type="email"
+                              value={heroAuthEmail}
+                              onChange={e => setHeroAuthEmail(e.target.value)}
+                              onKeyDown={e => { if (e.key === "Enter") handleHeroEmailSubmit(); }}
+                              placeholder="your@email.com"
+                              autoFocus
+                              className="flex-1 bg-transparent outline-none text-[14px] text-white/80 placeholder:text-white/25 min-w-0 py-2"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleHeroEmailSubmit}
+                              disabled={!heroAuthEmail.trim() || heroAuthSubmitting}
+                              className="shrink-0 rounded-[10px] bg-white text-black text-[12px] font-semibold px-4 py-2.5 hover:bg-white/90 transition disabled:opacity-30 flex items-center gap-1.5"
+                            >
+                              {heroAuthSubmitting
+                                ? <span className="w-3.5 h-3.5 rounded-full border-2 border-black/20 border-t-black animate-spin" />
+                                : "Continue →"}
+                            </button>
+                          </div>
+
+                          {heroAuthError && <p className="text-[11px] text-red-400/80 text-center">{heroAuthError}</p>}
+
+                          {/* Divider */}
+                          <div className="w-full flex items-center gap-3">
+                            <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.07)" }} />
+                            <span className="text-[10px] text-white/25 uppercase tracking-widest">or</span>
+                            <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.07)" }} />
+                          </div>
+
+                          {/* Social auth */}
+                          <div className="w-full flex flex-col gap-2">
+                            {googleEnabled && (
+                              <button type="button" onClick={handleHeroGoogleClick} disabled={heroAuthGoogleLoading}
+                                className="w-full flex items-center justify-center gap-2.5 py-2.5 rounded-xl text-[13px] font-medium transition-all"
+                                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.65)" }}
+                                onMouseEnter={e => { if (!heroAuthGoogleLoading) { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.16)"; }}}
+                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.10)"; }}>
+                                {heroAuthGoogleLoading
+                                  ? <span className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white/60 animate-spin" />
+                                  : <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908C16.658 14.082 17.64 11.836 17.64 9.2z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>}
+                                {heroAuthGoogleLoading ? "Connecting…" : "Continue with Google"}
+                              </button>
+                            )}
+                            {mode === "talent" && (
+                              <button type="button" onClick={() => setHeroAuthStep("phone")}
+                                className="w-full flex items-center justify-center gap-2.5 py-2.5 rounded-xl text-[13px] transition-all"
+                                style={{ background: "rgba(37,211,102,0.06)", border: "1px solid rgba(37,211,102,0.20)", color: "rgba(255,255,255,0.60)" }}>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" fill="#25D366"/></svg>
+                                Continue with WhatsApp
+                              </button>
+                            )}
+                          </div>
+
+                          <p className="text-[11px] text-white/25">
+                            {heroAuthAuthMode === "signup" ? "Have an account? " : "New here? "}
+                            <button type="button"
+                              onClick={() => setHeroAuthAuthMode(heroAuthAuthMode === "signup" ? "login" : "signup")}
+                              className="text-white/50 hover:text-white/75 transition underline underline-offset-2">
+                              {heroAuthAuthMode === "signup" ? "Log in" : "Sign up"}
+                            </button>
+                          </p>
+                        </>
                       )}
-                      {/* Social options — stack on narrow screens */}
-                      <div className="flex flex-col sm:flex-row flex-wrap justify-center items-center gap-2 sm:gap-3">
-                        {googleEnabled ? (
-                          <button
-                            type="button"
-                            onClick={handleHeroGoogleClick}
-                            disabled={heroAuthGoogleLoading}
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 sm:py-2 rounded-full text-[13px] transition-all min-h-[44px]"
-                            style={{ border: "1px solid rgba(255,255,255,0.12)", color: heroAuthGoogleLoading ? "rgba(255,255,255,0.30)" : "rgba(255,255,255,0.60)" }}
-                            onMouseEnter={e => { if (!heroAuthGoogleLoading) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                          >
-                            {heroAuthGoogleLoading
-                              ? <span className="block w-4 h-4 rounded-full border-2 border-white/20 border-t-white/60 animate-spin" />
-                              : <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908C16.658 14.082 17.64 11.836 17.64 9.2z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
-                            }
-                            {heroAuthGoogleLoading ? "Connecting…" : "Continue with Google"}
-                          </button>
-                        ) : null}
-                        {mode === "talent" && (
-                          <button
-                            type="button"
-                            onClick={() => setHeroAuthStep("phone")}
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 sm:py-2 rounded-full text-[13px] transition-all min-h-[44px]"
-                            style={{ border: "1px solid rgba(37,211,102,0.30)", color: "rgba(255,255,255,0.60)" }}
-                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(37,211,102,0.06)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(37,211,102,0.50)"; }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(37,211,102,0.30)"; }}
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" fill="#25D366"/></svg>
-                            Continue with WhatsApp
-                          </button>
-                        )}
-                      </div>
-                      <p className="text-[12px] text-center text-white/28">
-                        {heroAuthAuthMode === "signup" ? "Have an account? " : "New here? "}
-                        <button
-                          type="button"
-                          onClick={() => setHeroAuthAuthMode(heroAuthAuthMode === "signup" ? "login" : "signup")}
-                          className="underline underline-offset-2 text-white/55 hover:text-white/75 transition"
-                        >
-                          {heroAuthAuthMode === "signup" ? "Log in" : "Sign up"}
-                        </button>
-                      </p>
-                    </>
-                  )}
-                  {heroAuthStep === "phone" && (
-                    <HeroPhoneStep
-                      onSubmit={handleHeroPhoneSubmit}
-                      onBack={() => setHeroAuthStep("email")}
-                    />
-                  )}
-                  {heroAuthStep === "otp" && (
-                    <div className="flex flex-col items-center gap-4">
-                      <p className="text-[13px] text-white/45">
-                        {heroAuthOtpVia === "whatsapp"
-                          ? <>Code sent to your WhatsApp at <span className="text-white/65">{heroAuthPhone}</span></>
-                          : <>Code sent to <span className="text-white/65">{heroAuthEmail}</span></>
-                        }
-                      </p>
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "rounded-full bg-[#0D0D14] ring-1 ring-white/10 p-2 pl-6 pr-6 flex items-center justify-center w-[220px] sm:w-64 min-h-[52px]",
-                          heroOtpVerifying && "opacity-50 pointer-events-none"
-                        )}>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={6}
-                            autoFocus
-                            disabled={heroOtpVerifying}
-                            placeholder="000 000"
-                            className="w-full bg-transparent outline-none text-[22px] text-center text-slate-200 placeholder:text-slate-400/25 tracking-[0.4em] leading-8"
-                            onChange={e => {
-                              if (heroOtpVerifying) return;
-                              const v = e.target.value.replace(/\D/g, "").slice(0, 6);
-                              setHeroOtpCode(v);
-                              if (v.length === 6) void handleHeroOTPVerify(v);
-                            }}
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setHeroAuthStep(heroAuthOtpVia === "whatsapp" ? "phone" : "email")}
-                          disabled={heroOtpVerifying}
-                          className="text-[12px] text-white/30 hover:text-white/55 transition px-3 py-2 disabled:opacity-40"
-                        >
-                          ← Back
-                        </button>
-                      </div>
-                      {heroAuthError && (
-                        <p className="text-[12px] text-center text-red-400/80">{heroAuthError}</p>
+
+                      {heroAuthStep === "phone" && (
+                        <HeroPhoneStep onSubmit={handleHeroPhoneSubmit} onBack={() => setHeroAuthStep("email")} />
                       )}
-                      {heroOtpVerifying && (
-                        <p className="text-[12px] text-center text-white/35">Verifying…</p>
+
+                      {heroAuthStep === "otp" && (
+                        <div className="w-full flex flex-col items-center gap-4">
+                          <div className="text-center space-y-1">
+                            <p className="text-[18px] font-semibold text-white/90">Check your inbox</p>
+                            <p className="text-[12px] text-white/35">
+                              {heroAuthOtpVia === "whatsapp"
+                                ? <>Code sent to <span className="text-white/60">{heroAuthPhone}</span></>
+                                : <>Code sent to <span className="text-white/60">{heroAuthEmail}</span></>}
+                            </p>
+                          </div>
+                          <div className="w-full flex items-center gap-2"
+                            style={{ background: "rgba(255,255,255,0.04)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.09)", padding: "4px 4px 4px 16px" }}>
+                            <input
+                              type="text" inputMode="numeric" maxLength={6} autoFocus
+                              disabled={heroOtpVerifying}
+                              placeholder="6-digit code"
+                              className="flex-1 bg-transparent outline-none text-[20px] text-center text-white/80 placeholder:text-white/20 tracking-[0.3em] py-2 min-w-0"
+                              onChange={e => {
+                                if (heroOtpVerifying) return;
+                                const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+                                setHeroOtpCode(v);
+                                if (v.length === 6) void handleHeroOTPVerify(v);
+                              }}
+                            />
+                            {heroOtpVerifying && <span className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white/60 animate-spin mr-3" />}
+                          </div>
+                          {heroAuthError && <p className="text-[11px] text-red-400/80">{heroAuthError}</p>}
+                          <button type="button" onClick={() => setHeroAuthStep(heroAuthOtpVia === "whatsapp" ? "phone" : "email")}
+                            className="text-[11px] text-white/30 hover:text-white/55 transition">← Back</button>
+                        </div>
+                      )}
+
+                      {heroAuthStep === "loading" && (
+                        <HeroInlineLoading onDone={() => {
+                          if (mode === "talent") setHeroAuthStep("waiting_session");
+                          else setHeroAuthStep("idle");
+                        }} />
                       )}
                     </div>
-                  )}
-                  {heroAuthStep === "loading" && (
-                    <HeroInlineLoading
-                      onDone={() => {
-                        if (mode === "talent") setHeroAuthStep("waiting_session");
-                        else setHeroAuthStep("idle");
-                      }}
-                    />
-                  )}
-                  {heroAuthStep === "waiting_session" && (
-                    <div
-                      className="w-full max-w-[760px] mx-auto h-14 rounded-2xl animate-pulse"
-                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
-                    />
-                  )}
-                </motion.div>
+                  </div>
+                  </motion.div>
               ) : mode === "client" ? (
                 <motion.div
                   key="client-bar"

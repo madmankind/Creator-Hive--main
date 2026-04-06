@@ -128,6 +128,7 @@ function IntakeBar({
   onBriefFile,
   uploadBusy,
   uploadError,
+  onRequireSignIn,
 }: {
   onComplete: (answers: Record<string, string>, bizType: string) => void;
   showSkipQuestions?: boolean;
@@ -136,7 +137,37 @@ function IntakeBar({
   onBriefFile?: (file: File) => void;
   uploadBusy?: boolean;
   uploadError?: string | null;
+  onRequireSignIn?: () => void;
 }) {
+  const { data: session } = useSession();
+  // Internal auth gate: stash answers when not signed in, show inline auth step
+  const [pendingAuth, setPendingAuth] = useState<{ answers: Record<string, string>; bizType: string } | null>(null);
+  const [authStep, setAuthStep] = useState<"none" | "submit_confirm">("none");
+
+  // When session appears and we have pending answers, resume
+  useEffect(() => {
+    if (session?.user && pendingAuth) {
+      const { answers: a, bizType: b } = pendingAuth;
+      setPendingAuth(null);
+      setAuthStep("submit_confirm");
+      // Short pause then show confirm
+      setTimeout(() => {
+        setAuthStep("none");
+        onComplete(a, b);
+      }, 1200);
+    }
+  }, [session?.user, pendingAuth, onComplete]);
+
+  // Wrapped complete — gates on auth
+  const handleComplete = useCallback((answers: Record<string, string>, biz: string) => {
+    if (!session?.user) {
+      setPendingAuth({ answers, bizType: biz });
+      onRequireSignIn?.();
+      return;
+    }
+    onComplete(answers, biz);
+  }, [session?.user, onRequireSignIn, onComplete]);
+
   const [phase, setPhase] = useState<IntakePhase>({ k: "biz" });
   const [bizType, setBizType] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -269,9 +300,9 @@ function IntakeBar({
       setAnswers(next);
       setInputVal("");
       if (phase.i < CLIENT_CAMPAIGN_STEPS.length - 1) setPhase({ k: "camp", i: phase.i + 1 });
-      else onComplete(next, bizType);
+      else handleComplete(next, bizType);
     },
-    [phase, answers, bizType, branchSteps, onComplete],
+    [phase, answers, bizType, branchSteps, handleComplete],
   );
 
   const handleKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -296,8 +327,8 @@ function IntakeBar({
     setAnswers(next);
     setInputVal("");
     if (phase.i < CLIENT_CAMPAIGN_STEPS.length - 1) setPhase({ k: "camp", i: phase.i + 1 });
-    else onComplete(next, bizType);
-  }, [phase, answers, rolePicks, bizType, onComplete]);
+    else handleComplete(next, bizType);
+  }, [phase, answers, rolePicks, bizType, handleComplete]);
 
   const commitFuzzyPicks = useCallback(() => {
     if (phase.k !== "camp") return;
@@ -307,18 +338,35 @@ function IntakeBar({
     setAnswers(next);
     setInputVal("");
     if (phase.i < CLIENT_CAMPAIGN_STEPS.length - 1) setPhase({ k: "camp", i: phase.i + 1 });
-    else onComplete(next, bizType);
-  }, [phase, answers, fuzzyPicks, bizType, onComplete]);
+    else handleComplete(next, bizType);
+  }, [phase, answers, fuzzyPicks, bizType, handleComplete]);
 
   return (
     <div
-      className="w-full rounded-2xl transition-all duration-300 overflow-hidden"
+      className="w-full rounded-2xl transition-all duration-300 overflow-hidden relative"
       style={{
         background: "rgba(10,10,18,0.92)",
         border: "1px solid rgba(124,92,255,0.30)",
         boxShadow: "0 0 40px rgba(124,92,255,0.12), 0 0 0 1px rgba(124,92,255,0.08)",
+        minHeight: "200px",
       }}
     >
+      {/* Submit confirm overlay — appears after sign-in, before brief fires */}
+      <AnimatePresence>
+        {authStep === "submit_confirm" && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.35 }}
+            className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 px-6"
+            style={{ background: "rgba(10,10,18,0.97)" }}
+          >
+            <div className="w-8 h-8 rounded-full border-2 border-purple-400/60 border-t-transparent animate-spin" />
+            <p className="text-[13px] font-medium text-white/70">Submitting your brief…</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="h-[2px] w-full" style={{ background: "rgba(255,255,255,0.05)" }}>
         <motion.div
           className="h-full rounded-full"
@@ -2078,6 +2126,7 @@ export function HeroBar({
             onBriefFile={handleBriefFile}
             uploadBusy={briefUploadBusy}
             uploadError={briefUploadErr}
+            onRequireSignIn={onRequireSignIn}
           />
         </motion.div>
       )}
@@ -2100,6 +2149,7 @@ export function HeroBar({
             onBriefFile={handleBriefFile}
             uploadBusy={briefUploadBusy}
             uploadError={briefUploadErr}
+            onRequireSignIn={onRequireSignIn}
           />
         </motion.div>
       )}
