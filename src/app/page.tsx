@@ -155,7 +155,7 @@ function HomePageContent() {
   const galleryRef = useRef<HTMLElement>(null);
   const campaignRef = useRef<HTMLElement>(null);
 
-  const { data: session, status: sessionStatus } = useSession();
+  const { data: session, status: sessionStatus, update: updateSession } = useSession();
   const sessionPending = sessionStatus === "loading";
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -222,10 +222,11 @@ function HomePageContent() {
   useEffect(() => {
     if (heroAuthStep !== "waiting_session") return;
     if (session?.user) { setHeroAuthStep("idle"); return; }
-    // Hard fallback — if session never arrives in 5s, go idle anyway
-    const t = setTimeout(() => setHeroAuthStep("idle"), 5000);
-    return () => clearTimeout(t);
-  }, [heroAuthStep, session?.user]);
+    // Poll session every 500ms until it arrives, hard fallback at 8s
+    const poll = setInterval(() => void updateSession(), 500);
+    const t = setTimeout(() => { clearInterval(poll); setHeroAuthStep("idle"); }, 8000);
+    return () => { clearInterval(poll); clearTimeout(t); };
+  }, [heroAuthStep, session?.user, updateSession]);
 
   // Creators who still owe hero onboarding always see the Talent experience (not client brief / hire UI)
   useEffect(() => {
@@ -376,6 +377,7 @@ function HomePageContent() {
           setHeroSignInNotice("This email is your creator account — opened Talent for you.");
         }
         setHeroAuthSubmitting(false);
+        void updateSession();
         setHeroAuthStep("loading");
         analytics.loginCompleted("email");
         return;
@@ -507,6 +509,9 @@ function HomePageContent() {
       } catch { /* ignore */ }
     }
 
+    // Force immediate session refetch — useSession doesn't auto-update after signIn
+    void updateSession();
+
     setHeroOtpVerifying(false);
     analytics.heroOtpVerified(mode);
     setHeroAuthStep("loading");
@@ -610,8 +615,7 @@ function HomePageContent() {
 
   useEffect(() => {
     if (session?.user) setHeroAuthStep("idle");
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
+  }, [session?.user]);
 
   // ─── Discovery gate: check if client needs to complete discovery ───
   useEffect(() => {
