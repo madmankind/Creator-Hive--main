@@ -140,8 +140,16 @@ function IntakeBar({
   onRequireSignIn?: () => void;
 }) {
   const { data: session } = useSession();
+  const PENDING_KEY = "ch_pending_intake";
   // Internal auth gate: stash answers when not signed in, show inline auth step
-  const [pendingAuth, setPendingAuth] = useState<{ answers: Record<string, string>; bizType: string } | null>(null);
+  // Use sessionStorage so answers survive HeroBar unmount during auth flow
+  const [pendingAuth, _setPendingAuth] = useState<{ answers: Record<string, string>; bizType: string } | null>(() => {
+    try { const s = sessionStorage.getItem(PENDING_KEY); return s ? JSON.parse(s) : null; } catch { return null; }
+  });
+  const setPendingAuth = (v: typeof pendingAuth) => {
+    _setPendingAuth(v);
+    try { if (v) sessionStorage.setItem(PENDING_KEY, JSON.stringify(v)); else sessionStorage.removeItem(PENDING_KEY); } catch {}
+  };
   const [authStep, setAuthStep] = useState<"none" | "submit_confirm">("none");
 
   // When session appears and we have pending answers, resume

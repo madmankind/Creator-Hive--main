@@ -771,7 +771,7 @@ function HomePageContent() {
           ) : null}
 
           <div className="flex flex-col justify-start">
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="sync">
               {false ? (
                 <motion.div
                   key="hero-session-pending"
@@ -789,10 +789,10 @@ function HomePageContent() {
               ) : (!session?.user && heroAuthStep !== "idle") || heroAuthStep === "loading" || heroAuthStep === "waiting_session" ? (
                 <motion.div
                   key="hero-auth"
-                  initial={{ opacity: 0, y: 12, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -8, scale: 0.98 }}
-                  transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1.0] }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
                   className="w-full"
                 >
                   {/* Fey-style auth — frameless, floats on the dark page */}
