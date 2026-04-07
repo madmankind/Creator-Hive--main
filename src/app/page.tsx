@@ -771,31 +771,10 @@ function HomePageContent() {
           ) : null}
 
           <div className="flex flex-col justify-start">
-            <AnimatePresence mode="sync">
-              {false ? (
-                <motion.div
-                  key="hero-session-pending"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.2 }}
-                  className="w-full"
-                >
-                  <div
-                    className="w-full h-14 rounded-2xl animate-pulse"
-                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
-                  />
-                </motion.div>
-              ) : (!session?.user && heroAuthStep !== "idle") || heroAuthStep === "loading" || heroAuthStep === "waiting_session" ? (
-                <motion.div
-                  key="hero-auth"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="w-full"
-                >
-                  {/* Fey-style auth — frameless, floats on the dark page */}
+            {/* Auth UI — only shown during sign-in flow */}
+            {((!session?.user && heroAuthStep !== "idle") || heroAuthStep === "loading" || heroAuthStep === "waiting_session") && (
+              <div className="w-full">
+                {/* Fey-style auth — frameless, floats on the dark page */}
                   <div className="w-full max-w-[440px] mx-auto">
                     <div className="px-2 py-6 flex flex-col items-center gap-5">
                       {heroAuthStep === "email" && (
@@ -932,16 +911,13 @@ function HomePageContent() {
                       )}
                     </div>
                   </div>
-                  </motion.div>
-              ) : mode === "client" ? (
-                <motion.div
-                  key="client-bar"
-                  initial={{ opacity: 0, y: 14 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1.0] }}
-                  className="space-y-4"
-                >
+              </div>
+            )}
+
+            {/* HeroBar — always mounted, hidden during auth so state is preserved */}
+            <div style={{ display: ((!session?.user && heroAuthStep !== "idle") || heroAuthStep === "loading" || heroAuthStep === "waiting_session") ? 'none' : undefined }}>
+              {mode === "client" ? (
+                <div className="space-y-4">
                   <HeroBar
                     mode={mode}
                     onQueryChange={(q) => { setSearchQuery(q); }}
@@ -986,16 +962,9 @@ function HomePageContent() {
                       <ChevronDown className={cn("w-3.5 h-3.5 shrink-0 transition-transform duration-200", showPackages && "rotate-180")} />
                     </button>
                   </div>
-                </motion.div>
+                </div>
               ) : (
-                <motion.div
-                  key="talent-bar"
-                  initial={{ opacity: 0, y: 14 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1.0] }}
-                  className="space-y-4"
-                >
+                <div className="space-y-4">
                   <HeroBar
                     mode={mode}
                     onQueryChange={(q) => setSearchQuery(q)}
@@ -1004,9 +973,9 @@ function HomePageContent() {
                     onRequireSignIn={() => { setHeroAuthStep("email"); setHeroAuthEmail(""); setHeroAuthError(""); setHeroAuthAuthMode("signup"); }}
                     onTalentProfileSaved={() => setCreatorOnboardingComplete(true)}
                   />
-                </motion.div>
+                </div>
               )}
-            </AnimatePresence>
+            </div>
           </div>
         </div>
 
