@@ -621,6 +621,8 @@ function HomePageContent() {
   useEffect(() => {
     if (!session?.user || role !== "AGENCY") return;
     if (discoveryStore.completed) return;
+    // Skip if user just signed in via intake flow — brief is being submitted
+    if (heroAuthStep === "loading" || heroAuthStep === "waiting_session") return;
     const skip = searchParams.get("skip");
     const bookId = searchParams.get("book");
     const pkgId = searchParams.get("package");

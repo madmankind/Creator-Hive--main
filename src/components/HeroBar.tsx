@@ -157,12 +157,8 @@ function IntakeBar({
     if (session?.user && pendingAuth) {
       const { answers: a, bizType: b } = pendingAuth;
       setPendingAuth(null);
-      setAuthStep("submit_confirm");
-      // Short pause then show confirm
-      setTimeout(() => {
-        setAuthStep("none");
-        onComplete(a, b);
-      }, 1200);
+      // Fire immediately — no delay, so discoveryStore.completed is set before discovery gate
+      onComplete(a, b);
     }
   }, [session?.user, pendingAuth, onComplete]);
 
